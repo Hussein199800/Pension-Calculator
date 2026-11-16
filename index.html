@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>حاسبة الراتب التقاعدي للمحامين</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar no-print">
+  <div class="wrap topbar-in">
+    <div>
+      <h1>حاسبة الراتب التقاعدي ومعونات التقاعد والوفاة</h1>
+      <p class="sub">للمحامين – وفق تعاميم خزانة التقاعد وقانون تنظيم مهنة المحاماة رقم 30 لعام 2010</p>
+    </div>
+    <div class="top-actions">
+      <button type="button" class="btn ghost" id="btnNew">حالة جديدة</button>
+      <button type="button" class="btn ghost" id="btnCases">الحالات المحفوظة</button>
+      <button type="button" class="btn ghost" id="btnSettings">الإعدادات والقيم</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap no-print" id="formArea">
+  <form id="caseForm" autocomplete="off" novalidate>
+
+    <!-- 1. بيانات المحامي -->
+    <section class="card">
+      <h2><span class="num">1</span> بيانات المحامي</h2>
+      <div class="grid">
+        <label class="span2"><span>الاسم الكامل <b class="req">*</b></span><input name="name" required placeholder="مثال: محمد أحمد العلي"></label>
+        <label>اسم الأب<input name="fatherName"></label>
+        <label>اسم الأم<input name="motherName"></label>
+        <label><span>تاريخ الميلاد <b class="req">*</b></span><input type="date" name="birthDate"></label>
+        <label>مكان الميلاد<input name="birthPlace"></label>
+        <label>الرقم الوطني<input name="nationalId" inputmode="numeric"></label>
+        <label>رقم العضوية في النقابة<input name="memberNo"></label>
+        <label>الفرع<input name="branch" placeholder="مثال: فرع دمشق"></label>
+        <label>رقم الإضبارة<input name="fileNo"></label>
+        <label>رقم الهاتف<input name="phone" inputmode="tel"></label>
+        <label class="span2">العنوان<input name="address"></label>
+      </div>
+    </section>
+
+    <!-- 2. نوع الحالة -->
+    <section class="card">
+      <h2><span class="num">2</span> نوع الحالة والتواريخ</h2>
+      <div class="types" role="radiogroup">
+        <label class="type"><input type="radio" name="type" value="ordinary" checked><span><b>تقاعد عادي</b><small>معاش كامل / جزئي / كامل مع علاوة حسب سنوات الممارسة</small></span></label>
+        <label class="type"><input type="radio" name="type" value="health"><span><b>تقاعد صحي</b><small>حسب شرائح سنوات الممارسة، ويُصرف من تاريخ الخبرة الطبية</small></span></label>
+        <label class="type"><input type="radio" name="type" value="heirs"><span><b>معاش الورثة</b><small>بعد وفاة المحامي (متقاعد أو على رأس عمله)</small></span></label>
+      </div>
+
+      <div class="grid">
+        <label><span>تاريخ الانتساب للنقابة <b class="req">*</b></span><input type="date" name="joinDate"><small>يحدد نظام المعونة (قبل أو بعد 4/2/2014)</small></label>
+        <label>تاريخ صدور قرار القيد<input type="date" name="registrationDecisionDate"><small>إن تُرك فارغاً يُعتمد تاريخ الانتساب</small></label>
+        <label class="check"><input type="checkbox" name="reRegistration"> القيد الحالي هو "إعادة قيد"</label>
+        <label data-when="reRegistration">مدة الممارسة الفعلية السابقة (سنوات)<input type="number" min="0" step="1" name="priorPracticeYears"></label>
+
+        <label data-types="ordinary health" data-also="heirs:retired"><span>تاريخ الإحالة على التقاعد <b class="req">*</b></span><input type="date" name="retirementDate"></label>
+        <label data-types="ordinary">تاريخ بدء صرف المعاش<input type="date" name="paymentStartDate"><small>إن تُرك فارغاً يُعتمد تاريخ الإحالة</small></label>
+        <label data-types="health"><span>تاريخ الخبرة الطبية <b class="req">*</b></span><input type="date" name="medicalDate"><small>يُصرف المعاش اعتباراً من هذا التاريخ</small></label>
+        <label class="check" data-types="health"><input type="checkbox" name="occupational"> الإصابة أو الحالة الصحية ناتجة عن المهنة</label>
+
+        <label data-types="heirs">وضع المحامي عند الوفاة
+          <select name="status"><option value="retired">متقاعد</option><option value="inService">على رأس عمله</option></select></label>
+        <label data-types="heirs"><span>تاريخ الوفاة <b class="req">*</b></span><input type="date" name="deathDate"></label>
+        <label data-types="heirs" data-status="retired">نوع تقاعد المورث
+          <select name="originalType"><option value="ordinary">تقاعد عادي</option><option value="health">تقاعد صحي</option></select></label>
+        <label class="check" data-types="heirs" data-status="retired" data-orig="health"><input type="checkbox" name="occupationalHeirs"> كانت حالته الصحية ناتجة عن المهنة</label>
+        <label class="check" data-types="heirs" data-status="inService"><input type="checkbox" name="deathDuringWork"> حدثت الوفاة أثناء المرافعة أو بسبب المهنة</label>
+      </div>
+    </section>
+
+    <!-- 3. مدة الممارسة -->
+    <section class="card">
+      <h2><span class="num">3</span> مدة الممارسة</h2>
+      <p class="hint">تُستبعد من مدة الممارسة: سنوات الشطب، سنوات ترقين القيد، مدة الاستبعاد من الجدول لعدم دفع الرسوم (م21)، مدة المنع من مزاولة المهنة (م86/ج)، والسنوات التي لم تُثبت الممارسة عنها.</p>
+      <div class="seg">
+        <label><input type="radio" name="serviceMode" value="dates" checked> حساب من التواريخ</label>
+        <label><input type="radio" name="serviceMode" value="manual"> إدخال المدة الصافية يدوياً</label>
+      </div>
+      <div data-mode="dates">
+        <div class="grid">
+          <label><span>تاريخ بدء الممارسة المعتمد <b class="req">*</b></span><input type="date" name="serviceStart"></label>
+          <label>تاريخ نهاية الممارسة<input type="date" name="serviceEnd"><small id="serviceEndHint">إن تُرك فارغاً: تاريخ الإحالة على التقاعد</small></label>
+        </div>
+        <h3>المدد المستبعدة</h3>
+        <div class="table-wrap"><table class="edit" id="exTable">
+          <thead><tr><th>السبب</th><th>من تاريخ</th><th>إلى تاريخ</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <button type="button" class="btn small" id="addEx">+ إضافة مدة مستبعدة</button>
+      </div>
+      <div data-mode="manual" hidden>
+        <div class="grid g3">
+          <label>سنوات<input type="number" min="0" name="manY"></label>
+          <label>أشهر<input type="number" min="0" max="11" name="manM"></label>
+          <label>أيام<input type="number" min="0" max="29" name="manD"></label>
+        </div>
+      </div>
+      <div class="live" id="serviceLive"></div>
+    </section>
+
+    <!-- 4. الورثة -->
+    <section class="card" data-types="heirs">
+      <h2><span class="num">4</span> الورثة وأفراد الأسرة</h2>
+      <p class="hint">أدخل جميع أفراد الأسرة؛ يحدد البرنامج تلقائياً من يستحق المعاش ومن يستحق معونة الوفاة مع ذكر السبب.</p>
+      <div class="table-wrap"><table class="edit" id="heirTable">
+        <thead><tr><th>الاسم</th><th>الصلة</th><th>تاريخ الميلاد</th><th>حالات خاصة</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <button type="button" class="btn small" id="addHeir">+ إضافة فرد</button>
+    </section>
+
+    <!-- 5. المعونة -->
+    <section class="card">
+      <h2><span class="num" id="aidNum">4</span> معونة التقاعد والوفاة</h2>
+      <label class="check"><input type="checkbox" name="includeAid" checked> احسب المعونة أيضاً</label>
+      <div class="grid">
+        <label class="check" data-types="ordinary health"><input type="checkbox" name="requestedHalfAid"> أبدى رغبته بقبض نصف المعونة عند تقديم طلب الإحالة (للمنتسبين قبل 4/2/2014)</label>
+        <label class="check" data-types="heirs" data-status="retired"><input type="checkbox" name="receivedHalfAid"> قبض نصف المعونة عند تقاعده (منتسب قبل 4/2/2014)</label>
+        <label class="check" data-types="heirs" data-status="retired"><input type="checkbox" name="receivedRetirementAid"> قبض معونة التقاعد عند تقاعده (منتسب بعد 4/2/2014)</label>
+      </div>
+    </section>
+
+    <!-- 6. الحساب والتوقيع -->
+    <section class="card">
+      <h2><span class="num" id="lastNum">5</span> فترة الحساب ومنظم التقرير</h2>
+      <div class="grid">
+        <label><span>احسب المستحقات حتى نهاية شهر <b class="req">*</b></span><input type="month" name="untilMonth"></label>
+        <label>اسم منظم التقرير<input name="preparer"></label>
+        <label>اسم المدقق<input name="reviewer"></label>
+        <label class="span3">ملاحظات تُضاف للتقرير<textarea name="notes" rows="2"></textarea></label>
+      </div>
+    </section>
+
+    <div class="errors" id="errors" hidden></div>
+    <div class="actions">
+      <button type="submit" class="btn primary">احسب وأنشئ التقرير</button>
+      <button type="button" class="btn" id="btnSave">حفظ الحالة</button>
+      <button type="button" class="btn" id="btnExport">تصدير الحالة (ملف)</button>
+      <label class="btn">استيراد حالة<input type="file" id="importFile" accept=".json,application/json" hidden></label>
+    </div>
+  </form>
+</main>
+
+<section id="reportArea" class="wrap" hidden>
+  <div class="report-actions no-print">
+    <button type="button" class="btn primary" id="btnPrint">طباعة التقرير / حفظ PDF</button>
+    <button type="button" class="btn" id="btnDownload">تنزيل التقرير (ملف HTML)</button>
+    <button type="button" class="btn" id="btnSave2">حفظ الحالة</button>
+    <button type="button" class="btn ghost" id="btnBack">تعديل البيانات</button>
+  </div>
+  <div id="report"></div>
+</section>
+
+<!-- نافذة الحالات المحفوظة -->
+<dialog id="casesDlg" class="dlg">
+  <h2>الحالات المحفوظة</h2>
+  <p class="hint">تُحفظ الحالات في هذا المتصفح فقط. لنقلها إلى جهاز آخر استخدم "تصدير الحالة".</p>
+  <div id="casesList"></div>
+  <div class="actions"><button type="button" class="btn" data-close>إغلاق</button></div>
+</dialog>
+
+<!-- نافذة الإعدادات -->
+<dialog id="settingsDlg" class="dlg wide">
+  <h2>الإعدادات والقيم المعتمدة</h2>
+  <p class="hint">هذه القيم مأخوذة من التعاميم المرفقة. عند صدور زيادة جديدة أضف سطراً بتاريخ نفاذها وقيمتها، وسيُحتسب كل شهر بالقيمة النافذة فيه.</p>
+  <label>اسم الجهة (يظهر في رأس التقرير)<input id="setOrg" placeholder="مثال: نقابة المحامين – فرع ... – خزانة التقاعد"></label>
+  <h3>قيمة المعاش التقاعدي الكامل (30 سنة)</h3>
+  <div class="table-wrap"><table class="edit" id="pensionTbl"><thead><tr><th>نافذ اعتباراً من</th><th>القيمة (ل.س)</th><th>ملاحظة</th><th></th></tr></thead><tbody></tbody></table></div>
+  <button type="button" class="btn small" data-addrow="pensionTbl">+ إضافة قيمة</button>
+  <h3>قيمة معونة التقاعد والوفاة الكاملة</h3>
+  <div class="table-wrap"><table class="edit" id="aidTbl"><thead><tr><th>نافذ اعتباراً من</th><th>القيمة (ل.س)</th><th>ملاحظة</th><th></th></tr></thead><tbody></tbody></table></div>
+  <button type="button" class="btn small" data-addrow="aidTbl">+ إضافة قيمة</button>
+  <h3>قواعد الحساب</h3>
+  <div class="grid">
+    <label>تاريخ الفصل بين نظامي المعونة<input type="date" id="setCutoff"></label>
+    <label>سقف سنوات الممارسة في المعاش<input type="number" id="setMax" min="30"></label>
+    <label>كسور السنة في المعاش
+      <select id="setPYM"><option value="floor">تُهمل (تُعتمد السنوات الكاملة)</option><option value="ceil">جزء السنة = سنة كاملة</option><option value="exact">نسبياً بالأشهر والأيام</option></select></label>
+    <label>كسور السنة في المعونة
+      <select id="setAYM"><option value="ceil">جزء السنة = سنة كاملة (نص التعميم)</option><option value="floor">تُهمل</option><option value="exact">نسبياً</option></select></label>
+    <label class="check span2"><input type="checkbox" id="setTreasury"> حساب حصة لخزانة التقاعد عند توزيع معاش الورثة (كما في أمثلة التعميم)</label>
+  </div>
+  <div class="actions">
+    <button type="button" class="btn primary" id="saveSettings">حفظ الإعدادات</button>
+    <button type="button" class="btn" id="resetSettings">استعادة القيم الافتراضية</button>
+    <button type="button" class="btn ghost" data-close>إغلاق</button>
+  </div>
+</dialog>
+
+<template id="exRow">
+  <tr>
+    <td><select data-k="reason">
+      <option>شطب</option><option>ترقين قيد</option><option>استبعاد من الجدول لعدم دفع الرسوم</option>
+      <option>منع من مزاولة المهنة</option><option>سنوات لم تُثبت الممارسة عنها</option><option>أخرى</option></select></td>
+    <td><input type="date" data-k="from"></td>
+    <td><input type="date" data-k="to"></td>
+    <td><button type="button" class="x" title="حذف" aria-label="حذف">×</button></td>
+  </tr>
+</template>
+<template id="heirRow">
+  <tr>
+    <td><input data-k="name" placeholder="الاسم"></td>
+    <td><select data-k="relation">
+      <option value="spouse">زوج/زوجة</option><option value="son">ابن</option><option value="daughter">ابنة</option>
+      <option value="father">أب</option><option value="mother">أم</option><option value="sister">أخت</option>
+      <option value="brother">أخ</option><option value="other">قريب آخر</option></select></td>
+    <td><input type="date" data-k="birth"></td>
+    <td class="flags">
+      <label data-rel="son"><input type="checkbox" data-k="student"> يتابع دراسته</label>
+      <label data-rel="son daughter sister brother other"><input type="checkbox" data-k="disabled"> عاجز</label>
+      <label data-rel="daughter sister"><input type="checkbox" data-k="married"> متزوجة</label>
+      <label data-rel="daughter"><input type="checkbox" data-k="hasIncome"> لها عمل/مورد يكفي</label>
+      <label data-rel="father mother sister"><input type="checkbox" data-k="dependent"> ثبتت الإعالة والحرمان من الموارد</label>
+      <label data-rel="spouse"><input type="checkbox" data-k="remarried"> تزوج/ت بعد الوفاة</label>
+      <label><input type="checkbox" data-k="designated"> مخصَّص له معونة الوفاة بكتاب المحامي</label>
+    </td>
+    <td><button type="button" class="x" title="حذف" aria-label="حذف">×</button></td>
+  </tr>
+</template>
+<template id="valRow">
+  <tr><td><input type="date" data-k="from"></td><td><input type="number" min="0" data-k="value"></td><td><input data-k="note"></td><td><button type="button" class="x" aria-label="حذف">×</button></td></tr>
+</template>
+
+<script src="js/calc.js"></script>
+<script src="js/report.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
