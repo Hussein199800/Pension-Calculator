@@ -1,0 +1,9 @@
+{
+  "name": "pension-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "حاسبة الراتب التقاعدي ومعونات التقاعد والوفاة للمحامين مع تقرير مفصل قابل للطباعة",
+  "scripts": {
+    "test": "node tests/calc.test.js"
+  }
+}
