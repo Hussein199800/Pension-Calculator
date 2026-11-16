@@ -4,45 +4,46 @@
   var C = root.PensionCalc;
 
   var REPORT_CSS = [
-    '.rpt{background:#fff;color:#111;font-family:"Noto Naskh Arabic","Cairo","Traditional Arabic",serif;font-size:14.5px;line-height:1.75;max-width:900px;margin:0 auto;padding:28px 34px;border:1px solid #ddd;direction:rtl;text-align:right}',
+    '.rpt{background:#fff;color:#111;font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;font-size:14.5px;line-height:1.75;max-width:900px;margin:0 auto;padding:28px 34px;border:1px solid #ddd;direction:rtl;text-align:right}',
     '.rpt *{box-sizing:border-box}',
-    '.rpt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px double #14365c;padding-bottom:12px;margin-bottom:16px}',
-    '.rpt-head .org{font-weight:700;color:#14365c;font-size:15px}',
-    '.rpt-head h1{margin:6px 0 2px;font-size:22px;color:#14365c;font-family:"Cairo",sans-serif}',
+    '.rpt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px double #2b1f45;padding-bottom:12px;margin-bottom:16px}',
+    '.rpt-head .org{font-weight:700;color:#2b1f45;font-size:15px}',
+    '.rpt-head h1{margin:6px 0 2px;font-size:22px;color:#2b1f45;font-family:"IBM Plex Sans Arabic",sans-serif}',
     '.rpt-head .meta{font-size:13px;color:#444;text-align:left;white-space:nowrap}',
-    '.rpt h2{font-family:"Cairo",sans-serif;font-size:16.5px;color:#fff;background:#14365c;padding:5px 12px;border-radius:6px;margin:22px 0 10px;break-after:avoid}',
-    '.rpt h3{font-family:"Cairo",sans-serif;font-size:15px;color:#14365c;margin:14px 0 6px}',
+    '.rpt h2{font-family:"IBM Plex Sans Arabic",sans-serif;font-size:16.5px;color:#fff;background:#2b1f45;padding:5px 12px;border-radius:6px;margin:22px 0 10px;break-after:avoid}',
+    '.rpt h3{font-family:"IBM Plex Sans Arabic",sans-serif;font-size:15px;color:#2b1f45;margin:14px 0 6px}',
     '.rpt table{width:100%;border-collapse:collapse;margin:6px 0 10px;break-inside:auto}',
-    '.rpt th,.rpt td{border:1px solid #bbb;padding:5px 8px;vertical-align:top;text-align:right}',
-    '.rpt th{background:#eef2f7;font-family:"Cairo",sans-serif;font-size:13px}',
+    '.rpt th,.rpt td{white-space:normal;color:#111;background:#fff;border:1px solid #bbb;padding:5px 8px;vertical-align:top;text-align:right}',
+    '.rpt th{background:#efeaf6;color:#2b1f45;font-family:"IBM Plex Sans Arabic",sans-serif;font-size:13px}',
     '.rpt tr{break-inside:avoid}',
+    '.rpt tbody tr:nth-child(even) td{background:#fff}.rpt h1,.rpt h2,.rpt h3{line-height:1.5}',
     '.rpt td.n,.rpt th.n{text-align:left;direction:ltr;white-space:nowrap;font-variant-numeric:tabular-nums}',
-    '.rpt .kv td:first-child{width:32%;background:#f7f7f4;font-weight:700}',
+    '.rpt .rkv td:first-child{width:32%;background:#f4f0e7;font-weight:700}',
     '.rpt .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:8px 0}',
-    '.rpt .box{border:2px solid #14365c;border-radius:10px;padding:10px 12px;break-inside:avoid}',
+    '.rpt .box{border:2px solid #2b1f45;border-radius:10px;padding:10px 12px;break-inside:avoid}',
     '.rpt .box .l{font-size:13px;color:#333;font-weight:700}',
-    '.rpt .box .v{font-size:22px;font-weight:800;color:#14365c;font-family:"Cairo",sans-serif}',
+    '.rpt .box .v{font-size:22px;font-weight:800;color:#2b1f45;font-family:"IBM Plex Sans Arabic",sans-serif}',
     '.rpt .box .w{font-size:12.5px;color:#444}',
-    '.rpt .box.gold{border-color:#a77b2c}.rpt .box.gold .v{color:#7a5617}',
+    '.rpt .box.gold{border-color:#a67a22}.rpt .box.gold .v{color:#7a2238}',
     '.rpt ol.steps{margin:4px 0 8px;padding-right:22px}.rpt ol.steps li{margin:3px 0}',
-    '.rpt .formula{background:#f6f3ea;border-right:4px solid #a77b2c;padding:8px 12px;margin:8px 0;border-radius:4px}',
+    '.rpt .formula{background:#f4f0e7;border-right:4px solid #a67a22;padding:8px 12px;margin:8px 0;border-radius:4px}',
     '.rpt .note{background:#fff7e0;border:1px solid #e8d49a;padding:8px 12px;border-radius:6px;margin:6px 0}',
     '.rpt .warn{background:#fdecea;border:1px solid #f0b8b3;padding:8px 12px;border-radius:6px;margin:6px 0}',
     '.rpt .yes{color:#1d7a46;font-weight:700}.rpt .no{color:#b3261e;font-weight:700}',
-    '.rpt .total td{font-weight:800;background:#eef2f7}',
+    '.rpt .total td{font-weight:800;background:#efeaf6}',
     '.rpt .sign{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px;text-align:center;break-inside:avoid}',
     '.rpt .sign div{border-top:1px solid #333;padding-top:6px;min-height:70px}',
     '.rpt .foot{margin-top:20px;font-size:12px;color:#555;border-top:1px solid #ccc;padding-top:8px}',
-    '.rpt dl.gl{margin:0}.rpt dl.gl dt{font-weight:700;color:#14365c}.rpt dl.gl dd{margin:0 0 6px 0;padding-right:14px}',
+    '.rpt dl.gl{margin:0}.rpt dl.gl dt{font-weight:700;color:#2b1f45}.rpt dl.gl dd{margin:0 0 6px 0;padding-right:14px}',
     '@media (max-width:640px){.rpt{padding:16px 12px}.rpt-head{flex-direction:column}.rpt-head .meta{text-align:right}.rpt .sign{grid-template-columns:1fr}}',
-    '@media print{@page{size:A4;margin:14mm 12mm}.rpt{border:0;padding:0;max-width:none;font-size:13px}.rpt h2{-webkit-print-color-adjust:exact;print-color-adjust:exact}.rpt th,.rpt .box,.rpt .formula,.rpt .note,.rpt .warn,.rpt .kv td:first-child,.rpt .total td{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+    '@media print{@page{size:A4;margin:14mm 12mm}.rpt{border:0;padding:0;max-width:none;font-size:13px}.rpt h2{-webkit-print-color-adjust:exact;print-color-adjust:exact}.rpt th,.rpt .box,.rpt .formula,.rpt .note,.rpt .warn,.rpt .rkv td:first-child,.rpt .total td{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
   ].join('\n');
 
   function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   var f = C.fmt, d = C.fmtDate;
   function money(n) { return '<span dir="ltr">' + f(n) + '</span> ل.س'; }
   function li(arr) { return '<ol class="steps">' + arr.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>'; }
-  function kv(rows) { return '<table class="kv">' + rows.filter(function (r) { return r[1] !== '' && r[1] !== undefined && r[1] !== null; }).map(function (r) { return '<tr><td>' + esc(r[0]) + '</td><td>' + (r[2] ? r[1] : esc(r[1])) + '</td></tr>'; }).join('') + '</table>'; }
+  function kv(rows) { return '<table class="rkv">' + rows.filter(function (r) { return r[1] !== '' && r[1] !== undefined && r[1] !== null; }).map(function (r) { return '<tr><td>' + esc(r[0]) + '</td><td>' + (r[2] ? r[1] : esc(r[1])) + '</td></tr>'; }).join('') + '</table>'; }
   function box(label, value, words, cls) { return '<div class="box ' + (cls || '') + '"><div class="l">' + esc(label) + '</div><div class="v">' + f(value) + ' <small>ل.س</small></div><div class="w">' + esc(C.amountWords(value)) + ' فقط لا غير</div></div>'; }
   function ym(iso) { var p = C.parseDate(iso); return p ? p.m + '/' + p.y : ''; }
   function monthsTxt(n) { return n === 1 ? 'شهر واحد' : n === 2 ? 'شهران' : n <= 10 ? n + ' أشهر' : n + ' شهراً'; }
@@ -231,7 +232,7 @@
 
   function standalone(html, title) {
     return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + esc(title) + '</title>' +
-      '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">' +
+      '<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">' +
       '<style>body{margin:0;background:#fff;padding:16px}' + REPORT_CSS + '</style></head><body>' + html + '</body></html>';
   }
 
