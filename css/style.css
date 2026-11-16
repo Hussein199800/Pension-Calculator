@@ -1,102 +1,110 @@
 /* =========================================================
-   حاسبة الراتب التقاعدي — نظام التصميم «الجواهر» (نفس Sarrafa و Work_1)
-   زمردي للأفعال، بنفسجي ملكي للهيكل، عنابي للتنبيه والخسارة،
-   وذهبي هادئ للإجماليات المالية.
-   وضعان مستقلان: نهاري (ورق دافئ) وليلي (بنفسجي داكن، ليس أسود).
-   الخط: IBM Plex Sans Arabic في كل الموقع، والأيقونات Tabler.
-   نقاط الكسر الثلاث فقط: 1280 / 1024 / 640.
-   كل الألوان معرّفة هنا فقط؛ بقية الملف يستخدم الأسماء الدلالية.
+   حاسبة الراتب التقاعدي — هوية «الزيتون والعاج» (17/11/2026)
+   هوية مستقلة عن «الجواهر» (الصرافة) وعن «التيتانيوم والنحاس» (Work_1)
+   بقرار صاحب المشروع، «كأن مبرمجاً آخر صمّمها»: ورق عاجي هادئ،
+   لون زيتوني واحد للأفعال، هيكل حبري زيتوني داكن، وزعفران للإبراز
+   والإجماليات، وقرميدي للتنبيه والحذف. بلا أزرق.
+   أسماء المتغيرات القديمة بقيت كما هي حتى لا ينكسر شيء، لكن قيمها صارت:
+   emerald = الزيتون، plum = الحبر، gold = الزعفران، wine = القرميد.
+   الخط: Readex Pro. نقاط الكسر: 1280 / 1024 / 640.
+   كل الألوان معرّفة هنا وفي «الطبقة الثانية» آخر الملف.
 ========================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap");
 
 :root {
     color-scheme: light;
 
     /* ---------- الألوان الأساسية ---------- */
-    --emerald-800: #0b4d40;
-    --emerald-700: #0e6150;
-    --emerald-600: #137a64;
-    --emerald-500: #1e9378;
-    --emerald-300: #8fd3bf;
+    /* الزيتون (اسمه القديم emerald) */
+    --emerald-800: #3c4713;
+    --emerald-700: #4a5718;
+    --emerald-600: #5a6a1e;
+    --emerald-500: #6f8226;
+    --emerald-300: #c3cf8f;
 
-    --plum-900: #1e1530;
-    --plum-800: #2b1f45;
-    --plum-700: #3e2c63;
-    --plum-600: #5a3f8c;
-    --plum-300: #b9a6de;
+    /* الحبر الزيتوني الداكن (اسمه القديم plum) */
+    --plum-900: #15180f;
+    --plum-800: #1f2318;
+    --plum-700: #2f3524;
+    --plum-600: #4b5438;
+    --plum-300: #b4bba0;
 
-    --wine-700: #7a2238;
-    --wine-600: #94304a;
-    --wine-300: #e3a3b3;
+    /* القرميد (اسمه القديم wine) */
+    --wine-700: #82311f;
+    --wine-600: #a3402a;
+    --wine-300: #e9b3a5;
 
-    --gold-700: #8a6516;
-    --gold-600: #a67a22;
-    --gold-500: #c9a24a;
-    --gold-300: #e6cf91;
+    /* الزعفران (اسمه القديم gold) */
+    --gold-700: #865409;
+    --gold-600: #ad7012;
+    --gold-500: #d69527;
+    --gold-300: #f1d596;
 
-    /* ---------- الأسطح: ورق دافئ متدرج، ليس أبيض ناصعاً ---------- */
-    --bg: #efebe3;
+    /* ---------- الأسطح: ورق عاجي بخطوط سجلّ خفيفة ---------- */
+    --bg: #f1efe4;
     --bg-grad:
-        radial-gradient(1200px 520px at 100% -10%, rgba(19, 122, 100, 0.10), transparent 60%),
-        radial-gradient(900px 480px at -10% 0%, rgba(90, 63, 140, 0.10), transparent 60%),
-        linear-gradient(180deg, #f3f0e9 0%, #ebe8e0 100%);
-    --surface: #fbf9f4;
-    --surface-2: #f4f0e7;
-    --surface-3: #ebe6db;
-    --field: #fffdf8;
-    --line: #e1dacd;
-    --line-strong: #cbc1b0;
-    --track: #e6e0d4;
+        radial-gradient(1100px 480px at 100% -12%, rgba(90, 106, 30, 0.10), transparent 62%),
+        radial-gradient(800px 420px at -8% 4%, rgba(214, 149, 39, 0.09), transparent 60%),
+        linear-gradient(180deg, #f4f2e8 0%, #ebe9dc 100%);
+    --surface: #fcfbf5;
+    --surface-2: #f5f3e9;
+    --surface-3: #eceadb;
+    --field: #fffefa;
+    --line: #dfdbc8;
+    --line-strong: #c7c1a7;
+    --track: #e5e2d1;
 
     /* ---------- النص ---------- */
-    --heading: #1f1730;
-    --text: #2a2238;
-    --text-2: #5a4f69;
-    --text-3: #75697f;
+    --heading: #1b1e14;
+    --text: #2a2e21;
+    --text-2: #555b46;
+    --text-3: #737962;
 
-    /* ---------- الأفعال (زمردي) ---------- */
-    --accent: #137a64;
-    --accent-strong: #0e6150;
-    --accent-text: #0e6150;
-    --accent-soft: #e7f3ee;
-    --accent-soft-2: #cfe9de;
+    /* ---------- الأفعال (زيتوني) ---------- */
+    --accent: #5a6a1e;
+    --accent-strong: #4a5718;
+    --accent-text: #4a5718;
+    --accent-soft: #eef1df;
+    --accent-soft-2: #dde4c0;
     --on-accent: #ffffff;
-    --grad-primary: linear-gradient(135deg, #17907a 0%, #0e6150 100%);
+    --grad-primary: linear-gradient(135deg, #6f8226 0%, #4a5718 100%);
 
-    /* ---------- الهيكل الداكن (القائمة، الرسائل) ---------- */
-    --panel: linear-gradient(165deg, #123c35 0%, #22193a 58%, #2b1d3f 100%);
-    --panel-solid: #22193a;
-    --on-panel-2: rgba(255, 255, 255, 0.78);
-    --on-panel-3: rgba(255, 255, 255, 0.58);
+    /* ---------- الهيكل الداكن (الرسائل، الشعار) ---------- */
+    --panel: linear-gradient(165deg, #2f3524 0%, #1f2318 60%, #15180f 100%);
+    --panel-solid: #1f2318;
+    --on-panel-2: rgba(255, 255, 255, 0.8);
+    --on-panel-3: rgba(255, 255, 255, 0.6);
 
-    /* ---------- الإجماليات المالية (عنابي + ذهبي) ---------- */
-    --grad-money: linear-gradient(135deg, #2b1f45 0%, #5a2340 62%, #7a2238 100%);
-    --money-line: #e6cf91;
-    --gold: #a67a22;
+    /* ---------- الإجماليات المالية (حبر ← زيتون ← زعفران) ---------- */
+    --grad-money: linear-gradient(135deg, #1f2318 0%, #4a5718 58%, #865409 100%);
+    --money-line: #f1d596;
+    --gold: #ad7012;
 
-    /* ---------- الحالات: ربح أخضر، خسارة عنابي، معلومة بنفسجي ---------- */
-    --success: #1f7a4d;
-    --success-solid: #1f7a4d;
-    --success-bg: #e2f2e8;
-    --warning: #8a6516;
-    --warning-bg: #f7eedb;
-    --danger: #94304a;
-    --danger-bg: #f7e4e9;
-    --info: #5a3f8c;
-    --info-bg: #eee8f7;
+    /* ---------- الحالات ---------- */
+    --success: #2e7a3c;
+    --success-solid: #2e7a3c;
+    --success-bg: #e3f1e2;
+    --warning: #865409;
+    --warning-bg: #f8eed8;
+    --danger: #a3402a;
+    --danger-bg: #f8e7e1;
+    --info: #4b5438;
+    --info-bg: #eceee3;
 
-    /* ---------- الحواف والظلال ---------- */
-    --r-sm: 10px;
-    --r-md: 14px;
-    --r-lg: 20px;
-    --r-xl: 24px;
+    /* ---------- الحواف والظلال: أدق وأهدأ ---------- */
+    --r-sm: 6px;
+    --r-md: 9px;
+    --r-lg: 12px;
+    --r-xl: 16px;
 
-    --sh-1: 0 1px 2px rgba(43, 31, 69, 0.04), 0 4px 14px rgba(43, 31, 69, 0.06);
-    --sh-2: 0 16px 34px -18px rgba(43, 31, 69, 0.38);
-    --glow: 0 10px 22px -12px rgba(19, 122, 100, 0.55);
-    --ring: 0 0 0 3px rgba(19, 122, 100, 0.28);
+    --sh-1: 0 1px 0 rgba(31, 35, 24, 0.04), 0 2px 8px rgba(31, 35, 24, 0.05);
+    --sh-2: 0 14px 30px -18px rgba(31, 35, 24, 0.35);
+    --glow: 0 8px 18px -12px rgba(90, 106, 30, 0.6);
+    --ring: 0 0 0 3px rgba(111, 130, 38, 0.3);
 
     /* ---------- الخطوط ---------- */
-    --font-body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+    --font-body: "Readex Pro", "IBM Plex Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
 
     --fs-xs: 12px;
     --fs-sm: 13px;
@@ -110,56 +118,56 @@
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ================= الوضع الليلي ================= */
+/* ================= الوضع الليلي: حبر زيتوني داكن ================= */
 
 [data-theme="dark"] {
     color-scheme: dark;
 
-    --bg: #16121f;
+    --bg: #121410;
     --bg-grad:
-        radial-gradient(1100px 520px at 100% -10%, rgba(43, 179, 143, 0.12), transparent 60%),
-        radial-gradient(900px 480px at -10% 0%, rgba(150, 110, 220, 0.14), transparent 60%),
-        linear-gradient(180deg, #19141f 0%, #14111b 100%);
-    --surface: #211b2c;
-    --surface-2: #272035;
-    --surface-3: #2f273f;
-    --field: #1b1625;
-    --line: #372e48;
-    --line-strong: #4b4062;
-    --track: #352c47;
+        radial-gradient(1000px 480px at 100% -12%, rgba(156, 176, 66, 0.10), transparent 62%),
+        radial-gradient(800px 420px at -8% 4%, rgba(232, 181, 77, 0.08), transparent 60%),
+        linear-gradient(180deg, #141711 0%, #10120d 100%);
+    --surface: #1b1e16;
+    --surface-2: #21251b;
+    --surface-3: #292e22;
+    --field: #161912;
+    --line: #31372a;
+    --line-strong: #464e3b;
+    --track: #2d3226;
 
-    --heading: #f3eefa;
-    --text: #e8e2f1;
-    --text-2: #c0b5d0;
-    --text-3: #9d91af;
+    --heading: #f3f4ea;
+    --text: #e5e8da;
+    --text-2: #b9bea7;
+    --text-3: #90967e;
 
-    --accent: #1a9a7c;
-    --accent-strong: #158a6e;
-    --accent-text: #6fd8b7;
-    --accent-soft: rgba(43, 179, 143, 0.12);
-    --accent-soft-2: rgba(43, 179, 143, 0.24);
-    --grad-primary: linear-gradient(135deg, #22ac8b 0%, #13806a 100%);
+    --accent: #8ba23a;
+    --accent-strong: #7a8f31;
+    --accent-text: #c4d67c;
+    --accent-soft: rgba(156, 176, 66, 0.13);
+    --accent-soft-2: rgba(156, 176, 66, 0.25);
+    --grad-primary: linear-gradient(135deg, #9cb042 0%, #6b7d24 100%);
 
-    --panel: linear-gradient(165deg, #0f2f2a 0%, #1b1430 58%, #241634 100%);
-    --panel-solid: #1b1430;
+    --panel: linear-gradient(165deg, #262b1d 0%, #181b13 60%, #10120d 100%);
+    --panel-solid: #181b13;
 
-    --grad-money: linear-gradient(135deg, #2a1d44 0%, #4d1d38 62%, #66203a 100%);
-    --gold: #e2b95b;
+    --grad-money: linear-gradient(135deg, #1d2116 0%, #3f4a16 58%, #6e470c 100%);
+    --gold: #e8b54d;
 
-    --success: #5cc98f;
-    --success-solid: #1d8556;
-    --success-bg: rgba(92, 201, 143, 0.14);
-    --warning: #e2b95b;
-    --warning-bg: rgba(226, 185, 91, 0.14);
-    --danger: #ec8ea4;
-    --danger-bg: rgba(236, 142, 164, 0.14);
-    --info: #c4b2ea;
-    --info-bg: rgba(185, 166, 222, 0.14);
+    --success: #85cf8f;
+    --success-solid: #2f8441;
+    --success-bg: rgba(133, 207, 143, 0.13);
+    --warning: #e8b54d;
+    --warning-bg: rgba(232, 181, 77, 0.13);
+    --danger: #ef9c87;
+    --danger-bg: rgba(239, 156, 135, 0.13);
+    --info: #c1c8ac;
+    --info-bg: rgba(180, 187, 160, 0.13);
 
-    --sh-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
-    --sh-2: 0 18px 38px -18px rgba(0, 0, 0, 0.7);
-    --glow: 0 10px 24px -12px rgba(43, 179, 143, 0.5);
-    --ring: 0 0 0 3px rgba(111, 216, 183, 0.35);
+    --sh-1: 0 1px 0 rgba(0, 0, 0, 0.3), 0 2px 10px rgba(0, 0, 0, 0.28);
+    --sh-2: 0 18px 38px -18px rgba(0, 0, 0, 0.75);
+    --glow: 0 8px 20px -12px rgba(156, 176, 66, 0.5);
+    --ring: 0 0 0 3px rgba(196, 214, 124, 0.32);
 }
 
 /* ================= الأساسيات ================= */
@@ -731,3 +739,114 @@ table.edit td.flags label { display: inline-flex; align-items: center; gap: 6px;
 [hidden] { display: none !important; }
 table.edit td.flags label { justify-content: flex-start; width: auto; white-space: nowrap; }
 table.edit td.flags input[type="checkbox"] { margin: 0; }
+
+/* =========================================================
+   الطبقة الثانية — «الزيتون والعاج»
+   طابع مكتبي هادئ يشبه سجلّاً ورقياً: بطاقات مسطحة بحدود دقيقة،
+   حواف أصغر، مؤشر خطّي للتبويب النشط، وزعفران للإبراز.
+   (الألوان الثابتة القديمة من «الجواهر» مُعاد تعيينها هنا.)
+========================================================= */
+
+body { letter-spacing: 0; }
+h1, h2, h3, h4 { font-weight: 600; }
+
+/* الشعار: حبر زيتوني وختم زعفراني */
+.brand-mark { --bm-tile: var(--plum-800); --bm-badge: var(--gold-500); --bm-check: var(--plum-900); }
+
+/* الدخول: ورقة عاجية بخطوط سجلّ وشريط زيتوني علوي */
+.login-page {
+    background:
+        repeating-linear-gradient(0deg, transparent 0 31px, color-mix(in srgb, var(--line) 55%, transparent) 31px 32px),
+        var(--bg-grad), var(--bg);
+}
+.login-shell {
+    border-radius: var(--r-xl); border: 1px solid var(--line);
+    border-top: 5px solid var(--accent);
+    box-shadow: 0 30px 60px -34px rgba(31, 35, 24, 0.45);
+}
+.login-art .seal-xl { filter: drop-shadow(0 12px 18px rgba(31, 35, 24, 0.3)); }
+.login-art-org { color: var(--gold-700); letter-spacing: 0; }
+[data-theme="dark"] .login-art-org { color: var(--gold); }
+.login-box input { border-radius: var(--r-md) !important; }
+
+/* الشريط العلوي: خط زعفراني رفيع تحته */
+.topbar { box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--gold-500) 55%, transparent); }
+
+/* التبويبات: مؤشر خطّي بدل الحبة المعبأة */
+.tabbar button > .ti:first-child { border-radius: var(--r-sm); }
+.tabbar button.on { color: var(--accent-text); }
+.tabbar button.on > .ti:first-child { color: var(--accent-text); background: var(--accent-soft); box-shadow: none; }
+.tabbar button.on::before {
+    content: ""; position: absolute; top: -6px; inset-inline: 28%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent);
+}
+
+/* عنوان الصفحة: أيقونة حبرية وخط زعفراني قصير */
+.page-title { border-bottom: 1px solid var(--line); }
+.page-icon { background: var(--plum-800); color: var(--gold-300); box-shadow: none; border-radius: var(--r-md); }
+[data-theme="dark"] .page-icon { background: var(--surface-3); color: var(--gold); }
+.page-title h2 { font-weight: 600; }
+.page-title h2::after { content: ""; display: block; width: 44px; height: 3px; margin-top: 4px; border-radius: 2px; background: var(--gold-500); }
+
+/* البطاقات: مسطحة بحد دقيق وعلامة جانبية للعنوان */
+.card { box-shadow: var(--sh-1); border-radius: var(--r-lg); }
+.card > h3:first-child { padding-inline-start: 12px; border-inline-start: 3px solid var(--gold-500); }
+.card h3 .ti { background: transparent; color: var(--accent-text); width: auto; height: auto; }
+
+/* الأزرار: مستطيلة هادئة */
+.btn { border-radius: var(--r-md); }
+.btn.primary { box-shadow: 0 6px 14px -10px rgba(74, 87, 24, 0.75); }
+.btn.danger { border-color: var(--wine-300); }
+.seg { border-radius: var(--r-md); }
+.seg button.on { box-shadow: 0 4px 10px -8px rgba(74, 87, 24, 0.8); }
+.x { border-color: var(--wine-300); border-radius: var(--r-sm); }
+
+/* نوع الحالة: بطاقات تختار بحد زيتوني وشريط جانبي */
+.type { border-radius: var(--r-md); }
+.type:has(input:checked) { box-shadow: inset -4px 0 0 var(--accent); }
+
+/* صفحة «المزيد» */
+.dev-card { background: var(--grad-money); border-radius: var(--r-xl); box-shadow: 0 14px 30px -16px rgba(31, 35, 24, 0.7); }
+.lcard { border-radius: var(--r-lg); }
+.l-ic { border-radius: var(--r-md); }
+.c-amber { --g1: #f1d596; --g2: #ad7012; }
+.c-green { --g1: #b5c56d; --g2: #4a5718; }
+.c-teal { --g1: #9fbf8c; --g2: #3f6b3a; }
+.c-sky { --g1: #c9c39a; --g2: #6d6634; }
+.c-violet { --g1: #a3a88c; --g2: #2f3524; }
+.c-pink { --g1: #e9b3a5; --g2: #a3402a; }
+.c-slate { --g1: #b4bba0; --g2: #4b5438; }
+.l-badge.soon-b, .soon .soon-tag { background: var(--gold-300); color: var(--gold-700); }
+
+/* النوافذ والرسائل */
+.modal-back { background: rgba(21, 24, 15, 0.55); }
+.modal { border-radius: var(--r-xl); border-top: 4px solid var(--accent); box-shadow: 0 40px 80px -30px rgba(21, 24, 15, 0.6); }
+.toast { box-shadow: 0 18px 40px -14px rgba(21, 24, 15, 0.55); border-radius: var(--r-md); }
+.live { border-radius: var(--r-md); border-inline-start: 3px solid var(--success); }
+.sticky-actions { border-radius: var(--r-lg); }
+
+/* التقرير: ورق أبيض بعناوين حبرية ولمسات زعفرانية */
+.rpt { font-family: var(--font-body) !important; }
+.rpt h1, .rpt h3, .rpt-head .org { color: #1f2318 !important; font-family: var(--font-body) !important; }
+.rpt h2 { background: #1f2318 !important; font-family: var(--font-body) !important; border-inline-start: 5px solid #d69527; }
+.rpt-head { border-bottom-color: #1f2318 !important; }
+.rpt th { background: #eef1df !important; color: #1f2318 !important; font-family: var(--font-body) !important; }
+.rpt .rkv td:first-child { background: #f5f3e9 !important; }
+.rpt .total td { background: #eef1df !important; }
+.rpt .box { border-color: #1f2318 !important; }
+.rpt .box .v { color: #1f2318 !important; font-family: var(--font-body) !important; }
+.rpt .box.gold { border-color: #ad7012 !important; }
+.rpt .box.gold .v { color: #865409 !important; }
+.rpt .formula { background: #f5f3e9 !important; border-right-color: #ad7012 !important; }
+.rpt .note { background: #fbf3df !important; border-color: #ecd59b !important; }
+.rpt .warn { background: #f8e7e1 !important; border-color: #e9b3a5 !important; }
+.rpt dl.gl dt { color: #1f2318 !important; }
+.report-paper { border-radius: var(--r-lg); }
+
+@media print {
+    .print-area th { background: #eef1df !important; }
+}
+
+/* حركة هادئة للبطاقات عند التحويم (تتوقف مع «تقليل الحركة») */
+@media (prefers-reduced-motion: no-preference) {
+    .lcard:hover, .type:hover { transform: translateY(-1px); }
+}
