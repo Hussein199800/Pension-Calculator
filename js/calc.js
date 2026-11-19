@@ -98,9 +98,8 @@
   function diffYMD(a, b) {
     if (cmp(b, a) <= 0) return { y: 0, m: 0, d: 0 };
     var months = (b.y - a.y) * 12 + (b.m - a.m);
-    if (b.d < a.d) months -= 1;
     if (months < 0) months = 0;
-    var anchor = addMonths(a, months);
+    var anchor = addMonths(a, months);  // يُنقص الشهر فقط إذا تجاوز التاريخ الناتج النهاية (29/2/2020 + 60 شهراً = 28/2/2025)
     while (months > 0 && cmp(anchor, b) > 0) { months -= 1; anchor = addMonths(a, months); }
     var days = Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(anchor.y, anchor.m - 1, anchor.d)) / 86400000);
     return { y: Math.floor(months / 12), m: months % 12, d: days };
@@ -204,15 +203,19 @@
     var exActual = merged.reduce(function (a, x) { return a + Math.round((Date.UTC(x[1].y, x[1].m - 1, x[1].d) - Date.UTC(x[0].y, x[0].m - 1, x[0].d)) / 86400000) + 1; }, 0);
     var sumRows = rows.reduce(function (a, r) { return a + Math.round((Date.UTC(+r.to.slice(0, 4), +r.to.slice(5, 7) - 1, +r.to.slice(8, 10)) - Date.UTC(+r.from.slice(0, 4), +r.from.slice(5, 7) - 1, +r.from.slice(8, 10))) / 86400000) + 1; }, 0);
     if (sumRows > exActual) steps.push('بعض الفترات المستبعدة متداخلة، فطُرحت المدة المشتركة مرة واحدة فقط (' + (sumRows - exActual) + ' يوماً).');
-    // تُزاح بداية الممارسة بطول كل فترة مستبعدة بالتقويم (سنوات وأشهر ثم أيام)، فاستبعاد سنتين كاملتين يطرح سنتين بالضبط
-    var effStart = s, endX = addDays(e, 1);
-    merged.forEach(function (x) {
+    // المدة الصافية بالتقويم: يُطرح طول كل فترة مستبعدة (بالسنوات والأشهر والأيام) من نهاية الممارسة،
+    // بدءاً بالأحدث، ثم تُقاس المدة من تاريخ حلف اليمين. فاستبعاد سنة كاملة يطرح سنة بالضبط،
+    // وسقف التمرين لا يضيف يوماً، ولا تتأثر النتيجة بطول الأشهر.
+    var endX = addDays(e, 1), netEnd = endX;
+    var grossDays = Math.round((Date.UTC(endX.y, endX.m - 1, endX.d) - Date.UTC(s.y, s.m - 1, s.d)) / 86400000);
+    merged.slice().reverse().forEach(function (x) {
       var sp = diffYMD(x[0], addDays(x[1], 1));
-      effStart = addDays(addMonths(effStart, sp.y * 12 + sp.m), sp.d);
+      netEnd = addMonths(addDays(netEnd, -sp.d), -(sp.y * 12 + sp.m));
     });
-    var net = cmp(effStart, endX) >= 0 ? { y: 0, m: 0, d: 0 } : diffYMD(effStart, endX);
-    if (cmp(effStart, endX) > 0) warnings.push('مجموع فترات الاستبعاد أكبر من مدة الممارسة.');
-    var excludedYmd = diffYMD(s, effStart);
+    if (cmp(netEnd, s) < 0) netEnd = s;
+    var net = diffYMD(s, netEnd);
+    if (exActual > grossDays) warnings.push('مجموع فترات الاستبعاد أكبر من مدة الممارسة.');
+    var excludedYmd = diffYMD(netEnd, endX);
     if (rows.length) steps.push('مجموع المدد المستبعدة = ' + exActual + ' يوماً (' + fmtYMD(excludedYmd) + ')، فتكون مدة الممارسة الصافية = ' + fmtYMD(net) + '.');
     else steps.push('لا توجد مدد مستبعدة، فمدة الممارسة الصافية = ' + fmtYMD(net) + '.');
     return { gross: gross, excluded: excludedYmd, net: net, exclusions: rows, steps: steps, warnings: warnings };

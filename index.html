@@ -126,6 +126,7 @@
 
                                 <label class="field" data-types="ordinary health" data-also="heirs:retired"><span>تاريخ الإحالة على التقاعد <b class="req">*</b></span><input type="date" name="retirementDate"></label>
                                 <label class="field" data-types="ordinary"><span>تاريخ مشاهدة مراقب الخزانة لقرار الإحالة</span><input type="date" name="reviewDate"><small class="hint">منه يكتسب القرار الدرجة القطعية ويبدأ الصرف. إن تُرك فارغاً يُعتمد تاريخ الإحالة</small></label>
+                                <label class="field" data-types="ordinary" id="legacyPayWrap" hidden><span>تاريخ بدء الصرف المحفوظ سابقاً</span><input type="date" name="paymentStartDate"><small class="hint">من نسخة سابقة من الحاسبة: يُستعمل فقط إذا لم يُدخل تاريخ المشاهدة. امسحه للرجوع إلى تاريخ الإحالة</small></label>
                                 <label class="check" data-types="ordinary"><input type="checkbox" name="appealWaived"> أُسقط حق الطعن (وإلا يبدأ الصرف بعد شهر من المشاهدة)</label>
                                 <label class="field" data-types="health"><span>تاريخ الخبرة الطبية <b class="req">*</b></span><input type="date" name="medicalDate"><small class="hint">يُصرف المعاش اعتباراً من هذا التاريخ</small></label>
                                 <label class="check" data-types="health"><input type="checkbox" name="occupational"> الإصابة أو الحالة الصحية ناتجة عن المهنة</label>

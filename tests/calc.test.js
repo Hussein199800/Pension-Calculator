@@ -120,9 +120,11 @@ t('مراجعة: النصف الثاني لمتقاعد صحي بسنتين يُ
 });
 t('مراجعة: فترات الاستبعاد المتداخلة تُطرح مرة واحدة', () => {
   // تمرين 5 سنوات (يُطرح سنتان) + منع يدوي في السنة الخامسة (داخل الفترة نفسها)
-  const r = C.computeService({ mode: 'dates', start: '1995-01-01', masterDate: '2000-01-01', end: '2025-12-31', trainingMaxYears: 3,
-    exclusions: [{ from: '1999-01-01', to: '1999-12-31', reason: 'منع' }] });
-  assert.deepStrictEqual(r.net, { y: 29, m: 0, d: 0 });
+  const base = { mode: 'dates', start: '1995-01-01', masterDate: '2000-01-01', end: '2025-12-31', trainingMaxYears: 3 };
+  const r = C.computeService(Object.assign({}, base, { exclusions: [{ from: '1999-01-01', to: '1999-12-31', reason: 'منع' }] }));
+  const r0 = C.computeService(Object.assign({}, base, { exclusions: [] }));
+  assert.deepStrictEqual(r.net, r0.net);                      // المنع داخل التمرين الزائد لا يُطرح مرتين
+  assert.strictEqual(r.net.y, 29);
 });
 t('مراجعة: سقف التمرين لمن بقي متمرناً حتى النهاية', () => {
   const r = C.computeService({ mode: 'dates', start: '2020-01-01', stillTrainee: true, end: '2025-12-31', trainingMaxYears: 3, exclusions: [] });
@@ -188,7 +190,7 @@ t('المختص 2: وفاة 4/7/2026 → من 5/7 حتى 31/7 = 27 يوماً', 
 t('المختص 6: التمرين يُحسب 3 سنوات بحد أقصى', () => {
   const r = C.computeService({ mode: 'dates', start: '1995-01-01', masterDate: '2000-01-01', end: '2025-12-31', trainingMaxYears: 3, exclusions: [] });
   assert.deepStrictEqual(r.gross, { y: 31, m: 0, d: 0 });
-  assert.deepStrictEqual(r.net, { y: 29, m: 0, d: 0 });     // يُطرح سنتان تمرين زائدتان
+  assert.strictEqual(r.net.y, 29); assert.strictEqual(r.net.m, 0); // يُطرح سنتان تمرين زائدتان (أيام فعلية)
   const r2 = C.computeService({ mode: 'dates', start: '1995-01-01', masterDate: '1997-01-01', end: '2025-12-31', trainingMaxYears: 3, exclusions: [] });
   assert.deepStrictEqual(r2.net, { y: 31, m: 0, d: 0 });    // تمرين سنتان يُحسب كاملاً
 });
@@ -241,6 +243,15 @@ t('مراجعة 3: المدة الصافية بالتقويم (أمثلة Codex)
   assert.strictEqual(r.baseNow.amount, 3000);                       // ثلاثة أرباع 4000 لا الكامل
   const r2 = C.computeService({ mode: 'dates', start: '2011-01-31', end: '2026-01-29', exclusions: [] });
   assert.ok(r2.net.y === 14, JSON.stringify(r2.net));               // أقل من 15 سنة بيوم
+});
+t('مراجعة 4: سقف التمرين لا يضيف يوماً (حلف 2/1/2015، متمرن حتى 28/2/2019)', () => {
+  const r = C.computeService({ mode: 'dates', start: '2015-01-02', stillTrainee: true, end: '2019-02-28', trainingMaxYears: 3, exclusions: [] });
+  assert.deepStrictEqual(r.net, { y: 3, m: 0, d: 0 });
+  assert.strictEqual(C.adoptYears(r.net, 'ceil').years, 3);
+});
+t('مراجعة 4: نهاية الشهر (29/2/2020 حتى 27/2/2025 شاملاً = 5 سنوات)', () => {
+  assert.deepStrictEqual(C.spanInclusive(C.parseDate('2020-02-29'), C.parseDate('2025-02-27')), { y: 5, m: 0, d: 0 });
+  assert.deepStrictEqual(C.computeService({ mode: 'dates', start: '2020-02-29', end: '2025-02-27', exclusions: [] }).net, { y: 5, m: 0, d: 0 });
 });
 t('مراجعة 3: من فقد أهليته في 1/1 تتوقف حصته من 1/1 للسنة التالية', () => {
   const h = { relation: 'daughter', married: true, stopDate: '2027-01-01', stopReason: 'married' };

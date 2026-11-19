@@ -371,7 +371,8 @@ function collect() {
     if (type === "health" && !c.retirementDate) c.retirementDate = c.medicalDate;
     if (!c.service.end) c.service.end = c.type === "heirs" ? (c.status === "inService" ? c.deathDate : c.retirementDate) : (c.retirementDate || c.medicalDate);
     if (currentId) c.id = currentId;
-    if (legacyPaymentStart) c.paymentStartDate = legacyPaymentStart; /* حقل من الإصدار السابق: يُحفظ ولا يضيع */
+    /* حقل من الإصدار السابق: يظهر ويُعدَّل فقط في الحالات التي تحمله، ويُحفظ ولا يضيع */
+    if (legacyPaymentStart) c.paymentStartDate = val("paymentStartDate");
     return c;
 }
 
@@ -438,6 +439,7 @@ function refresh() {
         el.hidden = !show;
     });
     $$("#caseForm [data-when]").forEach(function (el) { el.hidden = !val(el.getAttribute("data-when")); });
+    if (!legacyPaymentStart || type !== "ordinary") $("#legacyPayWrap").hidden = true;
     const mode = val("serviceMode") || "dates";
     $$("#caseForm [data-mode]").forEach(function (el) { el.hidden = el.getAttribute("data-mode") !== mode; });
     $$("[data-mode-btn]").forEach(function (b) { b.classList.toggle("on", b.dataset.modeBtn === mode); });
