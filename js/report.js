@@ -4,37 +4,37 @@
   var C = root.PensionCalc;
 
   var REPORT_CSS = [
-    '.rpt{background:#fff;color:#111;font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;font-size:14.5px;line-height:1.75;max-width:900px;margin:0 auto;padding:28px 34px;border:1px solid #ddd;direction:rtl;text-align:right}',
+    '.rpt{background:#fff;color:#111;font-family:"Readex Pro","IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;font-size:14.5px;line-height:1.75;max-width:900px;margin:0 auto;padding:28px 34px;border:1px solid #ddd;direction:rtl;text-align:right}',
     '.rpt *{box-sizing:border-box}',
-    '.rpt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px double #2b1f45;padding-bottom:12px;margin-bottom:16px}',
-    '.rpt-head .org{font-weight:700;color:#2b1f45;font-size:15px}',
-    '.rpt-head h1{margin:6px 0 2px;font-size:22px;color:#2b1f45;font-family:"IBM Plex Sans Arabic",sans-serif}',
+    '.rpt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px double #1f2318;padding-bottom:12px;margin-bottom:16px}',
+    '.rpt-head .org{font-weight:700;color:#1f2318;font-size:15px}',
+    '.rpt-head h1{margin:6px 0 2px;font-size:22px;color:#1f2318;font-family:"Readex Pro","IBM Plex Sans Arabic",sans-serif}',
     '.rpt-head .meta{font-size:13px;color:#444;text-align:left;white-space:nowrap}',
-    '.rpt h2{font-family:"IBM Plex Sans Arabic",sans-serif;font-size:16.5px;color:#fff;background:#2b1f45;padding:5px 12px;border-radius:6px;margin:22px 0 10px;break-after:avoid}',
-    '.rpt h3{font-family:"IBM Plex Sans Arabic",sans-serif;font-size:15px;color:#2b1f45;margin:14px 0 6px}',
+    '.rpt h2{font-family:"Readex Pro","IBM Plex Sans Arabic",sans-serif;font-size:16.5px;color:#fff;background:#1f2318;padding:5px 12px;border-radius:6px;margin:22px 0 10px;break-after:avoid}',
+    '.rpt h3{font-family:"Readex Pro","IBM Plex Sans Arabic",sans-serif;font-size:15px;color:#1f2318;margin:14px 0 6px}',
     '.rpt table{width:100%;border-collapse:collapse;margin:6px 0 10px;break-inside:auto}',
     '.rpt th,.rpt td{white-space:normal;color:#111;background:#fff;border:1px solid #bbb;padding:5px 8px;vertical-align:top;text-align:right}',
-    '.rpt th{background:#efeaf6;color:#2b1f45;font-family:"IBM Plex Sans Arabic",sans-serif;font-size:13px}',
+    '.rpt th{background:#eef1df;color:#1f2318;font-family:"Readex Pro","IBM Plex Sans Arabic",sans-serif;font-size:13px}',
     '.rpt tr{break-inside:avoid}',
     '.rpt tbody tr:nth-child(even) td{background:#fff}.rpt h1,.rpt h2,.rpt h3{line-height:1.5}',
     '.rpt td.n,.rpt th.n{text-align:left;direction:ltr;white-space:nowrap;font-variant-numeric:tabular-nums}',
-    '.rpt .rkv td:first-child{width:32%;background:#f4f0e7;font-weight:700}',
+    '.rpt .rkv td:first-child{width:32%;background:#f5f3e9;font-weight:700}',
     '.rpt .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:8px 0}',
-    '.rpt .box{border:2px solid #2b1f45;border-radius:10px;padding:10px 12px;break-inside:avoid}',
+    '.rpt .box{border:2px solid #1f2318;border-radius:10px;padding:10px 12px;break-inside:avoid}',
     '.rpt .box .l{font-size:13px;color:#333;font-weight:700}',
-    '.rpt .box .v{font-size:22px;font-weight:800;color:#2b1f45;font-family:"IBM Plex Sans Arabic",sans-serif}',
+    '.rpt .box .v{font-size:22px;font-weight:800;color:#1f2318;font-family:"Readex Pro","IBM Plex Sans Arabic",sans-serif}',
     '.rpt .box .w{font-size:12.5px;color:#444}',
-    '.rpt .box.gold{border-color:#a67a22}.rpt .box.gold .v{color:#7a2238}',
+    '.rpt .box.gold{border-color:#ad7012}.rpt .box.gold .v{color:#865409}',
     '.rpt ol.steps{margin:4px 0 8px;padding-right:22px}.rpt ol.steps li{margin:3px 0}',
-    '.rpt .formula{background:#f4f0e7;border-right:4px solid #a67a22;padding:8px 12px;margin:8px 0;border-radius:4px}',
+    '.rpt .formula{background:#f5f3e9;border-right:4px solid #ad7012;padding:8px 12px;margin:8px 0;border-radius:4px}',
     '.rpt .note{background:#fff7e0;border:1px solid #e8d49a;padding:8px 12px;border-radius:6px;margin:6px 0}',
     '.rpt .warn{background:#fdecea;border:1px solid #f0b8b3;padding:8px 12px;border-radius:6px;margin:6px 0}',
     '.rpt .yes{color:#1d7a46;font-weight:700}.rpt .no{color:#b3261e;font-weight:700}',
-    '.rpt .total td{font-weight:800;background:#efeaf6}',
+    '.rpt .total td{font-weight:800;background:#eef1df}',
     '.rpt .sign{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px;text-align:center;break-inside:avoid}',
     '.rpt .sign div{border-top:1px solid #333;padding-top:6px;min-height:70px}',
     '.rpt .foot{margin-top:20px;font-size:12px;color:#555;border-top:1px solid #ccc;padding-top:8px}',
-    '.rpt dl.gl{margin:0}.rpt dl.gl dt{font-weight:700;color:#2b1f45}.rpt dl.gl dd{margin:0 0 6px 0;padding-right:14px}',
+    '.rpt dl.gl{margin:0}.rpt dl.gl dt{font-weight:700;color:#1f2318}.rpt dl.gl dd{margin:0 0 6px 0;padding-right:14px}',
     '@media (max-width:640px){.rpt{padding:16px 12px}.rpt-head{flex-direction:column}.rpt-head .meta{text-align:right}.rpt .sign{grid-template-columns:1fr}}',
     '@media print{@page{size:A4;margin:14mm 12mm}.rpt{border:0;padding:0;max-width:none;font-size:13px}.rpt h2{-webkit-print-color-adjust:exact;print-color-adjust:exact}.rpt th,.rpt .box,.rpt .formula,.rpt .note,.rpt .warn,.rpt .rkv td:first-child,.rpt .total td{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
   ].join('\n');
@@ -90,11 +90,12 @@
       h.push(box('الراتب التقاعدي الشهري (بقيمة ' + ym(R.refDate) + ')', R.baseNow.amount));
     }
     if (R.schedule && R.schedule.periods.length) h.push(box('مجموع المستحقات من ' + d(R.startDate) + ' حتى ' + d(R.schedule.periods[R.schedule.periods.length - 1].to), R.schedule.total, null, 'gold'));
-    if (R.retirementAid) h.push(box('معونة التقاعد المستحقة', R.retirementAid.amount, null, 'gold'));
+    if (R.retirementAid) h.push(box(R.retirementAid.full ? 'معونة التقاعد المصروفة الآن (نصف المعونة)' : 'معونة التقاعد المستحقة', R.retirementAid.amount, null, 'gold'));
     if (R.deathAid) h.push(box('معونة الوفاة المستحقة للورثة', R.deathAid.amount, null, 'gold'));
     h.push('</div>');
     var simple = [];
-    simple.push('سنوات الممارسة المعتمدة: ' + R.years.years + ' سنة (المدة الصافية ' + C.fmtYMD(R.service.net) + ').');
+    var usesYears = c.type === 'ordinary' || (c.type === 'heirs' && c.status === 'retired' && c.originalType !== 'health');
+    simple.push(usesYears ? 'سنوات الممارسة المعتمدة: ' + R.years.years + ' سنة (المدة الصافية ' + C.fmtYMD(R.service.net) + ').' : 'مدة الممارسة الصافية: ' + C.fmtYMD(R.service.net) + '.');
     simple.push('نوع المعاش: ' + R.baseNow.category + '.');
     simple.push('يبدأ صرف المعاش اعتباراً من: ' + d(R.startDate) + '.');
     h.push('<div class="note"><b>بكلمات بسيطة:</b> ' + esc(simple.join(' ')) + '</div>');
@@ -105,13 +106,13 @@
     if (!R.service.manual) {
       var sv = c.service;
       var rows = '<tr><th>البند</th><th>من</th><th>إلى</th><th>المدة</th></tr>';
-      rows += '<tr><td>المدة الإجمالية</td><td>' + d(sv.start) + '</td><td>' + d(sv.end) + '</td><td>' + esc(C.fmtYMD(R.service.gross)) + '</td></tr>';
+      rows += '<tr><td>المدة الإجمالية من حلف اليمين</td><td>' + d(sv.start) + '</td><td>' + d(sv.end) + '</td><td>' + esc(C.fmtYMD(R.service.gross)) + '</td></tr>';
       R.service.exclusions.forEach(function (x) { rows += '<tr><td>يُطرح: ' + esc(x.reason) + '</td><td>' + d(x.from) + '</td><td>' + d(x.to) + '</td><td>− ' + esc(C.fmtYMD(x.span)) + '</td></tr>'; });
       rows += '<tr class="total"><td colspan="3">مدة الممارسة الصافية</td><td>' + esc(C.fmtYMD(R.service.net)) + '</td></tr>';
       h.push('<table>' + rows + '</table>');
     }
-    h.push(li(R.service.steps.concat([R.years.text])));
-    h.push('<p class="note">طريقة الحساب: تُحسب المدد بالسنوات والأشهر والأيام على أساس أن الشهر 30 يوماً والسنة 12 شهراً. ' + esc(modeText(S.pensionYearMode, 'المعاش')) + '</p>');
+    h.push(li(usesYears ? R.service.steps.concat([R.years.text]) : R.service.steps));
+    h.push('<p class="note">طريقة الحساب: تُحسب المدد بالسنوات والأشهر والأيام على أساس أن الشهر 30 يوماً والسنة 12 شهراً. ' + esc(usesYears ? modeText(S.pensionYearMode, 'التقاعد العادي') : 'في شرائح التقاعد الصحي ومعاش الورثة تُقارن المدة كاملة بالأشهر والأيام بحدود الشرائح، فأي زيادة على الحد ولو بيوم تنقل إلى الشريحة الأعلى.') + '</p>');
 
     // ---------- 4. القاعدة والمعادلة
     h.push('<h2>رابعاً: القاعدة المطبقة وطريقة حساب الراتب</h2>');
@@ -128,11 +129,12 @@
     var sec = 5;
     if (c.type === 'heirs') {
       h.push('<h2>' + ord(sec++) + ': الورثة المستحقون وتوزيع الحصص</h2>');
-      h.push('<p>يُوزع المعاش بالحصص: <b>3 حصص</b> للزوجة أو الزوجات أو الزوج، <b>حصة واحدة</b> لكل ولد مستحق (ذكراً أو أنثى)، <b>حصة واحدة</b> للوالدين، <b>حصة واحدة</b> للأخوات مهما بلغ عددهن' + (S.treasuryShare ? '، و<b>حصة واحدة لخزانة التقاعد</b> كما ورد في أمثلة التعميم' : '') + '. الأهلية محسوبة بتاريخ ' + d(R.refDate) + '.</p>');
-      var t = '<tr><th>#</th><th>الاسم</th><th>الصلة</th><th>العمر</th><th>يستحق؟</th><th>السبب</th></tr>';
+      h.push('<p>يُوزع المعاش بالحصص: <b>3 حصص</b> للزوجة أو الزوجات أو الزوج، <b>حصة واحدة</b> لكل ولد مستحق (ذكراً أو أنثى)، <b>حصة واحدة</b> للوالدين، <b>حصة واحدة</b> للأخوات مهما بلغ عددهن' + (S.treasuryShare ? '، و<b>حصة واحدة لخزانة التقاعد</b> دائماً مهما كان عدد الورثة' : '') + '.</p>');
+      h.push('<p>تُقدَّر الأهلية عند بدء الصرف (' + d(R.startDate) + ')، ثم تُراجع في أول كل سنة عند تقديم الوثائق السنوية. من فقد أهليته (بلوغ الابن 18 سنة، أو 27 لمن يتابع دراسته، أو زواج البنت، أو حصولها على عمل…) <b>تتوقف حصته من أول السنة التالية وتعود لخزانة التقاعد</b>، ولا تُوزَّع على باقي الورثة، لأنها قد تُعاد له لاحقاً بطلب (مثل بنت تطلّقت أو ترمّلت وليس لها مورد).</p>');
+      var t = '<tr><th>#</th><th>الاسم</th><th>الصلة</th><th>العمر عند بدء الصرف</th><th>يستحق؟</th><th>السبب</th><th>تتوقف حصته من</th></tr>';
       R.shares.list.forEach(function (x, i) {
-        var a = C.ageAt(x.heir.birth, R.refDate);
-        t += '<tr><td>' + (i + 1) + '</td><td>' + esc(x.heir.name || '—') + '</td><td>' + esc(C.REL[x.heir.relation] || '') + '</td><td>' + (a === null ? '—' : a) + '</td><td class="' + (x.eligible ? 'yes">نعم' : 'no">لا') + '</td><td>' + esc(x.reason) + '</td></tr>';
+        var a = C.ageAt(x.heir.birth, R.startDate);
+        t += '<tr><td>' + (i + 1) + '</td><td>' + esc(x.heir.name || '—') + '</td><td>' + esc(C.REL[x.heir.relation] || '') + '</td><td>' + (a === null ? '—' : a) + '</td><td class="' + (x.eligible ? 'yes">نعم' : 'no">لا') + '</td><td>' + esc(x.reason) + '</td><td>' + (x.stopFrom ? d(x.stopFrom) + '<br><small>' + esc(x.stopReason) + '</small>' : (x.eligible ? 'مستمرة' : '—')) + '</td></tr>';
       });
       h.push('<table>' + t + '</table>');
       if (R.shares.totalShares) {
@@ -144,8 +146,10 @@
         D.perGroup.forEach(function (x) {
           g += '<tr><td>' + esc(x.label) + '</td><td class="n">' + x.shares + '</td><td class="n">' + f(x.amount) + '</td><td>' + (x.count > 1 ? 'تقسم بالتساوي على ' + x.count + ': لكل واحد ' + f(x.each) + ' ل.س' : '') + '</td></tr>';
         });
-        if (R.shares.treasury) g += '<tr><td>خزانة التقاعد</td><td class="n">1</td><td class="n">' + f(D.treasury) + '</td><td>لا تُصرف للورثة</td></tr>';
+        if (R.shares.treasury) g += '<tr><td>خزانة التقاعد</td><td class="n">1</td><td class="n">' + f(D.treasury) + '</td><td>لا تُصرف للورثة' + (D.forfeit ? '، وتشمل ' + f(D.forfeit) + ' ل.س حصصاً متوقفة' : '') + '</td></tr>';
         h.push('<table>' + g + '</table>');
+        var stopped = R.shares.list.filter(function (x) { return x.stopFrom; });
+        if (stopped.length) h.push('<div class="note">' + stopped.map(function (x) { return 'حصة <b>' + esc(x.heir.name || C.REL[x.heir.relation]) + '</b> تتوقف اعتباراً من ' + d(x.stopFrom) + ' وتعود للخزانة.'; }).join('<br>') + ' المبالغ في الجدول أعلاه قبل التوقف، وجدول المستحقات يطبّق التوقف شهراً بشهر.</div>');
       }
     }
 
@@ -203,7 +207,8 @@
       '<li>تعميم "التقاعد العادي": المعاش الكامل عن 30 سنة، والجزئي بنسبة السنوات، والعلاوة عن السنوات الزائدة بسقف ' + S.maxYears + ' سنة.</li>' +
       '<li>تعميم "التقاعد الصحي": شرائح الربع والنصف وثلاثة الأرباع والكامل، والصرف من تاريخ الخبرة الطبية.</li>' +
       '<li>تعميم "معاش تقاعدي للورثة": المستحقون وطريقة توزيع الحصص وبدء الصرف من اليوم التالي للوفاة.</li>' +
-      '<li>تعميما "معونة التقاعد والوفاة" و"معونة وفاة للورثة": نصف المعونة للمنتسبين قبل ' + d(S.cutoffDate) + '، والمعونة النسبية للمنتسبين بعده، وجدول قيم المعونة عبر السنوات.</li></ol>');
+      '<li>تعميما "معونة التقاعد والوفاة" و"معونة وفاة للورثة": نصف المعونة للمنتسبين قبل ' + d(S.cutoffDate) + '، والمعونة النسبية للمنتسبين بعده، وجدول قيم المعونة عبر السنوات.</li>' +
+      '<li>رأي المختص في نقابة المحامين (19/11/2026): رفع المعونة إلى 200,000 من 1/7/2026؛ عدّ أيام الشهر الأول من اليوم التالي للوفاة؛ إهمال كسر السنة في التقاعد العادي؛ دخول حد الشريحة في الشريحة الأدنى؛ نصف المعونة النسبية عند التقاعد ونصفها للورثة بقيمة سنة الوفاة؛ حساب الممارسة من حلف اليمين مع 3 سنوات تمرين كحد أقصى؛ حصة دائمة للخزانة؛ وقف حصة من فقد أهليته من أول السنة التالية وعودتها للخزانة؛ وبدء الصرف من اكتساب قرار الإحالة الدرجة القطعية.</li></ol>');
 
     // ---------- 10. مصطلحات
     h.push('<h2>' + ord(sec++) + ': شرح مبسط للمصطلحات</h2><dl class="gl">' +
@@ -214,6 +219,8 @@
       '<dt>الحصة</dt><dd>جزء متساوٍ من المعاش يُقسم على الورثة؛ الزوجة تأخذ 3 حصص وكل ولد حصة واحدة.</dd>' +
       '<dt>الشهر الجزئي</dt><dd>إذا بدأ الاستحقاق في منتصف الشهر يُدفع عن الأيام المتبقية فقط: المبلغ × عدد الأيام ÷ 30.</dd>' +
       '<dt>المعونة</dt><dd>مبلغ يُدفع مرة واحدة فقط (ليس شهرياً) عند التقاعد أو للورثة عند الوفاة.</dd>' +
+      '<dt>حلف اليمين</dt><dd>اليمين التي يؤديها المحامي عند تسجيله أول مرة، ومن تاريخها تبدأ مدة الممارسة.</dd>' +
+      '<dt>الدرجة القطعية</dt><dd>يصبح قرار الإحالة نهائياً بعد مشاهدة مراقب الخزانة له وانقضاء مدة الطعن (شهر)، أو فوراً إذا أُسقط حق الطعن، ومن تاريخها يبدأ صرف الراتب.</dd>' +
       '<dt>الشطب / ترقين القيد / المنع</dt><dd>حالات يتوقف فيها المحامي عن ممارسة المهنة رسمياً، ولا تُحسب مدتها من سنوات الممارسة.</dd></dl>');
 
     // ---------- التوقيع
@@ -232,7 +239,7 @@
 
   function standalone(html, title) {
     return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + esc(title) + '</title>' +
-      '<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">' +
+      '<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;600;700&display=swap" rel="stylesheet">' +
       '<style>body{margin:0;background:#fff;padding:16px}' + REPORT_CSS + '</style></head><body>' + html + '</body></html>';
   }
 

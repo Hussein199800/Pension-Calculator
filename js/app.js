@@ -298,6 +298,7 @@ function fillSettings() {
     $("#aidTbl tbody").innerHTML = ""; s.aidTable.forEach(function (r) { addValRow("aidTbl", r); });
     $("#setCutoff").value = s.cutoffDate; $("#setMax").value = s.maxYears;
     $("#setPYM").value = s.pensionYearMode; $("#setAYM").value = s.aidYearMode; $("#setTreasury").checked = !!s.treasuryShare;
+    $("#setBracket").value = s.bracketBoundary; $("#setTraining").value = s.trainingMaxYears;
 }
 $$("[data-addrow]").forEach(function (b) { b.onclick = function () { addValRow(b.getAttribute("data-addrow")); }; });
 $("#saveSettings").onclick = function () {
@@ -305,7 +306,8 @@ $("#saveSettings").onclick = function () {
         org: $("#setOrg").value.trim(),
         pensionTable: readValTable("pensionTbl"), aidTable: readValTable("aidTbl"),
         cutoffDate: $("#setCutoff").value || C.DEFAULTS.cutoffDate, maxYears: +$("#setMax").value || C.DEFAULTS.maxYears,
-        pensionYearMode: $("#setPYM").value, aidYearMode: $("#setAYM").value, treasuryShare: $("#setTreasury").checked
+        pensionYearMode: $("#setPYM").value, aidYearMode: $("#setAYM").value, treasuryShare: $("#setTreasury").checked,
+        bracketBoundary: $("#setBracket").value, trainingMaxYears: $("#setTraining").value === "" ? C.DEFAULTS.trainingMaxYears : +$("#setTraining").value
     };
     if (!s.pensionTable.length || !s.aidTable.length) { toast("يجب إدخال قيمة واحدة على الأقل للمعاش وللمعونة.", "bad"); return; }
     if (store(KEY_SET, s)) toast("حُفظت الإعدادات", "ok"); else toast("تعذر الحفظ في هذا المتصفح.", "bad");
@@ -320,7 +322,7 @@ $("#resetSettings").onclick = async function () {
    النموذج: الجداول الديناميكية والجمع والتعبئة
    ========================================================= */
 const form = $("#caseForm");
-let currentId = null, lastCase = null, lastResult = null;
+let currentId = null, lastCase = null, lastResult = null, legacyPaymentStart = "";
 
 function addEx(r) {
     const tr = $("#exRow").content.firstElementChild.cloneNode(true);
@@ -349,15 +351,15 @@ function collect() {
         name: val("name"), fatherName: val("fatherName"), motherName: val("motherName"), birthDate: val("birthDate"), birthPlace: val("birthPlace"),
         nationalId: val("nationalId"), memberNo: val("memberNo"), branch: val("branch"), fileNo: val("fileNo"), phone: val("phone"), address: val("address"),
         type: type, status: status, originalType: val("originalType"),
-        joinDate: val("joinDate"), registrationDecisionDate: val("registrationDecisionDate") || val("joinDate"),
+        joinDate: val("joinDate"), registrationDecisionDate: val("joinDate"),
         reRegistration: val("reRegistration"), priorPracticeYears: val("priorPracticeYears"),
-        retirementDate: val("retirementDate"), paymentStartDate: val("paymentStartDate"), medicalDate: val("medicalDate"),
+        retirementDate: val("retirementDate"), reviewDate: val("reviewDate"), appealWaived: val("appealWaived"), medicalDate: val("medicalDate"),
         occupational: type === "heirs" ? val("occupationalHeirs") : val("occupational"),
         deathDate: val("deathDate"), deathDuringWork: val("deathDuringWork"),
         includeAid: val("includeAid"), requestedHalfAid: val("requestedHalfAid"), receivedHalfAid: val("receivedHalfAid"), receivedRetirementAid: val("receivedRetirementAid"),
         untilMonth: val("untilMonth"), preparer: val("preparer"), reviewer: val("reviewer"), notes: val("notes"),
         service: {
-            mode: val("serviceMode") || "dates", start: val("serviceStart"), end: val("serviceEnd"),
+            mode: val("serviceMode") || "dates", start: val("serviceStart"), masterDate: val("masterDate"), end: val("serviceEnd"),
             exclusions: $$("#exTable tbody tr").map(function (tr) { return { reason: $("[data-k=reason]", tr).value, from: $("[data-k=from]", tr).value, to: $("[data-k=to]", tr).value }; }),
             manual: { y: val("manY"), m: val("manM"), d: val("manD") }
         },
@@ -368,6 +370,7 @@ function collect() {
     if (type === "health" && !c.retirementDate) c.retirementDate = c.medicalDate;
     if (!c.service.end) c.service.end = c.type === "heirs" ? (c.status === "inService" ? c.deathDate : c.retirementDate) : (c.retirementDate || c.medicalDate);
     if (currentId) c.id = currentId;
+    if (legacyPaymentStart) c.paymentStartDate = legacyPaymentStart; /* حقل من الإصدار السابق: يُحفظ ولا يضيع */
     return c;
 }
 
@@ -454,11 +457,12 @@ function debounce(fn, ms) { let t; return function () { clearTimeout(t); t = set
 
 function fill(c) {
     form.reset();
+    legacyPaymentStart = c.paymentStartDate || "";
     $("#exTable tbody").innerHTML = ""; $("#heirTable tbody").innerHTML = "";
     const sv = c.service || {};
     const map = {
         occupationalHeirs: c.type === "heirs" ? c.occupational : false, occupational: c.type !== "heirs" ? c.occupational : false,
-        serviceStart: sv.start, serviceEnd: sv.end, serviceMode: sv.mode || "dates",
+        serviceStart: sv.start, masterDate: sv.masterDate, serviceEnd: sv.end, serviceMode: sv.mode || "dates",
         manY: sv.manual && sv.manual.y, manM: sv.manual && sv.manual.m, manD: sv.manual && sv.manual.d
     };
     Array.prototype.forEach.call(form.elements, function (el) {
@@ -467,7 +471,6 @@ function fill(c) {
         if (v === undefined || v === null) return;
         if (el.type === "checkbox") el.checked = !!v; else el.value = v;
     });
-    if (c.registrationDecisionDate === c.joinDate) form.elements.registrationDecisionDate.value = "";
     const tr = form.querySelector('input[name=type][value="' + (c.type || "ordinary") + '"]'); if (tr) tr.checked = true;
     (sv.exclusions || []).forEach(addEx);
     (c.heirs || []).forEach(addHeir);

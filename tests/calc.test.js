@@ -18,8 +18,18 @@ t('عادي: سقف 45 سنة = 24000 (= 2,400,000 ل.س قديمة)', () => {
 });
 
 // ---------- التقاعد الصحي
-t('صحي: الشرائح 15/12/7/4', () => {
-  assert.strictEqual(C.bracketPension(16000, 15).amount, 16000);
+t('صحي: الشرائح (رأي المختص: الحد في الشريحة الأدنى)', () => {
+  const Y = (y, m = 0, d = 0) => ({ y, m, d });
+  assert.strictEqual(C.bracketPension(16000, Y(5)).amount, 4000);          // 5 بالضبط = ربع
+  assert.strictEqual(C.bracketPension(16000, Y(5, 0, 1)).amount, 8000);    // 5 ويوم = نصف
+  assert.strictEqual(C.bracketPension(16000, Y(10)).amount, 8000);         // 10 بالضبط = نصف
+  assert.strictEqual(C.bracketPension(16000, Y(10, 1)).amount, 12000);     // 10 وشهر = ثلاثة أرباع
+  assert.strictEqual(C.bracketPension(16000, Y(14, 8)).amount, 12000);
+  assert.strictEqual(C.bracketPension(16000, Y(15)).amount, 12000);        // 15 بالضبط = ثلاثة أرباع
+  assert.strictEqual(C.bracketPension(16000, Y(15, 1)).amount, 16000);     // 15 وشهر = كامل
+  assert.strictEqual(C.bracketPension(16000, Y(15), false, '', C.settingsWith({ bracketBoundary: 'upper' })).amount, 16000);
+});
+t('صحي: أمثلة التعميم الأخرى 12/7/4', () => {
   assert.strictEqual(C.bracketPension(16000, 12).amount, 12000);
   assert.strictEqual(C.bracketPension(16000, 7).amount, 8000);
   assert.strictEqual(C.bracketPension(16000, 4).amount, 4000);
@@ -31,9 +41,9 @@ t('صحي: الشهر الأول الجزئي', () => {
   assert.strictEqual(C.prorate(8000, C.parseDate('2026-01-01')).amount, 8000);
   assert.strictEqual(C.prorate(4000, C.parseDate('2026-10-27')).amount, 666);
 });
-t('صحي: حالة كاملة 15 سنة خبرة طبية 2026/9/6', () => {
+t('صحي: حالة كاملة أكثر من 15 سنة، خبرة طبية 2026/9/6 (مثال التعميم)', () => {
   const r = C.computeCase({ type: 'health', medicalDate: '2026-09-06', untilMonth: '2026-10',
-    service: { mode: 'manual', manual: { y: 15 } } });
+    service: { mode: 'manual', manual: { y: 15, m: 2 } } });
   assert.deepStrictEqual(r.errors, []);
   assert.strictEqual(r.schedule.periods[0].amount, 13333);
   assert.strictEqual(r.schedule.periods[1].total, 16000);
@@ -80,17 +90,25 @@ t('أهلية الورثة', () => {
 });
 
 // ---------- معونة التقاعد
-t('معونة تقاعد بعد 2014: صحي 17 سنة = 113333', () => {
+t('معونة تقاعد بعد 2014: صحي 17 سنة = 113333، يُصرف نصفها 56666', () => {
   const r = C.retirementAid({ type: 'health', joinDate: '2015-01-01', retirementDate: '2026-10-01', birthDate: '1980-01-01' }, net(17), S);
-  assert.strictEqual(r.amount, 113333);
+  assert.strictEqual(r.full, 113333); assert.strictEqual(r.amount, 56666);
 });
-t('معونة تقاعد بعد 2014: 17 سنة و5 أشهر = 18 جزءاً = 120000', () => {
+t('معونة تقاعد بعد 2014: 17 سنة و5 أشهر = 18 جزءاً = 120000، نصفها 60000', () => {
   const r = C.retirementAid({ type: 'health', joinDate: '2015-01-01', retirementDate: '2026-10-01', birthDate: '1980-01-01' }, net(17, 5), S);
-  assert.strictEqual(r.amount, 120000);
+  assert.strictEqual(r.full, 120000); assert.strictEqual(r.amount, 60000);
 });
 t('معونة تقاعد بعد 2014: صحي بحد أدنى 5 أجزاء', () => {
   const r = C.retirementAid({ type: 'health', joinDate: '2020-01-01', retirementDate: '2026-10-01', birthDate: '1980-01-01' }, net(2), S);
-  assert.strictEqual(r.amount, Math.floor(200000 * 5 / 30));
+  assert.strictEqual(r.full, Math.floor(200000 * 5 / 30)); assert.strictEqual(r.amount, Math.floor(Math.floor(200000 * 5 / 30) / 2));
+});
+t('معونة تقاعد بعد 2014: 20 سنة عمر 65 → 133333، يُصرف 66666', () => {
+  const r = C.retirementAid({ type: 'ordinary', joinDate: '2015-01-01', retirementDate: '2026-10-01', birthDate: '1960-01-01' }, net(20), S);
+  assert.strictEqual(r.full, 133333); assert.strictEqual(r.amount, 66666);
+});
+t('معونة وفاة بعد 2014 بعد قبض معونة التقاعد: النصف الثاني بقيمة سنة الوفاة', () => {
+  const r = C.deathAid({ status: 'retired', receivedRetirementAid: true, joinDate: '2015-01-01', deathDate: '2026-10-15', heirs: [{ relation: 'spouse' }] }, net(20), S);
+  assert.strictEqual(r.amount, 66666);
 });
 t('معونة تقاعد قبل 2014: نصف المعونة 100000', () => {
   const r = C.retirementAid({ type: 'ordinary', joinDate: '1990-01-01', retirementDate: '2026-10-01', birthDate: '1960-01-01', requestedHalfAid: true }, net(36), S);
@@ -115,6 +133,54 @@ t('وفاة: توزيع متساوٍ زوجتان + ولدان + والدان', 
   assert.strictEqual(r.distribution.length, 4);
   assert.strictEqual(r.distribution[0].amount, 50000);
   assert.strictEqual(r.distribution[0].each, 25000);
+});
+
+// ---------- قرارات المختص 19/11/2026
+t('المختص 1: 9 سنوات = 60000، و9 سنوات وشهر = 10 سنوات', () => {
+  assert.strictEqual(C.deathAid({ status: 'inService', joinDate: '2015-01-01', deathDate: '2026-08-10', heirs: sp }, net(9), S).amount, 60000);
+  assert.strictEqual(C.deathAid({ status: 'inService', joinDate: '2015-01-01', deathDate: '2026-08-10', heirs: sp }, net(9, 1), S).amount, Math.floor(10 * 200000 / 30));
+});
+t('المختص 2: وفاة 4/7/2026 → من 5/7 حتى 31/7 = 27 يوماً', () => {
+  const p = C.prorate(9999, C.parseDate('2026-07-05'));
+  assert.strictEqual(p.days, 27); assert.strictEqual(p.amount, Math.floor(9999 * 27 / 30));
+});
+t('المختص 6: التمرين يُحسب 3 سنوات بحد أقصى', () => {
+  const r = C.computeService({ mode: 'dates', start: '1995-01-01', masterDate: '2000-01-01', end: '2025-12-31', trainingMaxYears: 3, exclusions: [] });
+  assert.deepStrictEqual(r.gross, { y: 31, m: 0, d: 0 });
+  assert.deepStrictEqual(r.net, { y: 29, m: 0, d: 0 });     // يُطرح سنتان تمرين زائدتان
+  const r2 = C.computeService({ mode: 'dates', start: '1995-01-01', masterDate: '1997-01-01', end: '2025-12-31', trainingMaxYears: 3, exclusions: [] });
+  assert.deepStrictEqual(r2.net, { y: 31, m: 0, d: 0 });    // تمرين سنتان يُحسب كاملاً
+});
+t('المختص 7: حصة الخزانة دائماً (5 حصص ورثة ÷ 6)', () => {
+  const sh = C.pensionShares([{ relation: 'spouse' }, { relation: 'daughter' }, { relation: 'son', birth: '2015-01-01' }], '2026-10-01', S);
+  assert.strictEqual(sh.heirShares, 5); assert.strictEqual(sh.totalShares, 6);
+});
+t('المختص 8: ابن يبلغ 18 في 15/3/2026 → حصته حتى 31/12/2026 ثم تعود للخزانة', () => {
+  const r = C.computeCase({ type: 'heirs', status: 'inService', deathDate: '2025-12-31', untilMonth: '2027-02',
+    service: { mode: 'manual', manual: { y: 20 } },
+    heirs: [{ relation: 'spouse', name: 'ز' }, { relation: 'son', name: 'ا', birth: '2008-03-15' }] });
+  assert.deepStrictEqual(r.errors, []);
+  const ps = r.schedule.periods;
+  // 2026: الراتب 4000 حتى 6 ثم 16000؛ الحصة = ÷5
+  const y2027 = ps.find(p => p.from === '2027-01-01');
+  assert.ok(y2027, 'period from 2027-01-01');
+  assert.strictEqual(y2027.monthlyHeirs[1], 0);                         // توقفت حصة الابن
+  assert.strictEqual(y2027.monthlyHeirs[0], Math.floor(16000 / 5) * 3); // الزوجة لا تزيد (لا إعادة توزيع)
+  const dec26 = ps.find(p => p.to === '2026-12-31');
+  assert.strictEqual(dec26.monthlyHeirs[1], Math.floor(16000 / 5));     // كان يستحق طوال 2026
+  assert.strictEqual(r.shares.list[1].stopFrom, '2027-01-01');
+});
+t('المختص 8: ابنة تزوجت (تاريخ توقف) → تتوقف من أول السنة التالية', () => {
+  const S2 = C.settingsWith();
+  const h = { relation: 'daughter', married: true, stopDate: '2026-05-10' };
+  assert.ok(C.heirYearEligible(h, 2026, '2026-01-15').ok);
+  assert.ok(!C.heirYearEligible(h, 2027, '2026-01-15').ok);
+});
+t('بدء الصرف: مشاهدة 19/10/2026 مع إسقاط الطعن → 19/10، وبدونه → 19/11', () => {
+  const base = { type: 'ordinary', retirementDate: '2026-10-05', reviewDate: '2026-10-19', untilMonth: '2026-12', service: { mode: 'manual', manual: { y: 30 } } };
+  assert.strictEqual(C.computeCase(Object.assign({}, base, { appealWaived: true })).startDate, '2026-10-19');
+  assert.strictEqual(C.computeCase(base).startDate, '2026-11-19');
+  assert.strictEqual(C.computeCase(Object.assign({}, base, { reviewDate: '' })).startDate, '2026-10-05');
 });
 
 // ---------- مدة الممارسة

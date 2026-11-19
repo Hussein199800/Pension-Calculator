@@ -8,7 +8,7 @@ Arabic (RTL) single-page web app that computes lawyers' pensions (ordinary / hea
 
 ## Files
 - `index.html` — login, top bar, pages (`[data-page]`: calc, report, cases, more, settings, backup), bottom tab bar.
-- `css/style.css` — design system «الجواهر» copied from Sarrafa (tokens at top, light + dark) + a section for the calculator.
+- `css/style.css` — «الزيتون والعاج» identity (tokens at top, light + dark), calculator section, and «الطبقة الثانية» at the end.
 - `js/calc.js` — pure calculation engine (works in Node). `js/report.js` — report HTML + its CSS. `js/app.js` — UI, session, saving, backup.
 - `tests/calc.test.js` — every numeric example from the circulars.
 
@@ -17,10 +17,23 @@ Arabic (RTL) single-page web app that computes lawyers' pensions (ordinary / hea
 - Palette: ivory paper background with faint ledger lines on login, ONE olive accent for actions (`--accent` #5a6a1e, `--grad-primary`), dark ink-olive structure (`--panel`, page icons, report headings), saffron highlights and totals, brick for danger. No blue. Light + dark (`[data-theme]`).
 - Primitive names kept to avoid breakage: `--emerald-*` = olive, `--plum-*` = ink, `--gold-*` = saffron, `--wine-*` = brick. Use semantic tokens in new CSS.
 - Font Readex Pro (via `@import` in `style.css`), Tabler icons. Tighter radii (6/9/12/16), flat cards with a saffron title mark, linear indicator on the active bottom tab.
-- «الطبقة الثانية» at the end of `style.css` remaps the old hard-coded «الجواهر» colors and restyles the on-screen/printed report (`.rpt`) with `!important`. The downloaded standalone report HTML still uses the embedded CSS in `report.js`.
+- «الطبقة الثانية» at the end of `style.css` remaps the old hard-coded «الجواهر» colors and restyles the on-screen/printed report (`.rpt`) with `!important`. The downloaded standalone report HTML uses the embedded CSS in `report.js` (same olive/ink/saffron colors).
 - Layout unchanged: sticky top bar + bottom tabs (الحاسبة، التقرير، الحالات، المزيد); settings, backup, account in «المزيد».
 - Messages via `toast()` / `confirmBox()` / `modal()` — never `alert()` / `confirm()`.
 - Telegram backup upload and Firebase sync/Google sign-in are **UI only, disabled ("قريباً")** until the user decides to implement them.
+
+## Domain decisions — union specialist's written answers (2026-11-19)
+Override the circulars' examples where they differ; all are covered by `tests/calc.test.js`.
+1. Aid 200,000 from 2026-07-01. In aid, part of a year = a full year (9y1m → 10).
+2. First partial month: days from the day after death (or start date) to the end of the month, ÷ 30 (death 4/7 → 27 days). The circular's heirs example "25 days" is a typo.
+3. Ordinary pension: year fraction ignored (complete years only).
+5. Health and heirs (in-service, or retired-health) brackets: the boundary belongs to the LOWER bracket and fractions count only at the boundaries: ≤5y = ¼, >5–10 = ½, >10–15 = ¾, >15 (even by one day) = full. So exactly 15 = ¾ (the circular's "15 → full" example is overridden; setting `bracketBoundary: 'upper'` restores it).
+4. Joined after 2014-02-04: at retirement the lawyer is paid HALF of the proportional aid (`retirementAid.full` / `.amount`); the heirs get the second half at death, proportional to the same years, at the aid value of the death year.
+6. Practice starts at the oath date (`service.start`); training (oath → enrolment as أستاذ, `service.masterDate`) counts 3 years at most — the excess is an automatic exclusion.
+7. One treasury share always (heirs' shares + 1).
+8. Heir eligibility is checked at the start of payment and then on 1 January each year (annual documents). Whoever loses it stops from 1 January of the following year; the share goes to the treasury (no redistribution). Optional per-heir `stopDate` (marriage, work…).
+- Join date = registration date (the separate "registration decision date" field was removed; `registrationDecisionDate` = `joinDate`).
+- Ordinary pension starts when the retirement decision becomes final: the treasury controller's review date (`reviewDate`) if the appeal right was waived (`appealWaived`), otherwise one month later. Without `reviewDate`, the retirement date (or a legacy `paymentStartDate`) is used. Health stays from the medical-board date; heirs from the day after death.
 
 ## Conventions
 - The user writes in Arabic; answer in Arabic. Ask with the clickable question bar, recommended option first.
