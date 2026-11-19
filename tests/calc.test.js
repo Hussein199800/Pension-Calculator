@@ -103,12 +103,53 @@ t('معونة تقاعد بعد 2014: صحي بحد أدنى 5 أجزاء', () =
   assert.strictEqual(r.full, Math.floor(200000 * 5 / 30)); assert.strictEqual(r.amount, Math.floor(Math.floor(200000 * 5 / 30) / 2));
 });
 t('معونة تقاعد بعد 2014: 20 سنة عمر 65 → 133333، يُصرف 66666', () => {
-  const r = C.retirementAid({ type: 'ordinary', joinDate: '2015-01-01', retirementDate: '2026-10-01', birthDate: '1960-01-01' }, net(20), S);
+  const r = C.retirementAid({ type: 'ordinary', joinDate: '2015-01-01', retirementDate: '2040-06-01', birthDate: '1975-01-01' }, net(20), S);
   assert.strictEqual(r.full, 133333); assert.strictEqual(r.amount, 66666);
 });
 t('معونة وفاة بعد 2014 بعد قبض معونة التقاعد: النصف الثاني بقيمة سنة الوفاة', () => {
-  const r = C.deathAid({ status: 'retired', receivedRetirementAid: true, joinDate: '2015-01-01', deathDate: '2026-10-15', heirs: [{ relation: 'spouse' }] }, net(20), S);
+  const r = C.deathAid({ status: 'retired', receivedHalfRetirementAid: true, joinDate: '2015-01-01', deathDate: '2026-10-15', heirs: [{ relation: 'spouse' }] }, net(20), S);
   assert.strictEqual(r.amount, 66666);
+});
+t('مراجعة: سجل قديم «قبض المعونة كاملة» يبقى بلا معونة وفاة', () => {
+  const r = C.deathAid({ status: 'retired', receivedRetirementAid: true, joinDate: '2015-01-01', deathDate: '2026-10-15', heirs: [{ relation: 'spouse' }] }, net(20), S);
+  assert.strictEqual(r.amount, 0);
+});
+t('مراجعة: النصف الثاني لمتقاعد صحي بسنتين يُحسب على 5 أجزاء', () => {
+  const r = C.deathAid({ status: 'retired', originalType: 'health', receivedHalfRetirementAid: true, joinDate: '2020-01-01', deathDate: '2026-10-15', heirs: [{ relation: 'spouse' }] }, net(2), S);
+  assert.strictEqual(r.amount, Math.floor(Math.floor(5 * 200000 / 30) / 2));
+});
+t('مراجعة: فترات الاستبعاد المتداخلة تُطرح مرة واحدة', () => {
+  // تمرين 5 سنوات (يُطرح سنتان) + منع يدوي في السنة الخامسة (داخل الفترة نفسها)
+  const r = C.computeService({ mode: 'dates', start: '1995-01-01', masterDate: '2000-01-01', end: '2025-12-31', trainingMaxYears: 3,
+    exclusions: [{ from: '1999-01-01', to: '1999-12-31', reason: 'منع' }] });
+  assert.deepStrictEqual(r.net, { y: 29, m: 0, d: 0 });
+});
+t('مراجعة: سقف التمرين لمن بقي متمرناً حتى النهاية', () => {
+  const r = C.computeService({ mode: 'dates', start: '2020-01-01', stillTrainee: true, end: '2025-12-31', trainingMaxYears: 3, exclusions: [] });
+  assert.deepStrictEqual(r.net, { y: 3, m: 0, d: 0 });
+});
+t('مراجعة: حصة الخزانة إلزامية حتى لو حُفظ تعطيلها', () => {
+  const S2 = C.settingsWith({ treasuryShare: false });
+  const sh = C.pensionShares([{ relation: 'spouse' }], '2026-10-01', S2);
+  assert.strictEqual(sh.totalShares, 4);
+});
+t('مراجعة: سقف تمرين غير صحيح يعود للافتراضي', () => {
+  assert.strictEqual(C.settingsWith({ trainingMaxYears: 2.5 }).trainingMaxYears, 3);
+  assert.strictEqual(C.settingsWith({ trainingMaxYears: -1 }).trainingMaxYears, 3);
+  assert.strictEqual(C.settingsWith({ trainingMaxYears: 4 }).trainingMaxYears, 4);
+});
+t('مراجعة: تاريخ مشاهدة قبل قرار الإحالة مرفوض', () => {
+  const r = C.computeCase({ type: 'ordinary', retirementDate: '2026-10-05', reviewDate: '2026-10-01', appealWaived: true, untilMonth: '2026-12', service: { mode: 'manual', manual: { y: 30 } } });
+  assert.ok(r.errors.length && /يسبق/.test(r.errors[0]));
+});
+t('مراجعة: توزيع الورثة بلقطة واحدة (الحصة المتوقفة في الخزانة فقط)', () => {
+  const r = C.computeCase({ type: 'heirs', status: 'inService', deathDate: '2025-12-31', untilMonth: '2027-02',
+    service: { mode: 'manual', manual: { y: 20 } },
+    heirs: [{ relation: 'spouse', name: 'ز' }, { relation: 'son', name: 'ا', birth: '2008-03-15' }] });
+  const D = r.distNow, son = D.perGroup.find(g => g.key.indexOf('child') === 0);
+  assert.strictEqual(son.amount, 0);
+  const sumGroups = D.perGroup.reduce((a, g) => a + g.amount, 0);
+  assert.strictEqual(sumGroups + D.treasury, D.unit * 5);
 });
 t('معونة تقاعد قبل 2014: نصف المعونة 100000', () => {
   const r = C.retirementAid({ type: 'ordinary', joinDate: '1990-01-01', retirementDate: '2026-10-01', birthDate: '1960-01-01', requestedHalfAid: true }, net(36), S);

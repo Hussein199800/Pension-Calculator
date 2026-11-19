@@ -297,7 +297,7 @@ function fillSettings() {
     $("#pensionTbl tbody").innerHTML = ""; s.pensionTable.forEach(function (r) { addValRow("pensionTbl", r); });
     $("#aidTbl tbody").innerHTML = ""; s.aidTable.forEach(function (r) { addValRow("aidTbl", r); });
     $("#setCutoff").value = s.cutoffDate; $("#setMax").value = s.maxYears;
-    $("#setPYM").value = s.pensionYearMode; $("#setAYM").value = s.aidYearMode; $("#setTreasury").checked = !!s.treasuryShare;
+    $("#setPYM").value = s.pensionYearMode; $("#setAYM").value = s.aidYearMode;
     $("#setBracket").value = s.bracketBoundary; $("#setTraining").value = s.trainingMaxYears;
 }
 $$("[data-addrow]").forEach(function (b) { b.onclick = function () { addValRow(b.getAttribute("data-addrow")); }; });
@@ -306,10 +306,11 @@ $("#saveSettings").onclick = function () {
         org: $("#setOrg").value.trim(),
         pensionTable: readValTable("pensionTbl"), aidTable: readValTable("aidTbl"),
         cutoffDate: $("#setCutoff").value || C.DEFAULTS.cutoffDate, maxYears: +$("#setMax").value || C.DEFAULTS.maxYears,
-        pensionYearMode: $("#setPYM").value, aidYearMode: $("#setAYM").value, treasuryShare: $("#setTreasury").checked,
+        pensionYearMode: $("#setPYM").value, aidYearMode: $("#setAYM").value, treasuryShare: true,
         bracketBoundary: $("#setBracket").value, trainingMaxYears: $("#setTraining").value === "" ? C.DEFAULTS.trainingMaxYears : +$("#setTraining").value
     };
     if (!s.pensionTable.length || !s.aidTable.length) { toast("يجب إدخال قيمة واحدة على الأقل للمعاش وللمعونة.", "bad"); return; }
+    if (!(Number.isInteger(s.trainingMaxYears) && s.trainingMaxYears >= 0)) { toast("أقصى مدة تمرين يجب أن تكون عدداً صحيحاً من السنوات (0 أو أكثر).", "bad"); $("#setTraining").focus(); return; }
     if (store(KEY_SET, s)) toast("حُفظت الإعدادات", "ok"); else toast("تعذر الحفظ في هذا المتصفح.", "bad");
     if (lastCase) rerender();
 };
@@ -322,7 +323,7 @@ $("#resetSettings").onclick = async function () {
    النموذج: الجداول الديناميكية والجمع والتعبئة
    ========================================================= */
 const form = $("#caseForm");
-let currentId = null, lastCase = null, lastResult = null, legacyPaymentStart = "";
+let currentId = null, lastCase = null, lastResult = null, legacyPaymentStart = "", legacyRegDecision = "";
 
 function addEx(r) {
     const tr = $("#exRow").content.firstElementChild.cloneNode(true);
@@ -351,15 +352,15 @@ function collect() {
         name: val("name"), fatherName: val("fatherName"), motherName: val("motherName"), birthDate: val("birthDate"), birthPlace: val("birthPlace"),
         nationalId: val("nationalId"), memberNo: val("memberNo"), branch: val("branch"), fileNo: val("fileNo"), phone: val("phone"), address: val("address"),
         type: type, status: status, originalType: val("originalType"),
-        joinDate: val("joinDate"), registrationDecisionDate: val("joinDate"),
+        joinDate: val("joinDate"), registrationDecisionDate: legacyRegDecision || val("joinDate"),
         reRegistration: val("reRegistration"), priorPracticeYears: val("priorPracticeYears"),
         retirementDate: val("retirementDate"), reviewDate: val("reviewDate"), appealWaived: val("appealWaived"), medicalDate: val("medicalDate"),
         occupational: type === "heirs" ? val("occupationalHeirs") : val("occupational"),
         deathDate: val("deathDate"), deathDuringWork: val("deathDuringWork"),
-        includeAid: val("includeAid"), requestedHalfAid: val("requestedHalfAid"), receivedHalfAid: val("receivedHalfAid"), receivedRetirementAid: val("receivedRetirementAid"),
+        includeAid: val("includeAid"), requestedHalfAid: val("requestedHalfAid"), receivedHalfAid: val("receivedHalfAid"), receivedRetirementAid: val("receivedRetirementAid"), receivedHalfRetirementAid: val("receivedHalfRetirementAid"),
         untilMonth: val("untilMonth"), preparer: val("preparer"), reviewer: val("reviewer"), notes: val("notes"),
         service: {
-            mode: val("serviceMode") || "dates", start: val("serviceStart"), masterDate: val("masterDate"), end: val("serviceEnd"),
+            mode: val("serviceMode") || "dates", start: val("serviceStart"), masterDate: val("masterDate"), stillTrainee: val("stillTrainee"), end: val("serviceEnd"),
             exclusions: $$("#exTable tbody tr").map(function (tr) { return { reason: $("[data-k=reason]", tr).value, from: $("[data-k=from]", tr).value, to: $("[data-k=to]", tr).value }; }),
             manual: { y: val("manY"), m: val("manM"), d: val("manD") }
         },
@@ -385,7 +386,9 @@ function validate(c) {
         if (!c.heirs.length) e.push("أضف أفراد الأسرة/الورثة.");
         if (c.retirementDate && c.deathDate && c.status === "retired" && c.deathDate < c.retirementDate) e.push("تاريخ الوفاة قبل تاريخ الإحالة على التقاعد.");
     }
-    if (c.service.mode === "dates" && !c.service.start) e.push("أدخل تاريخ بدء الممارسة.");
+    if (c.service.mode === "dates" && !c.service.start) e.push("أدخل تاريخ حلف اليمين.");
+    if (c.type === "ordinary" && c.reviewDate && c.retirementDate && c.reviewDate < c.retirementDate) e.push("تاريخ مشاهدة مراقب الخزانة يسبق تاريخ قرار الإحالة على التقاعد.");
+    if (c.service.mode === "dates" && c.service.masterDate && c.service.start && c.service.masterDate < c.service.start) e.push("تاريخ القيد في جدول الأساتذة يسبق تاريخ حلف اليمين.");
     if (c.service.mode === "manual" && !c.service.manual.y && !c.service.manual.m) e.push("أدخل مدة الممارسة الصافية.");
     if (!c.untilMonth) e.push("حدد الشهر الذي تُحسب المستحقات حتى نهايته.");
     if (c.includeAid && !c.joinDate) e.push("أدخل تاريخ الانتساب للنقابة لحساب المعونة.");
@@ -447,9 +450,11 @@ $("#serviceSeg").addEventListener("click", function (e) {
 function liveService() {
     const c = collect(), out = $("#serviceLive");
     if (c.service.mode === "dates" && (!c.service.start || !c.service.end)) { out.textContent = ""; return; }
-    const s = C.computeService(c.service);
+    const st = C.settingsWith(effSettings());
+    const svcIn = Object.assign({}, c.service, { trainingMaxYears: st.trainingMaxYears });
+    const s = C.computeService(svcIn);
     if (s.error) { out.textContent = s.error; return; }
-    out.textContent = "مدة الممارسة الصافية: " + C.fmtYMD(s.net) + " ← " + C.adoptYears(s.net, C.settingsWith(effSettings()).pensionYearMode).text;
+    out.textContent = "مدة الممارسة الصافية: " + C.fmtYMD(s.net) + (c.type === "ordinary" ? " ← " + C.adoptYears(s.net, st.pensionYearMode).text : "");
 }
 form.addEventListener("change", function () { refresh(); saveDraft(); });
 form.addEventListener("input", debounce(function () { liveService(); saveDraft(); }, 400));
@@ -458,11 +463,13 @@ function debounce(fn, ms) { let t; return function () { clearTimeout(t); t = set
 function fill(c) {
     form.reset();
     legacyPaymentStart = c.paymentStartDate || "";
+    /* تاريخ قرار قيد مستقل من الإصدار الأول: يبقى محفوظاً ويُستعمل لشرط العمر كما كان */
+    legacyRegDecision = c.registrationDecisionDate && c.registrationDecisionDate !== c.joinDate ? c.registrationDecisionDate : "";
     $("#exTable tbody").innerHTML = ""; $("#heirTable tbody").innerHTML = "";
     const sv = c.service || {};
     const map = {
         occupationalHeirs: c.type === "heirs" ? c.occupational : false, occupational: c.type !== "heirs" ? c.occupational : false,
-        serviceStart: sv.start, masterDate: sv.masterDate, serviceEnd: sv.end, serviceMode: sv.mode || "dates",
+        serviceStart: sv.start, masterDate: sv.masterDate, stillTrainee: sv.stillTrainee, serviceEnd: sv.end, serviceMode: sv.mode || "dates",
         manY: sv.manual && sv.manual.y, manM: sv.manual && sv.manual.m, manD: sv.manual && sv.manual.d
     };
     Array.prototype.forEach.call(form.elements, function (el) {

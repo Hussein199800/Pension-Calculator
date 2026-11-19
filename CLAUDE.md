@@ -28,12 +28,12 @@ Override the circulars' examples where they differ; all are covered by `tests/ca
 2. First partial month: days from the day after death (or start date) to the end of the month, ÷ 30 (death 4/7 → 27 days). The circular's heirs example "25 days" is a typo.
 3. Ordinary pension: year fraction ignored (complete years only).
 5. Health and heirs (in-service, or retired-health) brackets: the boundary belongs to the LOWER bracket and fractions count only at the boundaries: ≤5y = ¼, >5–10 = ½, >10–15 = ¾, >15 (even by one day) = full. So exactly 15 = ¾ (the circular's "15 → full" example is overridden; setting `bracketBoundary: 'upper'` restores it).
-4. Joined after 2014-02-04: at retirement the lawyer is paid HALF of the proportional aid (`retirementAid.full` / `.amount`); the heirs get the second half at death, proportional to the same years, at the aid value of the death year.
-6. Practice starts at the oath date (`service.start`); training (oath → enrolment as أستاذ, `service.masterDate`) counts 3 years at most — the excess is an automatic exclusion.
-7. One treasury share always (heirs' shares + 1).
+4. Joined after 2014-02-04: at retirement the lawyer is paid HALF of the proportional aid (`retirementAid.full` / `.amount`); the heirs get the second half at death (`receivedHalfRetirementAid`), on the same basis (health retirees: at least 5 parts), at the aid value of the death year. The older flag `receivedRetirementAid` keeps its v1 meaning "received the FULL aid" → no death aid.
+6. Practice starts at the oath date (`service.start`); training (oath → enrolment as أستاذ, `service.masterDate`, or to the end of practice when `service.stillTrainee`) counts 3 years at most (`trainingMaxYears`, whole years ≥ 0) — the excess is an automatic exclusion. Exclusions are merged (union) so overlapping periods are deducted once.
+7. One treasury share always (heirs' shares + 1); `settingsWith` forces `treasuryShare: true` and the setting is not offered.
 8. Heir eligibility is checked at the start of payment and then on 1 January each year (annual documents). Whoever loses it stops from 1 January of the following year; the share goes to the treasury (no redistribution). Optional per-heir `stopDate` (marriage, work…).
-- Join date = registration date (the separate "registration decision date" field was removed; `registrationDecisionDate` = `joinDate`).
-- Ordinary pension starts when the retirement decision becomes final: the treasury controller's review date (`reviewDate`) if the appeal right was waived (`appealWaived`), otherwise one month later. Without `reviewDate`, the retirement date (or a legacy `paymentStartDate`) is used. Health stays from the medical-board date; heirs from the day after death.
+- Join date = registration date (the separate "registration decision date" field was removed; `registrationDecisionDate` = `joinDate`, except that a different value saved by v1 is kept and still used for the age-45 aid rule).
+- Ordinary pension starts when the retirement decision becomes final: the treasury controller's review date (`reviewDate`) if the appeal right was waived (`appealWaived`), otherwise one month later. A review date before the retirement decision is rejected. Without `reviewDate`, the retirement date (or a legacy `paymentStartDate`) is used. Health stays from the medical-board date; heirs from the day after death.
 
 ## Conventions
 - The user writes in Arabic; answer in Arabic. Ask with the clickable question bar, recommended option first.

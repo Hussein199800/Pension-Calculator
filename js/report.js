@@ -141,15 +141,19 @@
         var D = R.distNow;
         h.push('<div class="formula"><ol class="steps">' +
           '<li>مجموع حصص الورثة = ' + R.shares.heirShares + (R.shares.treasury ? ' + حصة الخزانة 1 = ' + R.shares.totalShares : '') + ' ' + (R.shares.totalShares >= 3 && R.shares.totalShares <= 10 ? 'حصص' : 'حصة') + '.</li>' +
-          '<li>قيمة الحصة الواحدة = المعاش ÷ عدد الحصص = ' + f(R.baseNow.amount) + ' ÷ ' + R.shares.totalShares + ' = ' + f(D.unit) + ' ل.س (يُهمل الكسر).</li></ol></div>');
+          '<li>قيمة الحصة الواحدة = المعاش ÷ عدد الحصص = ' + f(R.baseNow.amount) + ' ÷ ' + R.shares.totalShares + ' = ' + f(D.unit) + ' ل.س (يُهمل الكسر).</li>' +
+          '<li>الجدول التالي بقيمة ' + d(R.refDate) + '.</li></ol></div>');
         var g = '<tr><th>الجهة</th><th class="n">عدد الحصص</th><th class="n">المبلغ الشهري</th><th>ملاحظة</th></tr>';
         D.perGroup.forEach(function (x) {
-          g += '<tr><td>' + esc(x.label) + '</td><td class="n">' + x.shares + '</td><td class="n">' + f(x.amount) + '</td><td>' + (x.count > 1 ? 'تقسم بالتساوي على ' + x.count + ': لكل واحد ' + f(x.each) + ' ل.س' : '') + '</td></tr>';
+          var nt = [];
+          if (x.count > 1) nt.push('تقسم بالتساوي على ' + x.count + ': لكل واحد ' + f(x.each) + ' ل.س');
+          if (x.stopped) nt.push(x.stopped === x.count ? 'الحصة متوقفة وتعود للخزانة' : 'توقفت حصة ' + x.stopped + ' منهم وتعود للخزانة');
+          g += '<tr><td>' + esc(x.label) + '</td><td class="n">' + x.shares + '</td><td class="n">' + f(x.amount) + '</td><td>' + nt.join('، ') + '</td></tr>';
         });
         if (R.shares.treasury) g += '<tr><td>خزانة التقاعد</td><td class="n">1</td><td class="n">' + f(D.treasury) + '</td><td>لا تُصرف للورثة' + (D.forfeit ? '، وتشمل ' + f(D.forfeit) + ' ل.س حصصاً متوقفة' : '') + '</td></tr>';
         h.push('<table>' + g + '</table>');
         var stopped = R.shares.list.filter(function (x) { return x.stopFrom; });
-        if (stopped.length) h.push('<div class="note">' + stopped.map(function (x) { return 'حصة <b>' + esc(x.heir.name || C.REL[x.heir.relation]) + '</b> تتوقف اعتباراً من ' + d(x.stopFrom) + ' وتعود للخزانة.'; }).join('<br>') + ' المبالغ في الجدول أعلاه قبل التوقف، وجدول المستحقات يطبّق التوقف شهراً بشهر.</div>');
+        if (stopped.length) h.push('<div class="note">' + stopped.map(function (x) { return 'حصة <b>' + esc(x.heir.name || C.REL[x.heir.relation]) + '</b> تتوقف اعتباراً من ' + d(x.stopFrom) + ' وتعود للخزانة.'; }).join('<br>') + ' الجدول أعلاه بقيمة ' + d(R.refDate) + ' بعد تطبيق ما توقف حتى ذلك التاريخ، وجدول المستحقات يطبّق التوقف شهراً بشهر.</div>');
       }
     }
 

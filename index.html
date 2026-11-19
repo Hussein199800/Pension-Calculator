@@ -151,7 +151,8 @@
                             <div data-mode="dates">
                                 <div class="grid g3 form-g">
                                     <label class="field"><span>تاريخ حلف اليمين <b class="req">*</b></span><input type="date" name="serviceStart"><small class="hint">منه تبدأ مدة الممارسة</small></label>
-                                    <label class="field"><span>تاريخ القيد في جدول الأساتذة</span><input type="date" name="masterDate"><small class="hint">لا يُحسب من مدة التمرين أكثر من 3 سنوات</small></label>
+                                    <label class="field"><span>تاريخ القيد في جدول الأساتذة</span><input type="date" name="masterDate"><small class="hint">لا يُحسب من مدة التمرين أكثر من 3 سنوات</small>
+                                        <span class="check" style="margin-top:6px;font-weight:500"><input type="checkbox" name="stillTrainee"> بقي متمرناً حتى نهاية الممارسة</span></label>
                                     <label class="field"><span>تاريخ نهاية الممارسة</span><input type="date" name="serviceEnd"><small class="hint" id="serviceEndHint">إن تُرك فارغاً: تاريخ الإحالة على التقاعد</small></label>
                                 </div>
                                 <h4 class="sub-title"><i class="ti ti-calendar-minus"></i>المدد المستبعدة</h4>
@@ -187,7 +188,8 @@
                                 <label class="check"><input type="checkbox" name="includeAid" checked> احسب المعونة أيضاً</label>
                                 <label class="check" data-types="ordinary health"><input type="checkbox" name="requestedHalfAid"> أبدى رغبته بقبض نصف المعونة عند تقديم طلب الإحالة (للمنتسبين قبل 4/2/2014)</label>
                                 <label class="check" data-types="heirs" data-status="retired"><input type="checkbox" name="receivedHalfAid"> قبض نصف المعونة عند تقاعده (منتسب قبل 4/2/2014)</label>
-                                <label class="check" data-types="heirs" data-status="retired"><input type="checkbox" name="receivedRetirementAid"> قبض نصف معونة التقاعد عند تقاعده (منتسب بعد 4/2/2014)</label>
+                                <label class="check" data-types="heirs" data-status="retired"><input type="checkbox" name="receivedHalfRetirementAid"> قبض نصف معونة التقاعد عند تقاعده (منتسب بعد 4/2/2014)</label>
+                                <label class="check" data-types="heirs" data-status="retired"><input type="checkbox" name="receivedRetirementAid"> قبض معونة التقاعد كاملة عند تقاعده (سجلات سابقة: لا معونة وفاة إضافية)</label>
                             </div>
                         </div>
 
@@ -277,8 +279,8 @@
                                 <select id="setAYM"><option value="ceil">جزء السنة = سنة كاملة (نص التعميم)</option><option value="floor">تُهمل</option><option value="exact">نسبياً</option></select></label>
                             <label class="field"><span>حدود شرائح التقاعد الصحي ومعاش الورثة</span>
                                 <select id="setBracket"><option value="lower">الحد يدخل في الشريحة الأدنى: 15 بالضبط = ثلاثة أرباع (رأي المختص)</option><option value="upper">الحد يدخل في الشريحة الأعلى: 15 بالضبط = كامل</option></select></label>
-                            <label class="field"><span>أقصى ما يُحسب من مدة التمرين (سنوات)</span><input type="number" id="setTraining" min="0" class="num-in"></label>
-                            <label class="check" style="grid-column:1/-1"><input type="checkbox" id="setTreasury"> حساب حصة لخزانة التقاعد عند توزيع معاش الورثة (كما في أمثلة التعميم)</label>
+                            <label class="field"><span>أقصى ما يُحسب من مدة التمرين (سنوات)</span><input type="number" id="setTraining" min="0" step="1" class="num-in"></label>
+                            <p class="hint-line" style="grid-column:1/-1;margin:0"><i class="ti ti-lock"></i> حصة واحدة لخزانة التقاعد في معاش الورثة ثابتة دائماً (رأي المختص) ولا تُعطَّل.</p>
                         </div>
                     </div>
                     <div class="row">
