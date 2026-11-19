@@ -212,16 +212,19 @@
     // الفترة الملاصقة لبداية الممارسة أو لنهايتها تُقص بتاريخها نفسه (دون حساب أشهر)، فلا يضيع يوم عند نهايات الأشهر
     if (mid.length && cmp(mid[0][0], s) === 0) { netStart = addDays(mid[0][1], 1); mid.shift(); }
     if (mid.length && cmp(addDays(mid[mid.length - 1][1], 1), endX) === 0) { netEnd = mid[mid.length - 1][0]; mid.pop(); }
-    mid.reverse().forEach(function (x) {
+    // الفترات الوسطى تُطرح كمدد (أشهر ثم أيام) من المدة المقيسة من تاريخ البداية، وعند الحاجة يُستلف شهر
+    // بطوله الفعلي عند تلك الذكرى؛ فتبقى الذكرى السنوية لتاريخ حلف اليمين محفوظة (ومنها حلف 29/2)
+    var G = cmp(netEnd, netStart) > 0 ? diffYMD(netStart, netEnd) : { y: 0, m: 0, d: 0 };
+    var M = G.y * 12 + G.m, D = G.d;
+    mid.forEach(function (x) {
       var sp = diffYMD(x[0], addDays(x[1], 1));
-      var dd = addDays(netEnd, -sp.d), back = addMonths(dd, -(sp.y * 12 + sp.m));
-      // إذا قُصّ اليوم عند الطرح (29/2 ناقص سنة = 28/2) يُعاد اليوم المقصوص حتى لا يضيع،
-      // إلا إذا كانت ذكرى تاريخ حلف اليمين نفسها مقصوصة في ذلك الشهر (حلف في 29/2): فذكراه 28/2 ولا يُعاد شيء
-      if (dd.d > back.d && s.d <= back.d) back = addDays(back, dd.d - back.d);
-      netEnd = back;
+      M -= sp.y * 12 + sp.m; D -= sp.d;
     });
-    if (cmp(netEnd, netStart) < 0) netEnd = netStart;
-    var net = diffYMD(netStart, netEnd);
+    function monthLen(k) { var a = addMonths(netStart, k), b = addMonths(netStart, k + 1); return Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 86400000); }
+    while (D < 0 && M > 0) { M -= 1; D += monthLen(M); }
+    if (M < 0 || D < 0) { M = 0; D = 0; }
+    while (D >= monthLen(M)) { D -= monthLen(M); M += 1; }
+    var net = { y: Math.floor(M / 12), m: M % 12, d: D };
     if (exActual > grossDays) warnings.push('مجموع فترات الاستبعاد أكبر من مدة الممارسة.');
     if (rows.length) steps.push('مجموع المدد المستبعدة (دون تكرار المتداخل) = ' + exActual + ' يوماً، فتكون مدة الممارسة الصافية = ' + fmtYMD(net) + '.');
     else steps.push('لا توجد مدد مستبعدة، فمدة الممارسة الصافية = ' + fmtYMD(net) + '.');
