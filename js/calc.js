@@ -215,17 +215,17 @@
     mid.reverse().forEach(function (x) {
       var sp = diffYMD(x[0], addDays(x[1], 1));
       var dd = addDays(netEnd, -sp.d), back = addMonths(dd, -(sp.y * 12 + sp.m));
-      // إذا قُصّ اليوم عند الطرح (29/2 ناقص سنة = 28/2) يُعاد اليوم المقصوص حتى لا يضيع
-      if (dd.d > back.d) back = addDays(back, dd.d - back.d);
+      // إذا قُصّ اليوم عند الطرح (29/2 ناقص سنة = 28/2) يُعاد اليوم المقصوص حتى لا يضيع،
+      // إلا إذا كانت ذكرى تاريخ حلف اليمين نفسها مقصوصة في ذلك الشهر (حلف في 29/2): فذكراه 28/2 ولا يُعاد شيء
+      if (dd.d > back.d && s.d <= back.d) back = addDays(back, dd.d - back.d);
       netEnd = back;
     });
     if (cmp(netEnd, netStart) < 0) netEnd = netStart;
     var net = diffYMD(netStart, netEnd);
     if (exActual > grossDays) warnings.push('مجموع فترات الاستبعاد أكبر من مدة الممارسة.');
-    var excludedYmd = daysToYmd(Math.max(0, ymdToDays(gross) - ymdToDays(net)));
-    if (rows.length) steps.push('مجموع المدد المستبعدة = ' + exActual + ' يوماً (' + fmtYMD(excludedYmd) + ')، فتكون مدة الممارسة الصافية = ' + fmtYMD(net) + '.');
+    if (rows.length) steps.push('مجموع المدد المستبعدة (دون تكرار المتداخل) = ' + exActual + ' يوماً، فتكون مدة الممارسة الصافية = ' + fmtYMD(net) + '.');
     else steps.push('لا توجد مدد مستبعدة، فمدة الممارسة الصافية = ' + fmtYMD(net) + '.');
-    return { gross: gross, excluded: excludedYmd, net: net, exclusions: rows, steps: steps, warnings: warnings };
+    return { gross: gross, excludedDays: exActual, net: net, exclusions: rows, steps: steps, warnings: warnings };
   }
 
   /** تحويل المدة إلى عدد سنوات معتمد حسب طريقة معالجة الكسور */

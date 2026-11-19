@@ -267,6 +267,16 @@ t('مراجعة 6: استبعاد سنة كاملة مع نهاية 28/2 في س
   assert.deepStrictEqual(r.gross, { y: 16, m: 0, d: 1 });
   assert.deepStrictEqual(r.net, { y: 15, m: 0, d: 1 });
 });
+t('مراجعة 7: حلف في 29/2 واستبعاد سنة كاملة = 15 سنة بالضبط', () => {
+  const r = C.computeService({ mode: 'dates', start: '2008-02-29', end: '2024-02-28', exclusions: [{ from: '2015-01-01', to: '2015-12-31', reason: 'منع' }] });
+  assert.deepStrictEqual(r.gross, { y: 16, m: 0, d: 0 });
+  assert.deepStrictEqual(r.net, { y: 15, m: 0, d: 0 });
+});
+t('مراجعة 7: إجمالي الاستبعاد يُعرض بالأيام دون تناقض', () => {
+  const r = C.computeService({ mode: 'dates', start: '2020-01-31', end: '2020-03-30', exclusions: [{ from: '2020-01-31', to: '2020-01-31', reason: 'منع' }] });
+  assert.strictEqual(r.excludedDays, 1);
+  assert.ok(r.steps.some(x => /= 1 يوماً،/.test(x)) && !r.steps.some(x => /لا شيء/.test(x)));
+});
 t('مراجعة 4: نهاية الشهر (29/2/2020 حتى 27/2/2025 شاملاً = 5 سنوات)', () => {
   assert.deepStrictEqual(C.spanInclusive(C.parseDate('2020-02-29'), C.parseDate('2025-02-27')), { y: 5, m: 0, d: 0 });
   assert.deepStrictEqual(C.computeService({ mode: 'dates', start: '2020-02-29', end: '2025-02-27', exclusions: [] }).net, { y: 5, m: 0, d: 0 });
