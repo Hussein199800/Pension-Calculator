@@ -234,6 +234,31 @@ t('مراجعة 2: يوم 31 يُحسب عند حد الشريحة (15 سنة و
   assert.deepStrictEqual(r2.service.net, { y: 15, m: 0, d: 0 });
   assert.strictEqual(r2.baseNow.amount, 3000);  // ثلاثة أرباع 4000
 });
+t('مراجعة 3: المدة الصافية بالتقويم (أمثلة Codex)', () => {
+  const ex = { mode: 'dates', start: '2011-02-01', end: '2026-02-28', exclusions: [{ from: '2011-03-01', to: '2011-03-28', reason: 'منع' }] };
+  assert.deepStrictEqual(C.computeService(ex).net, { y: 15, m: 0, d: 0 });
+  const r = C.computeCase({ type: 'health', medicalDate: '2026-03-01', untilMonth: '2026-03', service: ex });
+  assert.strictEqual(r.baseNow.amount, 3000);                       // ثلاثة أرباع 4000 لا الكامل
+  const r2 = C.computeService({ mode: 'dates', start: '2011-01-31', end: '2026-01-29', exclusions: [] });
+  assert.ok(r2.net.y === 14, JSON.stringify(r2.net));               // أقل من 15 سنة بيوم
+});
+t('مراجعة 3: من فقد أهليته في 1/1 تتوقف حصته من 1/1 للسنة التالية', () => {
+  const h = { relation: 'daughter', married: true, stopDate: '2027-01-01', stopReason: 'married' };
+  assert.ok(C.heirYearEligible(h, 2027, '2026-03-01').ok);
+  assert.ok(!C.heirYearEligible(h, 2028, '2026-03-01').ok);
+  const son = { relation: 'son', birth: '2009-01-01' };             // يبلغ 18 في 1/1/2027
+  assert.ok(C.heirYearEligible(son, 2027, '2026-03-01').ok);
+  assert.ok(!C.heirYearEligible(son, 2028, '2026-03-01').ok);
+});
+t('مراجعة 3: لا يُجمع تاريخ القيد أستاذاً مع «بقي متمرناً»', () => {
+  const r = C.computeService({ mode: 'dates', start: '2020-01-01', masterDate: '2022-01-01', stillTrainee: true, end: '2025-12-31', exclusions: [] });
+  assert.ok(r.error);
+});
+t('مراجعة 3: لا NaN في الخزانة عند انعدام الورثة المستحقين', () => {
+  const r = C.computeCase({ type: 'heirs', status: 'inService', deathDate: '2026-01-10', untilMonth: '2026-03',
+    service: { mode: 'manual', manual: { y: 20 } }, heirs: [{ relation: 'brother', name: 'أخ' }] });
+  assert.strictEqual(r.distNow.treasury, 0);
+});
 t('مراجعة 2: تاريخ التوقف لا يخفي شرطاً مستقلاً (ابنة لها مورد ثم تزوجت)', () => {
   const h = { relation: 'daughter', hasIncome: true, married: true, stopDate: '2027-05-10', stopReason: 'married' };
   assert.ok(!C.heirEligibleAt(h, '2026-01-15').ok);

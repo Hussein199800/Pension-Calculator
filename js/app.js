@@ -389,6 +389,7 @@ function validate(c) {
     if (c.service.mode === "dates" && !c.service.start) e.push("أدخل تاريخ حلف اليمين.");
     if (c.type === "ordinary" && c.reviewDate && c.retirementDate && c.reviewDate < c.retirementDate) e.push("تاريخ مشاهدة مراقب الخزانة يسبق تاريخ قرار الإحالة على التقاعد.");
     if (c.service.mode === "dates" && c.service.masterDate && c.service.start && c.service.masterDate < c.service.start) e.push("تاريخ القيد في جدول الأساتذة يسبق تاريخ حلف اليمين.");
+    if (c.service.mode === "dates" && c.service.masterDate && c.service.stillTrainee) e.push("اختر إما «تاريخ القيد في جدول الأساتذة» أو «بقي متمرناً حتى نهاية الممارسة»، لا الاثنين.");
     if (c.service.mode === "manual" && !c.service.manual.y && !c.service.manual.m) e.push("أدخل مدة الممارسة الصافية.");
     if (!c.untilMonth) e.push("حدد الشهر الذي تُحسب المستحقات حتى نهايته.");
     if (c.includeAid && !c.joinDate) e.push("أدخل تاريخ الانتساب للنقابة لحساب المعونة.");

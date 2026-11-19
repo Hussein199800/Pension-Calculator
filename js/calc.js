@@ -165,6 +165,7 @@
     // من بقي متمرناً حتى نهاية الممارسة يُعامل كأن تمرينه امتد حتى نهايتها.
     var maxT = sanitizeYears(service.trainingMaxYears, 3);
     var master = parseDate(service.masterDate), trainEnd = null;
+    if (master && service.stillTrainee) return { error: 'لا يمكن الجمع بين «تاريخ القيد في جدول الأساتذة» و«بقي متمرناً حتى نهاية الممارسة»: اختر أحدهما.' };
     if (master && cmp(master, s) > 0) trainEnd = addDays(master, -1);
     else if (!master && service.stillTrainee) trainEnd = e;
     if (trainEnd) {
@@ -199,15 +200,22 @@
       if (last && cmp(x[0], addDays(last[1], 1)) <= 0) { if (cmp(x[1], last[1]) > 0) last[1] = x[1]; }
       else merged.push([x[0], x[1]]);
     });
-    var exDays = merged.reduce(function (a, x) { return a + ymdToDays(spanInclusive(x[0], x[1])); }, 0);
-    var sumRows = rows.reduce(function (a, r) { return a + ymdToDays(r.span); }, 0);
-    if (sumRows > exDays) steps.push('بعض الفترات المستبعدة متداخلة، فطُرحت المدة المشتركة مرة واحدة فقط (' + fmtYMD(daysToYmd(sumRows - exDays)) + ').');
-    var netDays = ymdToDays(gross) - exDays;
-    if (netDays < 0) { warnings.push('مجموع فترات الاستبعاد أكبر من مدة الممارسة.'); netDays = 0; }
-    var net = daysToYmd(netDays);
-    if (rows.length) steps.push('مجموع المدد المستبعدة = ' + fmtYMD(daysToYmd(exDays)) + '، فتكون مدة الممارسة الصافية = ' + fmtYMD(net) + '.');
+    // المدة الصافية بالتقويم الفعلي: تُزاح بداية الممارسة بعدد الأيام المستبعدة فعلياً ثم تُحسب المدة حتى النهاية
+    var exActual = merged.reduce(function (a, x) { return a + Math.round((Date.UTC(x[1].y, x[1].m - 1, x[1].d) - Date.UTC(x[0].y, x[0].m - 1, x[0].d)) / 86400000) + 1; }, 0);
+    var sumRows = rows.reduce(function (a, r) { return a + Math.round((Date.UTC(+r.to.slice(0, 4), +r.to.slice(5, 7) - 1, +r.to.slice(8, 10)) - Date.UTC(+r.from.slice(0, 4), +r.from.slice(5, 7) - 1, +r.from.slice(8, 10))) / 86400000) + 1; }, 0);
+    if (sumRows > exActual) steps.push('بعض الفترات المستبعدة متداخلة، فطُرحت المدة المشتركة مرة واحدة فقط (' + (sumRows - exActual) + ' يوماً).');
+    // تُزاح بداية الممارسة بطول كل فترة مستبعدة بالتقويم (سنوات وأشهر ثم أيام)، فاستبعاد سنتين كاملتين يطرح سنتين بالضبط
+    var effStart = s, endX = addDays(e, 1);
+    merged.forEach(function (x) {
+      var sp = diffYMD(x[0], addDays(x[1], 1));
+      effStart = addDays(addMonths(effStart, sp.y * 12 + sp.m), sp.d);
+    });
+    var net = cmp(effStart, endX) >= 0 ? { y: 0, m: 0, d: 0 } : diffYMD(effStart, endX);
+    if (cmp(effStart, endX) > 0) warnings.push('مجموع فترات الاستبعاد أكبر من مدة الممارسة.');
+    var excludedYmd = diffYMD(s, effStart);
+    if (rows.length) steps.push('مجموع المدد المستبعدة = ' + exActual + ' يوماً (' + fmtYMD(excludedYmd) + ')، فتكون مدة الممارسة الصافية = ' + fmtYMD(net) + '.');
     else steps.push('لا توجد مدد مستبعدة، فمدة الممارسة الصافية = ' + fmtYMD(net) + '.');
-    return { gross: gross, excluded: daysToYmd(exDays), net: net, exclusions: rows, steps: steps, warnings: warnings };
+    return { gross: gross, excluded: excludedYmd, net: net, exclusions: rows, steps: steps, warnings: warnings };
   }
 
   /** تحويل المدة إلى عدد سنوات معتمد حسب طريقة معالجة الكسور */
@@ -264,8 +272,9 @@
       return { amount: amount, category: category, fraction: fraction, steps: steps };
     }
     var dur = typeof Y === 'number' ? daysToYmd(Math.round(Y * 360)) : Y;
-    var days = ymdToDays(dur), upper = s.bracketBoundary === 'upper';
-    function past(n) { return upper ? days >= n * 360 : days > n * 360; }
+    var upper = s.bracketBoundary === 'upper';
+    // مقارنة تقويمية (سنوات، ثم أشهر، ثم أيام) دون تحويل الأشهر إلى أيام
+    function past(n) { return upper ? dur.y >= n : (dur.y > n || (dur.y === n && (dur.m > 0 || dur.d > 0))); }
     if (past(15)) { amount = P; fraction = 'كامل'; category = upper ? 'كامل المعاش (15 سنة فأكثر)' : 'كامل المعاش (أكثر من 15 سنة)'; }
     else if (past(10)) { amount = fl(P * 3 / 4); fraction = '3/4'; category = upper ? 'ثلاثة أرباع المعاش (من 10 إلى أقل من 15 سنة)' : 'ثلاثة أرباع المعاش (أكثر من 10 سنوات حتى 15 سنة)'; }
     else if (past(5)) { amount = fl(P / 2); fraction = '1/2'; category = upper ? 'نصف المعاش (من 5 إلى أقل من 10 سنوات)' : 'نصف المعاش (أكثر من 5 سنوات حتى 10 سنوات)'; }
@@ -309,7 +318,8 @@
    */
   function heirYearEligible(h, year, startISO) {
     var st = parseDate(startISO);
-    return heirEligibleAt(h, year <= st.y ? startISO : year + '-01-01');
+    // من فقد أهليته خلال سنة (حتى لو في 1/1) تتوقف حصته من 1/1 للسنة التي تليها، فيُفحص آخر يوم من السنة السابقة
+    return heirEligibleAt(h, year <= st.y ? startISO : (year - 1) + '-12-31');
   }
   function heirStopFrom(h, startISO, untilYear) {
     var st = parseDate(startISO);
@@ -375,7 +385,7 @@
 
   /** توزيع مبلغ شهري على الحصص مع التقريب لأسفل في كل خطوة كما في الأمثلة */
   function distribute(amount, shares) {
-    if (!shares.totalShares) return { unit: 0, perGroup: [], perHeir: {} };
+    if (!shares.totalShares) return { unit: 0, perGroup: [], perHeir: {}, treasury: 0 };
     var unit = fl(amount / shares.totalShares);
     var perHeir = {};
     var perGroup = shares.groups.map(function (g) {

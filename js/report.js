@@ -137,6 +137,7 @@
         t += '<tr><td>' + (i + 1) + '</td><td>' + esc(x.heir.name || '—') + '</td><td>' + esc(C.REL[x.heir.relation] || '') + '</td><td>' + (a === null ? '—' : a) + '</td><td class="' + (x.eligible ? 'yes">نعم' : 'no">لا') + '</td><td>' + esc(x.reason) + '</td><td>' + (x.stopFrom ? d(x.stopFrom) + '<br><small>' + esc(x.stopReason) + '</small>' : (x.eligible ? 'مستمرة' : '—')) + '</td></tr>';
       });
       h.push('<table>' + t + '</table>');
+      if (!R.shares.totalShares) h.push('<div class="warn">لا يوجد وارث مستحق لمعاش الورثة عند بدء الصرف، فلا يُوزَّع معاش ولا تُحسب حصص (ولا حصة للخزانة لأنها تُحسب مع حصص الورثة).</div>');
       if (R.shares.totalShares) {
         var D = R.distNow;
         h.push('<div class="formula"><ol class="steps">' +
