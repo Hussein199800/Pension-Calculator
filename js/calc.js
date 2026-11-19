@@ -206,16 +206,20 @@
     // المدة الصافية بالتقويم: يُطرح طول كل فترة مستبعدة (بالسنوات والأشهر والأيام) من نهاية الممارسة،
     // بدءاً بالأحدث، ثم تُقاس المدة من تاريخ حلف اليمين. فاستبعاد سنة كاملة يطرح سنة بالضبط،
     // وسقف التمرين لا يضيف يوماً، ولا تتأثر النتيجة بطول الأشهر.
-    var endX = addDays(e, 1), netEnd = endX;
+    var endX = addDays(e, 1), netEnd = endX, netStart = s;
     var grossDays = Math.round((Date.UTC(endX.y, endX.m - 1, endX.d) - Date.UTC(s.y, s.m - 1, s.d)) / 86400000);
-    merged.slice().reverse().forEach(function (x) {
+    var mid = merged.slice();
+    // الفترة الملاصقة لبداية الممارسة أو لنهايتها تُقص بتاريخها نفسه (دون حساب أشهر)، فلا يضيع يوم عند نهايات الأشهر
+    if (mid.length && cmp(mid[0][0], s) === 0) { netStart = addDays(mid[0][1], 1); mid.shift(); }
+    if (mid.length && cmp(addDays(mid[mid.length - 1][1], 1), endX) === 0) { netEnd = mid[mid.length - 1][0]; mid.pop(); }
+    mid.reverse().forEach(function (x) {
       var sp = diffYMD(x[0], addDays(x[1], 1));
       netEnd = addMonths(addDays(netEnd, -sp.d), -(sp.y * 12 + sp.m));
     });
-    if (cmp(netEnd, s) < 0) netEnd = s;
-    var net = diffYMD(s, netEnd);
+    if (cmp(netEnd, netStart) < 0) netEnd = netStart;
+    var net = diffYMD(netStart, netEnd);
     if (exActual > grossDays) warnings.push('مجموع فترات الاستبعاد أكبر من مدة الممارسة.');
-    var excludedYmd = diffYMD(netEnd, endX);
+    var excludedYmd = daysToYmd(Math.max(0, ymdToDays(gross) - ymdToDays(net)));
     if (rows.length) steps.push('مجموع المدد المستبعدة = ' + exActual + ' يوماً (' + fmtYMD(excludedYmd) + ')، فتكون مدة الممارسة الصافية = ' + fmtYMD(net) + '.');
     else steps.push('لا توجد مدد مستبعدة، فمدة الممارسة الصافية = ' + fmtYMD(net) + '.');
     return { gross: gross, excluded: excludedYmd, net: net, exclusions: rows, steps: steps, warnings: warnings };
@@ -555,7 +559,7 @@
       }
     } else {
       steps.push('المحامي منتسب بعد ' + fmtDate(cutoff) + '، فيستحق ورثته معونة نسبية تعادل سنوات ممارسته.');
-      if (c.status === 'retired' && c.receivedRetirementAid) {
+      if (c.status === 'retired' && c.receivedRetirementAid && !c.receivedHalfRetirementAid) {
         // سجل من الإصدار السابق: «قبض معونة التقاعد كاملة» — لا تُصرف معونة وفاة إضافية
         steps.push('سُجّل أن المحامي قبض معونة التقاعد والوفاة كاملة عند تقاعده، فلا تُصرف معونة وفاة إضافية.');
         return { amount: 0, steps: steps, distribution: [] };
@@ -563,6 +567,7 @@
       var yrs = adoptYears(svc.net, s.aidYearMode);
       var Y = Math.min(yrs.years, 30);
       steps.push('مدة الممارسة الصافية ' + fmtYMD(svc.net) + '، و' + yrs.text);
+      // إذا حُدّد الخياران معاً (سجل قديم صُحّح دون إلغاء الخيار القديم) يُعتمد خيار النصف الصريح
       var halfCase = c.status === 'retired' && c.receivedHalfRetirementAid;
       var parts = Y;
       if (halfCase && c.originalType === 'health' && Y < s.healthAidMinParts) {

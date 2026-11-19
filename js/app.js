@@ -390,6 +390,7 @@ function validate(c) {
     if (c.service.mode === "dates" && !c.service.start) e.push("أدخل تاريخ حلف اليمين.");
     if (c.type === "ordinary" && c.reviewDate && c.retirementDate && c.reviewDate < c.retirementDate) e.push("تاريخ مشاهدة مراقب الخزانة يسبق تاريخ قرار الإحالة على التقاعد.");
     if (c.service.mode === "dates" && c.service.masterDate && c.service.start && c.service.masterDate < c.service.start) e.push("تاريخ القيد في جدول الأساتذة يسبق تاريخ حلف اليمين.");
+    if (c.type === "heirs" && c.status === "retired" && c.receivedRetirementAid && c.receivedHalfRetirementAid) e.push("اختر إما «قبض نصف معونة التقاعد» أو «قبض معونة التقاعد كاملة»، لا الاثنين.");
     if (c.service.mode === "dates" && c.service.masterDate && c.service.stillTrainee) e.push("اختر إما «تاريخ القيد في جدول الأساتذة» أو «بقي متمرناً حتى نهاية الممارسة»، لا الاثنين.");
     if (c.service.mode === "manual" && !c.service.manual.y && !c.service.manual.m) e.push("أدخل مدة الممارسة الصافية.");
     if (!c.untilMonth) e.push("حدد الشهر الذي تُحسب المستحقات حتى نهايته.");
@@ -459,7 +460,12 @@ function liveService() {
     if (s.error) { out.textContent = s.error; return; }
     out.textContent = "مدة الممارسة الصافية: " + C.fmtYMD(s.net) + (c.type === "ordinary" ? " ← " + C.adoptYears(s.net, st.pensionYearMode).text : "");
 }
-form.addEventListener("change", function () { refresh(); saveDraft(); });
+form.addEventListener("change", function (e) {
+    /* خيارا قبض المعونة متنافيان: تحديد أحدهما يلغي الآخر */
+    const pair = { receivedHalfRetirementAid: "receivedRetirementAid", receivedRetirementAid: "receivedHalfRetirementAid" };
+    if (e.target && pair[e.target.name] && e.target.checked) form.elements[pair[e.target.name]].checked = false;
+    refresh(); saveDraft();
+});
 form.addEventListener("input", debounce(function () { liveService(); saveDraft(); }, 400));
 function debounce(fn, ms) { let t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
 

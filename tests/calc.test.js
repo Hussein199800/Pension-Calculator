@@ -249,6 +249,19 @@ t('مراجعة 4: سقف التمرين لا يضيف يوماً (حلف 2/1/20
   assert.deepStrictEqual(r.net, { y: 3, m: 0, d: 0 });
   assert.strictEqual(C.adoptYears(r.net, 'ceil').years, 3);
 });
+t('مراجعة 5: تمرين حتى نهاية الممارسة عند نهاية الشهر (31/1/2020 → 27/2/2023) = 3 سنوات', () => {
+  const r = C.computeService({ mode: 'dates', start: '2020-01-31', stillTrainee: true, end: '2023-02-27', trainingMaxYears: 3, exclusions: [] });
+  assert.deepStrictEqual(r.net, { y: 3, m: 0, d: 0 });
+  assert.strictEqual(C.adoptYears(r.net, 'floor').years, 3);
+});
+t('مراجعة 5: استبعاد ملاصق لبداية الممارسة يُقص بتاريخه', () => {
+  const r = C.computeService({ mode: 'dates', start: '2020-01-31', end: '2025-01-30', exclusions: [{ from: '2020-01-31', to: '2020-02-29', reason: 'منع' }] });
+  assert.deepStrictEqual(r.net, C.diffYMD(C.parseDate('2020-03-01'), C.parseDate('2025-01-31')));
+});
+t('مراجعة 5: تحديد الخيارين معاً يُعتمد فيه النصف الصريح', () => {
+  const r = C.deathAid({ status: 'retired', receivedRetirementAid: true, receivedHalfRetirementAid: true, joinDate: '2015-01-01', deathDate: '2026-10-15', heirs: [{ relation: 'spouse' }] }, net(20), S);
+  assert.strictEqual(r.amount, 66666);
+});
 t('مراجعة 4: نهاية الشهر (29/2/2020 حتى 27/2/2025 شاملاً = 5 سنوات)', () => {
   assert.deepStrictEqual(C.spanInclusive(C.parseDate('2020-02-29'), C.parseDate('2025-02-27')), { y: 5, m: 0, d: 0 });
   assert.deepStrictEqual(C.computeService({ mode: 'dates', start: '2020-02-29', end: '2025-02-27', exclusions: [] }).net, { y: 5, m: 0, d: 0 });
