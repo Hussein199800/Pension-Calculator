@@ -216,12 +216,15 @@
     // بطوله الفعلي عند تلك الذكرى؛ فتبقى الذكرى السنوية لتاريخ حلف اليمين محفوظة (ومنها حلف 29/2)
     var G = cmp(netEnd, netStart) > 0 ? diffYMD(netStart, netEnd) : { y: 0, m: 0, d: 0 };
     var M = G.y * 12 + G.m, D = G.d;
+    // كل فترة تُقاس في إطار ذكريات تاريخ البداية نفسه: موضع بدايتها وموضع نهايتها منه، والفرق هو طولها؛
+    // فيكون «الشهر» في الإجمالي وفي الاستبعاد هو الشهر نفسه ولا يضيع يوم ولا يُضاف
     mid.forEach(function (x) {
-      var sp = diffYMD(x[0], addDays(x[1], 1));
-      M -= sp.y * 12 + sp.m; D -= sp.d;
+      var o0 = diffYMD(netStart, x[0]), o1 = diffYMD(netStart, addDays(x[1], 1));
+      M -= (o1.y * 12 + o1.m) - (o0.y * 12 + o0.m); D -= o1.d - o0.d;
     });
     function monthLen(k) { var a = addMonths(netStart, k), b = addMonths(netStart, k + 1); return Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 86400000); }
     while (D < 0 && M > 0) { M -= 1; D += monthLen(M); }
+    while (D < 0 && M <= 0) { D = 0; }
     if (M < 0 || D < 0) { M = 0; D = 0; }
     while (D >= monthLen(M)) { D -= monthLen(M); M += 1; }
     var net = { y: Math.floor(M / 12), m: M % 12, d: D };

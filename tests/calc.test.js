@@ -282,6 +282,11 @@ t('مراجعة 8: حلف 29/2/2008 حتى 27/2/2025 مع استبعاد 2015 = 
   assert.deepStrictEqual(r.gross, { y: 17, m: 0, d: 0 });
   assert.deepStrictEqual(r.net, { y: 16, m: 0, d: 0 });
 });
+t('مراجعة 9: حلف 29/2/2020، قيد أستاذاً وانتهاء في 28/3/2023 = 3 سنوات ويوم', () => {
+  const r = C.computeService({ mode: 'dates', start: '2020-02-29', masterDate: '2023-03-28', end: '2023-03-28', trainingMaxYears: 3, exclusions: [] });
+  assert.deepStrictEqual(r.net, { y: 3, m: 0, d: 1 });
+  assert.strictEqual(C.adoptYears(r.net, 'ceil').years, 4);
+});
 t('مراجعة 4: نهاية الشهر (29/2/2020 حتى 27/2/2025 شاملاً = 5 سنوات)', () => {
   assert.deepStrictEqual(C.spanInclusive(C.parseDate('2020-02-29'), C.parseDate('2025-02-27')), { y: 5, m: 0, d: 0 });
   assert.deepStrictEqual(C.computeService({ mode: 'dates', start: '2020-02-29', end: '2025-02-27', exclusions: [] }).net, { y: 5, m: 0, d: 0 });
