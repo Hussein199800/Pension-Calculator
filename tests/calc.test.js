@@ -213,7 +213,7 @@ t('المختص 8: ابن يبلغ 18 في 15/3/2026 → حصته حتى 31/12/2
 });
 t('المختص 8: ابنة تزوجت (تاريخ توقف) → تتوقف من أول السنة التالية', () => {
   const S2 = C.settingsWith();
-  const h = { relation: 'daughter', married: true, stopDate: '2026-05-10' };
+  const h = { relation: 'daughter', married: true, stopDate: '2026-05-10', stopReason: 'married' };
   assert.ok(C.heirYearEligible(h, 2026, '2026-01-15').ok);
   assert.ok(!C.heirYearEligible(h, 2027, '2026-01-15').ok);
 });
@@ -222,6 +222,23 @@ t('بدء الصرف: مشاهدة 19/10/2026 مع إسقاط الطعن → 19/
   assert.strictEqual(C.computeCase(Object.assign({}, base, { appealWaived: true })).startDate, '2026-10-19');
   assert.strictEqual(C.computeCase(base).startDate, '2026-11-19');
   assert.strictEqual(C.computeCase(Object.assign({}, base, { reviewDate: '' })).startDate, '2026-10-05');
+});
+
+t('مراجعة 2: يوم 31 يُحسب عند حد الشريحة (15 سنة ويوم = كامل)', () => {
+  const r = C.computeCase({ type: 'health', medicalDate: '2026-02-01', untilMonth: '2026-02',
+    service: { mode: 'dates', start: '2011-01-31', end: '2026-01-31', exclusions: [] } });
+  assert.deepStrictEqual(r.service.net, { y: 15, m: 0, d: 1 });
+  assert.strictEqual(r.baseNow.amount, 4000);   // كامل الراتب النافذ في 2/2026 (قبل زيادة 7/2026)
+  const r2 = C.computeCase({ type: 'health', medicalDate: '2026-02-01', untilMonth: '2026-02',
+    service: { mode: 'dates', start: '2011-02-01', end: '2026-01-31', exclusions: [] } });
+  assert.deepStrictEqual(r2.service.net, { y: 15, m: 0, d: 0 });
+  assert.strictEqual(r2.baseNow.amount, 3000);  // ثلاثة أرباع 4000
+});
+t('مراجعة 2: تاريخ التوقف لا يخفي شرطاً مستقلاً (ابنة لها مورد ثم تزوجت)', () => {
+  const h = { relation: 'daughter', hasIncome: true, married: true, stopDate: '2027-05-10', stopReason: 'married' };
+  assert.ok(!C.heirEligibleAt(h, '2026-01-15').ok);
+  const h2 = { relation: 'daughter', married: true, stopDate: '2027-05-10', stopReason: 'married' };
+  assert.ok(C.heirEligibleAt(h2, '2026-01-15').ok);
 });
 
 // ---------- مدة الممارسة

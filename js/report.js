@@ -145,9 +145,10 @@
           '<li>الجدول التالي بقيمة ' + d(R.refDate) + '.</li></ol></div>');
         var g = '<tr><th>الجهة</th><th class="n">عدد الحصص</th><th class="n">المبلغ الشهري</th><th>ملاحظة</th></tr>';
         D.perGroup.forEach(function (x) {
-          var nt = [];
-          if (x.count > 1) nt.push('تقسم بالتساوي على ' + x.count + ': لكل واحد ' + f(x.each) + ' ل.س');
-          if (x.stopped) nt.push(x.stopped === x.count ? 'الحصة متوقفة وتعود للخزانة' : 'توقفت حصة ' + x.stopped + ' منهم وتعود للخزانة');
+          var nt = [], active = x.count - (x.stopped || 0);
+          if (x.stopped === x.count) nt.push('الحصة متوقفة وتعود للخزانة');
+          else if (x.stopped) nt.push('يُصرف حالياً لـ ' + active + ' من ' + x.count + ': لكل واحد ' + f(x.each) + ' ل.س، وحصة ' + x.stopped + ' منهم (' + f(x.each * x.stopped) + ' ل.س) متوقفة وتعود للخزانة');
+          else if (x.count > 1) nt.push('تقسم بالتساوي على ' + x.count + ': لكل واحد ' + f(x.each) + ' ل.س');
           g += '<tr><td>' + esc(x.label) + '</td><td class="n">' + x.shares + '</td><td class="n">' + f(x.amount) + '</td><td>' + nt.join('، ') + '</td></tr>';
         });
         if (R.shares.treasury) g += '<tr><td>خزانة التقاعد</td><td class="n">1</td><td class="n">' + f(D.treasury) + '</td><td>لا تُصرف للورثة' + (D.forfeit ? '، وتشمل ' + f(D.forfeit) + ' ل.س حصصاً متوقفة' : '') + '</td></tr>';

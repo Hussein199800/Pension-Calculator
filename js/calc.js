@@ -90,13 +90,20 @@
   function addYears(d, n) { var y = d.y + n; return { y: y, m: d.m, d: Math.min(d.d, daysInMonth(y, d.m)) }; }
   function addMonths(d, n) { var t = d.y * 12 + (d.m - 1) + n, y = Math.floor(t / 12), m = t % 12 + 1; return { y: y, m: m, d: Math.min(d.d, daysInMonth(y, m)) }; }
 
-  /** الفرق بين تاريخين (end غير مشمول) بالسنوات والأشهر والأيام، بنظام الشهر = 30 يوماً */
+  /**
+   * الفرق بين تاريخين (end غير مشمول) بالسنوات والأشهر والأيام بالتقويم الفعلي:
+   * تُضاف السنوات والأشهر الكاملة إلى تاريخ البداية، ثم تُعدّ الأيام المتبقية فعلياً
+   * (فمن 31/1/2011 حتى 31/1/2026 شاملاً = 15 سنة ويوم).
+   */
   function diffYMD(a, b) {
-    var y = b.y - a.y, m = b.m - a.m, d = b.d - a.d;
-    if (d < 0) { m -= 1; d += 30; }
-    if (m < 0) { y -= 1; m += 12; }
-    if (y < 0) return { y: 0, m: 0, d: 0 };
-    return { y: y, m: m, d: d };
+    if (cmp(b, a) <= 0) return { y: 0, m: 0, d: 0 };
+    var months = (b.y - a.y) * 12 + (b.m - a.m);
+    if (b.d < a.d) months -= 1;
+    if (months < 0) months = 0;
+    var anchor = addMonths(a, months);
+    while (months > 0 && cmp(anchor, b) > 0) { months -= 1; anchor = addMonths(a, months); }
+    var days = Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(anchor.y, anchor.m - 1, anchor.d)) / 86400000);
+    return { y: Math.floor(months / 12), m: months % 12, d: days };
   }
   /** المدة من تاريخ إلى تاريخ شاملة اليومين */
   function spanInclusive(from, to) { return diffYMD(from, addDays(to, 1)); }
@@ -283,6 +290,7 @@
     spouse: 'زوج/زوجة', son: 'ابن', daughter: 'ابنة', father: 'أب', mother: 'أم', sister: 'أخت', brother: 'أخ', other: 'قريب آخر'
   };
 
+  var STOP_FLAGS = { married: 1, hasIncome: 1, remarried: 1 };
   /**
    * أهلية الوارث في تاريخ معين مع «تاريخ توقف الاستحقاق» (زواج، عمل، انتهاء دراسة…):
    * قبل هذا التاريخ تُهمل علامات الزواج/المورد، ومن بعده لا يستحق.
@@ -290,7 +298,8 @@
   function heirEligibleAt(h, refDate) {
     var stop = parseDate(h.stopDate), at = parseDate(refDate);
     if (stop && at && cmp(at, stop) >= 0) return { ok: false, reason: 'توقف استحقاقه بتاريخ ' + fmtDate(stop) + '.' };
-    if (stop) { var hh = clone(h); hh.married = false; hh.hasIncome = false; hh.remarried = false; return heirPensionEligibility(hh, refDate); }
+    // قبل تاريخ التوقف يُهمل الشرط الذي سبّب التوقف فقط (زواج، عمل/مورد، زواج الأرمل/ة)؛ بقية الشروط تبقى كما هي
+    if (stop && STOP_FLAGS[h.stopReason]) { var hh = clone(h); hh[h.stopReason] = false; return heirPensionEligibility(hh, refDate); }
     return heirPensionEligibility(h, refDate);
   }
 
