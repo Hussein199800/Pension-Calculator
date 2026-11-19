@@ -214,7 +214,10 @@
     if (mid.length && cmp(addDays(mid[mid.length - 1][1], 1), endX) === 0) { netEnd = mid[mid.length - 1][0]; mid.pop(); }
     mid.reverse().forEach(function (x) {
       var sp = diffYMD(x[0], addDays(x[1], 1));
-      netEnd = addMonths(addDays(netEnd, -sp.d), -(sp.y * 12 + sp.m));
+      var dd = addDays(netEnd, -sp.d), back = addMonths(dd, -(sp.y * 12 + sp.m));
+      // إذا قُصّ اليوم عند الطرح (29/2 ناقص سنة = 28/2) يُعاد اليوم المقصوص حتى لا يضيع
+      if (dd.d > back.d) back = addDays(back, dd.d - back.d);
+      netEnd = back;
     });
     if (cmp(netEnd, netStart) < 0) netEnd = netStart;
     var net = diffYMD(netStart, netEnd);

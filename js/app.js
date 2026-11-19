@@ -352,7 +352,7 @@ function collect() {
         name: val("name"), fatherName: val("fatherName"), motherName: val("motherName"), birthDate: val("birthDate"), birthPlace: val("birthPlace"),
         nationalId: val("nationalId"), memberNo: val("memberNo"), branch: val("branch"), fileNo: val("fileNo"), phone: val("phone"), address: val("address"),
         type: type, status: status, originalType: val("originalType"),
-        joinDate: val("joinDate"), registrationDecisionDate: legacyRegDecision || val("joinDate"),
+        joinDate: val("joinDate"), registrationDecisionDate: (legacyRegDecision && val("registrationDecisionDate")) || val("joinDate"),
         reRegistration: val("reRegistration"), priorPracticeYears: val("priorPracticeYears"),
         retirementDate: val("retirementDate"), reviewDate: val("reviewDate"), appealWaived: val("appealWaived"), medicalDate: val("medicalDate"),
         occupational: type === "heirs" ? val("occupationalHeirs") : val("occupational"),
@@ -441,6 +441,7 @@ function refresh() {
     });
     $$("#caseForm [data-when]").forEach(function (el) { el.hidden = !val(el.getAttribute("data-when")); });
     if (!legacyPaymentStart || type !== "ordinary") $("#legacyPayWrap").hidden = true;
+    $("#legacyRegWrap").hidden = !legacyRegDecision;
     const mode = val("serviceMode") || "dates";
     $$("#caseForm [data-mode]").forEach(function (el) { el.hidden = el.getAttribute("data-mode") !== mode; });
     $$("[data-mode-btn]").forEach(function (b) { b.classList.toggle("on", b.dataset.modeBtn === mode); });

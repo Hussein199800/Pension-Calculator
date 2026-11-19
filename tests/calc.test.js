@@ -262,6 +262,11 @@ t('مراجعة 5: تحديد الخيارين معاً يُعتمد فيه ال
   const r = C.deathAid({ status: 'retired', receivedRetirementAid: true, receivedHalfRetirementAid: true, joinDate: '2015-01-01', deathDate: '2026-10-15', heirs: [{ relation: 'spouse' }] }, net(20), S);
   assert.strictEqual(r.amount, 66666);
 });
+t('مراجعة 6: استبعاد سنة كاملة مع نهاية 28/2 في سنة كبيسة لا يُضيع يوماً', () => {
+  const r = C.computeService({ mode: 'dates', start: '2008-02-28', end: '2024-02-28', exclusions: [{ from: '2015-01-01', to: '2015-12-31', reason: 'منع' }] });
+  assert.deepStrictEqual(r.gross, { y: 16, m: 0, d: 1 });
+  assert.deepStrictEqual(r.net, { y: 15, m: 0, d: 1 });
+});
 t('مراجعة 4: نهاية الشهر (29/2/2020 حتى 27/2/2025 شاملاً = 5 سنوات)', () => {
   assert.deepStrictEqual(C.spanInclusive(C.parseDate('2020-02-29'), C.parseDate('2025-02-27')), { y: 5, m: 0, d: 0 });
   assert.deepStrictEqual(C.computeService({ mode: 'dates', start: '2020-02-29', end: '2025-02-27', exclusions: [] }).net, { y: 5, m: 0, d: 0 });
