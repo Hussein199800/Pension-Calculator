@@ -120,13 +120,15 @@
                                 <label class="type"><input type="radio" name="type" value="heirs"><span><b>معاش الورثة</b><small>بعد وفاة المحامي (متقاعد أو على رأس عمله)</small></span></label>
                             </div>
                             <div class="grid g3 form-g">
-                                <label class="field"><span>تاريخ الانتساب للنقابة <b class="req">*</b></span><input type="date" name="joinDate"><small class="hint">يحدد نظام المعونة (قبل أو بعد 4/2/2014)</small></label>
-                                <label class="field"><span>تاريخ صدور قرار القيد</span><input type="date" name="registrationDecisionDate"><small class="hint">إن تُرك فارغاً يُعتمد تاريخ الانتساب</small></label>
+                                <label class="field"><span>تاريخ الانتساب (القيد) في النقابة <b class="req">*</b></span><input type="date" name="joinDate"><small class="hint">يحدد نظام المعونة (قبل أو بعد 4/2/2014) وشرط العمر عند القيد</small></label>
+                                <label class="field" id="legacyRegWrap" hidden><span>تاريخ قرار القيد المحفوظ سابقاً</span><input type="date" name="registrationDecisionDate"><small class="hint">من نسخة سابقة: يُستعمل لشرط العمر 45 في المعونة. امسحه لاعتماد تاريخ الانتساب</small></label>
                                 <label class="check"><input type="checkbox" name="reRegistration"> القيد الحالي «إعادة قيد»</label>
                                 <label class="field" data-when="reRegistration"><span>مدة الممارسة الفعلية السابقة (سنوات)</span><input type="number" min="0" step="1" name="priorPracticeYears" class="num-in"></label>
 
                                 <label class="field" data-types="ordinary health" data-also="heirs:retired"><span>تاريخ الإحالة على التقاعد <b class="req">*</b></span><input type="date" name="retirementDate"></label>
-                                <label class="field" data-types="ordinary"><span>تاريخ بدء صرف المعاش</span><input type="date" name="paymentStartDate"><small class="hint">إن تُرك فارغاً يُعتمد تاريخ الإحالة</small></label>
+                                <label class="field" data-types="ordinary"><span>تاريخ مشاهدة مراقب الخزانة لقرار الإحالة</span><input type="date" name="reviewDate"><small class="hint">منه يكتسب القرار الدرجة القطعية ويبدأ الصرف. إن تُرك فارغاً يُعتمد تاريخ الإحالة</small></label>
+                                <label class="field" data-types="ordinary" id="legacyPayWrap" hidden><span>تاريخ بدء الصرف المحفوظ سابقاً</span><input type="date" name="paymentStartDate"><small class="hint">من نسخة سابقة من الحاسبة: يُستعمل فقط إذا لم يُدخل تاريخ المشاهدة. امسحه للرجوع إلى تاريخ الإحالة</small></label>
+                                <label class="check" data-types="ordinary"><input type="checkbox" name="appealWaived"> أُسقط حق الطعن (وإلا يبدأ الصرف بعد شهر من المشاهدة)</label>
                                 <label class="field" data-types="health"><span>تاريخ الخبرة الطبية <b class="req">*</b></span><input type="date" name="medicalDate"><small class="hint">يُصرف المعاش اعتباراً من هذا التاريخ</small></label>
                                 <label class="check" data-types="health"><input type="checkbox" name="occupational"> الإصابة أو الحالة الصحية ناتجة عن المهنة</label>
 
@@ -142,15 +144,17 @@
 
                         <div class="card">
                             <h3><i class="ti ti-hourglass"></i>مدة الممارسة</h3>
-                            <p class="hint-line">تُستبعد: سنوات الشطب، سنوات ترقين القيد، مدة الاستبعاد لعدم دفع الرسوم (م21)، مدة المنع من مزاولة المهنة (م86/ج)، والسنوات غير المثبتة.</p>
+                            <p class="hint-line">تبدأ المدة من تاريخ حلف اليمين، ولا يُحسب من التمرين أكثر من 3 سنوات. وتُستبعد: سنوات الشطب، سنوات ترقين القيد، مدة الاستبعاد لعدم دفع الرسوم (م21)، مدة المنع من مزاولة المهنة (م86/ج)، والسنوات غير المثبتة.</p>
                             <div class="seg" id="serviceSeg" style="margin-bottom:16px">
                                 <button type="button" data-mode-btn="dates" class="on">حساب من التواريخ</button>
                                 <button type="button" data-mode-btn="manual">إدخال المدة الصافية يدوياً</button>
                             </div>
                             <input type="hidden" name="serviceMode" value="dates">
                             <div data-mode="dates">
-                                <div class="grid g2 form-g">
-                                    <label class="field"><span>تاريخ بدء الممارسة المعتمد <b class="req">*</b></span><input type="date" name="serviceStart"></label>
+                                <div class="grid g3 form-g">
+                                    <label class="field"><span>تاريخ حلف اليمين <b class="req">*</b></span><input type="date" name="serviceStart"><small class="hint">منه تبدأ مدة الممارسة</small></label>
+                                    <label class="field"><span>تاريخ القيد في جدول الأساتذة</span><input type="date" name="masterDate"><small class="hint">لا يُحسب من مدة التمرين أكثر من 3 سنوات</small></label>
+                                    <label class="check"><input type="checkbox" name="stillTrainee"> بقي متمرناً حتى نهاية الممارسة (لم يُقيد أستاذاً)</label>
                                     <label class="field"><span>تاريخ نهاية الممارسة</span><input type="date" name="serviceEnd"><small class="hint" id="serviceEndHint">إن تُرك فارغاً: تاريخ الإحالة على التقاعد</small></label>
                                 </div>
                                 <h4 class="sub-title"><i class="ti ti-calendar-minus"></i>المدد المستبعدة</h4>
@@ -186,7 +190,8 @@
                                 <label class="check"><input type="checkbox" name="includeAid" checked> احسب المعونة أيضاً</label>
                                 <label class="check" data-types="ordinary health"><input type="checkbox" name="requestedHalfAid"> أبدى رغبته بقبض نصف المعونة عند تقديم طلب الإحالة (للمنتسبين قبل 4/2/2014)</label>
                                 <label class="check" data-types="heirs" data-status="retired"><input type="checkbox" name="receivedHalfAid"> قبض نصف المعونة عند تقاعده (منتسب قبل 4/2/2014)</label>
-                                <label class="check" data-types="heirs" data-status="retired"><input type="checkbox" name="receivedRetirementAid"> قبض معونة التقاعد عند تقاعده (منتسب بعد 4/2/2014)</label>
+                                <label class="check" data-types="heirs" data-status="retired"><input type="checkbox" name="receivedHalfRetirementAid"> قبض نصف معونة التقاعد عند تقاعده (منتسب بعد 4/2/2014)</label>
+                                <label class="check" data-types="heirs" data-status="retired"><input type="checkbox" name="receivedRetirementAid"> قبض معونة التقاعد كاملة عند تقاعده (سجلات سابقة: لا معونة وفاة إضافية)</label>
                             </div>
                         </div>
 
@@ -270,11 +275,14 @@
                         <div class="grid g2 form-g">
                             <label class="field"><span>تاريخ الفصل بين نظامي المعونة</span><input type="date" id="setCutoff"></label>
                             <label class="field"><span>سقف سنوات الممارسة في المعاش</span><input type="number" id="setMax" min="30" class="num-in"></label>
-                            <label class="field"><span>كسور السنة في المعاش</span>
+                            <label class="field"><span>كسور السنة في التقاعد العادي</span>
                                 <select id="setPYM"><option value="floor">تُهمل (تُعتمد السنوات الكاملة)</option><option value="ceil">جزء السنة = سنة كاملة</option><option value="exact">نسبياً بالأشهر والأيام</option></select></label>
                             <label class="field"><span>كسور السنة في المعونة</span>
                                 <select id="setAYM"><option value="ceil">جزء السنة = سنة كاملة (نص التعميم)</option><option value="floor">تُهمل</option><option value="exact">نسبياً</option></select></label>
-                            <label class="check" style="grid-column:1/-1"><input type="checkbox" id="setTreasury"> حساب حصة لخزانة التقاعد عند توزيع معاش الورثة (كما في أمثلة التعميم)</label>
+                            <label class="field"><span>حدود شرائح التقاعد الصحي ومعاش الورثة</span>
+                                <select id="setBracket"><option value="lower">الحد يدخل في الشريحة الأدنى: 15 بالضبط = ثلاثة أرباع (رأي المختص)</option><option value="upper">الحد يدخل في الشريحة الأعلى: 15 بالضبط = كامل</option></select></label>
+                            <label class="field"><span>أقصى ما يُحسب من مدة التمرين (سنوات)</span><input type="number" id="setTraining" min="0" step="1" class="num-in"></label>
+                            <p class="hint-line" style="grid-column:1/-1;margin:0"><i class="ti ti-lock"></i> حصة واحدة لخزانة التقاعد في معاش الورثة ثابتة دائماً (رأي المختص) ولا تُعطَّل.</p>
                         </div>
                     </div>
                     <div class="row">
@@ -370,6 +378,9 @@
                 <label data-rel="father mother sister"><input type="checkbox" data-k="dependent"> ثبتت الإعالة والحرمان من الموارد</label>
                 <label data-rel="spouse"><input type="checkbox" data-k="remarried"> تزوج/ت بعد الوفاة</label>
                 <label><input type="checkbox" data-k="designated"> مخصَّص له معونة الوفاة بكتاب المحامي</label>
+                <label>توقف استحقاقه بتاريخ <input type="date" data-k="stopDate" style="height:34px;min-width:140px"></label>
+                <label>بسبب <select data-k="stopReason" style="height:34px;min-width:150px">
+                    <option value="other">سبب آخر</option><option value="married">الزواج</option><option value="hasIncome">عمل أو مورد يكفي</option><option value="remarried">زواج الأرمل/ة</option></select></label>
             </td>
             <td><button type="button" class="x" aria-label="حذف"><i class="ti ti-trash"></i></button></td>
         </tr>

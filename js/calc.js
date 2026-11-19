@@ -25,12 +25,15 @@
       { from: '2023-01-01', value: 35000, note: 'عام 2023' },
       { from: '2024-01-01', value: 50000, note: 'عام 2024 من الشهر 1 حتى الشهر 8' },
       { from: '2024-09-01', value: 100000, note: 'من الشهر 9 لعام 2024 حتى 2026' },
-      { from: '2026-07-01', value: 200000, note: 'حسب نص التعميم: من تاريخ 1/7/2026 (الجدول يذكر الشهر 9 – عدّل عند الحاجة)' }
+      { from: '2026-07-01', value: 200000, note: 'من 1/7/2026 (تأكيد المختص 19/11/2026)' }
     ],
     cutoffDate: '2014-02-04',   // تاريخ الفصل بين نظامي المعونة
     fullYears: 30,              // سنوات المعاش الكامل
     maxYears: 45,               // سقف سنوات الممارسة المحسوبة في المعاش
-    pensionYearMode: 'floor',   // كسور السنة في المعاش: floor = تهمل، ceil = تحسب سنة كاملة، exact = نسبياً
+    pensionYearMode: 'floor',   // كسور السنة في المعاش العادي: floor = تهمل (رأي المختص)، ceil = تحسب سنة كاملة، exact = نسبياً
+    bracketBoundary: 'lower',   // شرائح الصحي والورثة: lower = الحد يدخل في الشريحة الأدنى (رأي المختص)، upper = في الأعلى
+    trainingMaxYears: 3,        // أقصى ما يُحسب من مدة التمرين (من حلف اليمين حتى القيد أستاذاً)
+    appealMonths: 1,            // مدة الطعن بقرار الإحالة قبل اكتسابه الدرجة القطعية
     aidYearMode: 'ceil',        // كسور السنة في المعونة: تحسب سنة كاملة (نص التعميم)
     treasuryShare: true,        // حصة لخزانة التقاعد عند توزيع معاش الورثة (حسب أمثلة التعميم)
     healthAidMinParts: 5,       // الحد الأدنى لأجزاء معونة التقاعد الصحي (بعد 2014/2/4)
@@ -45,7 +48,13 @@
     if (s) for (var k in s) if (Object.prototype.hasOwnProperty.call(s, k) && s[k] !== undefined && s[k] !== null && s[k] !== '') out[k] = s[k];
     out.pensionTable = sortTable(out.pensionTable);
     out.aidTable = sortTable(out.aidTable);
+    out.treasuryShare = true; // رأي المختص: حصة الخزانة دائماً (لا تُعطَّل حتى لو حُفظت قيمة قديمة)
+    out.trainingMaxYears = sanitizeYears(out.trainingMaxYears, DEFAULTS.trainingMaxYears);
     return out;
+  }
+  function sanitizeYears(v, def) {
+    var n = +v;
+    return isFinite(n) && n >= 0 && Math.floor(n) === n ? n : def;
   }
   function sortTable(t) { return (t || []).slice().filter(function (r) { return r && r.from && isFinite(+r.value); }).sort(function (a, b) { return a.from < b.from ? -1 : a.from > b.from ? 1 : 0; }); }
 
@@ -78,14 +87,22 @@
     return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate() };
   }
   function endOfMonth(y, m) { return { y: y, m: m, d: daysInMonth(y, m) }; }
+  function addYears(d, n) { var y = d.y + n; return { y: y, m: d.m, d: Math.min(d.d, daysInMonth(y, d.m)) }; }
+  function addMonths(d, n) { var t = d.y * 12 + (d.m - 1) + n, y = Math.floor(t / 12), m = t % 12 + 1; return { y: y, m: m, d: Math.min(d.d, daysInMonth(y, m)) }; }
 
-  /** الفرق بين تاريخين (end غير مشمول) بالسنوات والأشهر والأيام، بنظام الشهر = 30 يوماً */
+  /**
+   * الفرق بين تاريخين (end غير مشمول) بالسنوات والأشهر والأيام بالتقويم الفعلي:
+   * تُضاف السنوات والأشهر الكاملة إلى تاريخ البداية، ثم تُعدّ الأيام المتبقية فعلياً
+   * (فمن 31/1/2011 حتى 31/1/2026 شاملاً = 15 سنة ويوم).
+   */
   function diffYMD(a, b) {
-    var y = b.y - a.y, m = b.m - a.m, d = b.d - a.d;
-    if (d < 0) { m -= 1; d += 30; }
-    if (m < 0) { y -= 1; m += 12; }
-    if (y < 0) return { y: 0, m: 0, d: 0 };
-    return { y: y, m: m, d: d };
+    if (cmp(b, a) <= 0) return { y: 0, m: 0, d: 0 };
+    var months = (b.y - a.y) * 12 + (b.m - a.m);
+    if (months < 0) months = 0;
+    var anchor = addMonths(a, months);  // يُنقص الشهر فقط إذا تجاوز التاريخ الناتج النهاية (29/2/2020 + 60 شهراً = 28/2/2025)
+    while (months > 0 && cmp(anchor, b) > 0) { months -= 1; anchor = addMonths(a, months); }
+    var days = Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(anchor.y, anchor.m - 1, anchor.d)) / 86400000);
+    return { y: Math.floor(months / 12), m: months % 12, d: days };
   }
   /** المدة من تاريخ إلى تاريخ شاملة اليومين */
   function spanInclusive(from, to) { return diffYMD(from, addDays(to, 1)); }
@@ -141,26 +158,80 @@
     if (!s || !e) return { error: 'تاريخ بدء الممارسة أو تاريخ نهايتها غير صحيح' };
     if (cmp(e, s) < 0) return { error: 'تاريخ نهاية الممارسة قبل تاريخ بدايتها' };
     var gross = spanInclusive(s, e);
-    steps.push('المدة الإجمالية من ' + fmtDate(s) + ' حتى ' + fmtDate(e) + ' = ' + fmtYMD(gross) + '.');
-    var exDays = 0, rows = [];
-    (service.exclusions || []).forEach(function (x, i) {
+    steps.push('المدة الإجمالية من تاريخ حلف اليمين ' + fmtDate(s) + ' حتى ' + fmtDate(e) + ' = ' + fmtYMD(gross) + '.');
+    var rows = [], extra = [];
+    // مدة التمرين: من حلف اليمين حتى القيد في جدول الأساتذة، ولا يُحسب منها أكثر من 3 سنوات (رأي المختص).
+    // من بقي متمرناً حتى نهاية الممارسة يُعامل كأن تمرينه امتد حتى نهايتها.
+    var maxT = sanitizeYears(service.trainingMaxYears, 3);
+    var master = parseDate(service.masterDate), trainEnd = null;
+    if (master && service.stillTrainee) return { error: 'لا يمكن الجمع بين «تاريخ القيد في جدول الأساتذة» و«بقي متمرناً حتى نهاية الممارسة»: اختر أحدهما.' };
+    if (master && cmp(master, s) > 0) trainEnd = addDays(master, -1);
+    else if (!master && service.stillTrainee) trainEnd = e;
+    if (trainEnd) {
+      var capEnd = addYears(s, maxT);
+      steps.push(master
+        ? 'مدة التمرين من ' + fmtDate(s) + ' حتى القيد أستاذاً في ' + fmtDate(master) + ' = ' + fmtYMD(spanInclusive(s, trainEnd)) + '.'
+        : 'بقي المحامي متمرناً حتى نهاية الممارسة، فمدة تمرينه = ' + fmtYMD(spanInclusive(s, trainEnd)) + '.');
+      if (cmp(trainEnd, capEnd) >= 0) {
+        extra.push({ from: toISO(capEnd), to: toISO(trainEnd), reason: 'مدة التمرين الزائدة عن ' + maxT + ' سنوات', auto: true });
+        steps.push('لا يُحسب من مدة التمرين إلا ' + maxT + ' سنوات، فيُطرح ما زاد عنها.');
+      } else steps.push('مدة التمرين لا تزيد عن ' + maxT + ' سنوات، فتُحسب كاملة.');
+    }
+    var iv = [];
+    extra.concat(service.exclusions || []).forEach(function (x, i) {
+      var n = x.auto ? 'المحسوبة تلقائياً' : 'رقم ' + (i + 1 - extra.length);
       var f = parseDate(x.from), t = parseDate(x.to);
-      if (!f || !t) { warnings.push('فترة الاستبعاد رقم ' + (i + 1) + ' تواريخها غير مكتملة فتم تجاهلها.'); return; }
-      if (cmp(t, f) < 0) { warnings.push('فترة الاستبعاد رقم ' + (i + 1) + ' تاريخ نهايتها قبل بدايتها فتم تجاهلها.'); return; }
+      if (!f || !t) { warnings.push('فترة الاستبعاد ' + n + ' تواريخها غير مكتملة فتم تجاهلها.'); return; }
+      if (cmp(t, f) < 0) { warnings.push('فترة الاستبعاد ' + n + ' تاريخ نهايتها قبل بدايتها فتم تجاهلها.'); return; }
       // قص الفترة ضمن مدة الممارسة
       var ff = cmp(f, s) < 0 ? s : f, tt = cmp(t, e) > 0 ? e : t;
-      if (cmp(tt, ff) < 0) { warnings.push('فترة الاستبعاد رقم ' + (i + 1) + ' تقع خارج مدة الممارسة فتم تجاهلها.'); return; }
+      if (cmp(tt, ff) < 0) { warnings.push('فترة الاستبعاد ' + n + ' تقع خارج مدة الممارسة فتم تجاهلها.'); return; }
       var span = spanInclusive(ff, tt);
-      exDays += ymdToDays(span);
       rows.push({ from: toISO(ff), to: toISO(tt), reason: x.reason || 'استبعاد', span: span });
+      iv.push([ff, tt]);
       steps.push('تُطرح فترة "' + (x.reason || 'استبعاد') + '" من ' + fmtDate(ff) + ' حتى ' + fmtDate(tt) + ' = ' + fmtYMD(span) + '.');
     });
-    var netDays = ymdToDays(gross) - exDays;
-    if (netDays < 0) { warnings.push('مجموع فترات الاستبعاد أكبر من مدة الممارسة.'); netDays = 0; }
-    var net = daysToYmd(netDays);
-    if (rows.length) steps.push('مجموع المدد المستبعدة = ' + fmtYMD(daysToYmd(exDays)) + '، فتكون مدة الممارسة الصافية = ' + fmtYMD(net) + '.');
+    // اتحاد الفترات: المدة المشتركة بين فترتين تُطرح مرة واحدة فقط
+    iv.sort(function (a, b) { return cmp(a[0], b[0]); });
+    var merged = [];
+    iv.forEach(function (x) {
+      var last = merged[merged.length - 1];
+      if (last && cmp(x[0], addDays(last[1], 1)) <= 0) { if (cmp(x[1], last[1]) > 0) last[1] = x[1]; }
+      else merged.push([x[0], x[1]]);
+    });
+    // المدة الصافية بالتقويم الفعلي: تُزاح بداية الممارسة بعدد الأيام المستبعدة فعلياً ثم تُحسب المدة حتى النهاية
+    var exActual = merged.reduce(function (a, x) { return a + Math.round((Date.UTC(x[1].y, x[1].m - 1, x[1].d) - Date.UTC(x[0].y, x[0].m - 1, x[0].d)) / 86400000) + 1; }, 0);
+    var sumRows = rows.reduce(function (a, r) { return a + Math.round((Date.UTC(+r.to.slice(0, 4), +r.to.slice(5, 7) - 1, +r.to.slice(8, 10)) - Date.UTC(+r.from.slice(0, 4), +r.from.slice(5, 7) - 1, +r.from.slice(8, 10))) / 86400000) + 1; }, 0);
+    if (sumRows > exActual) steps.push('بعض الفترات المستبعدة متداخلة، فطُرحت المدة المشتركة مرة واحدة فقط (' + (sumRows - exActual) + ' يوماً).');
+    // المدة الصافية بالتقويم: يُطرح طول كل فترة مستبعدة (بالسنوات والأشهر والأيام) من نهاية الممارسة،
+    // بدءاً بالأحدث، ثم تُقاس المدة من تاريخ حلف اليمين. فاستبعاد سنة كاملة يطرح سنة بالضبط،
+    // وسقف التمرين لا يضيف يوماً، ولا تتأثر النتيجة بطول الأشهر.
+    var endX = addDays(e, 1), netEnd = endX, netStart = s;
+    var grossDays = Math.round((Date.UTC(endX.y, endX.m - 1, endX.d) - Date.UTC(s.y, s.m - 1, s.d)) / 86400000);
+    var mid = merged.slice();
+    // الفترة الملاصقة لبداية الممارسة أو لنهايتها تُقص بتاريخها نفسه (دون حساب أشهر)، فلا يضيع يوم عند نهايات الأشهر
+    if (mid.length && cmp(mid[0][0], s) === 0) { netStart = addDays(mid[0][1], 1); mid.shift(); }
+    if (mid.length && cmp(addDays(mid[mid.length - 1][1], 1), endX) === 0) { netEnd = mid[mid.length - 1][0]; mid.pop(); }
+    // الفترات الوسطى تُطرح كمدد (أشهر ثم أيام) من المدة المقيسة من تاريخ البداية، وعند الحاجة يُستلف شهر
+    // بطوله الفعلي عند تلك الذكرى؛ فتبقى الذكرى السنوية لتاريخ حلف اليمين محفوظة (ومنها حلف 29/2)
+    var G = cmp(netEnd, netStart) > 0 ? diffYMD(netStart, netEnd) : { y: 0, m: 0, d: 0 };
+    var M = G.y * 12 + G.m, D = G.d;
+    // كل فترة تُقاس في إطار ذكريات تاريخ البداية نفسه: موضع بدايتها وموضع نهايتها منه، والفرق هو طولها؛
+    // فيكون «الشهر» في الإجمالي وفي الاستبعاد هو الشهر نفسه ولا يضيع يوم ولا يُضاف
+    mid.forEach(function (x) {
+      var o0 = diffYMD(netStart, x[0]), o1 = diffYMD(netStart, addDays(x[1], 1));
+      M -= (o1.y * 12 + o1.m) - (o0.y * 12 + o0.m); D -= o1.d - o0.d;
+    });
+    function monthLen(k) { var a = addMonths(netStart, k), b = addMonths(netStart, k + 1); return Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 86400000); }
+    while (D < 0 && M > 0) { M -= 1; D += monthLen(M); }
+    while (D < 0 && M <= 0) { D = 0; }
+    if (M < 0 || D < 0) { M = 0; D = 0; }
+    while (D >= monthLen(M)) { D -= monthLen(M); M += 1; }
+    var net = { y: Math.floor(M / 12), m: M % 12, d: D };
+    if (exActual > grossDays) warnings.push('مجموع فترات الاستبعاد أكبر من مدة الممارسة.');
+    if (rows.length) steps.push('مجموع المدد المستبعدة (دون تكرار المتداخل) = ' + exActual + ' يوماً، فتكون مدة الممارسة الصافية = ' + fmtYMD(net) + '.');
     else steps.push('لا توجد مدد مستبعدة، فمدة الممارسة الصافية = ' + fmtYMD(net) + '.');
-    return { gross: gross, excluded: daysToYmd(exDays), net: net, exclusions: rows, steps: steps, warnings: warnings };
+    return { gross: gross, excludedDays: exActual, net: net, exclusions: rows, steps: steps, warnings: warnings };
   }
 
   /** تحويل المدة إلى عدد سنوات معتمد حسب طريقة معالجة الكسور */
@@ -202,19 +273,30 @@
     return { amount: amount, category: category, steps: steps };
   }
 
-  /** شرائح التقاعد الصحي ومعاش ورثة المتوفى على رأس عمله */
-  function bracketPension(P, Y, occupational, label) {
+  /**
+   * شرائح التقاعد الصحي ومعاش الورثة (المتوفى على رأس عمله).
+   * رأي المختص (19/11/2026): الحد يدخل في الشريحة الأدنى، وكسر السنة يُحسب عند الحدود فقط:
+   * حتى 5 سنوات = الربع، أكثر من 5 حتى 10 = النصف، أكثر من 10 حتى 15 = ثلاثة الأرباع، أكثر من 15 (ولو بيوم) = الكامل.
+   * Y: مدة الممارسة {y,m,d} (أو عدد سنوات).
+   */
+  function bracketPension(P, Y, occupational, label, s) {
+    s = s || DEFAULTS;
     var steps = [], amount, category, fraction;
     if (occupational) {
       amount = P; fraction = 'كامل'; category = 'كامل المعاش (الحالة ناتجة عن المهنة)';
       steps.push('بما أن ' + (label || 'الحالة') + ' ناتجة عن المهنة، يُستحق كامل المعاش مهما بلغت سنوات الممارسة = ' + fmt(P) + ' ل.س.');
       return { amount: amount, category: category, fraction: fraction, steps: steps };
     }
-    if (Y >= 15) { amount = P; fraction = 'كامل'; category = 'كامل المعاش (15 سنة فأكثر)'; }
-    else if (Y >= 10) { amount = fl(P * 3 / 4); fraction = '3/4'; category = 'ثلاثة أرباع المعاش (من 10 إلى أقل من 15 سنة)'; }
-    else if (Y >= 5) { amount = fl(P / 2); fraction = '1/2'; category = 'نصف المعاش (من 5 إلى أقل من 10 سنوات)'; }
-    else { amount = fl(P / 4); fraction = '1/4'; category = 'ربع المعاش (أقل من 5 سنوات)'; }
-    steps.push('سنوات الممارسة المعتمدة = ' + Y + ' سنة، وتقع ضمن شريحة: ' + category + '.');
+    var dur = typeof Y === 'number' ? daysToYmd(Math.round(Y * 360)) : Y;
+    var upper = s.bracketBoundary === 'upper';
+    // مقارنة تقويمية (سنوات، ثم أشهر، ثم أيام) دون تحويل الأشهر إلى أيام
+    function past(n) { return upper ? dur.y >= n : (dur.y > n || (dur.y === n && (dur.m > 0 || dur.d > 0))); }
+    if (past(15)) { amount = P; fraction = 'كامل'; category = upper ? 'كامل المعاش (15 سنة فأكثر)' : 'كامل المعاش (أكثر من 15 سنة)'; }
+    else if (past(10)) { amount = fl(P * 3 / 4); fraction = '3/4'; category = upper ? 'ثلاثة أرباع المعاش (من 10 إلى أقل من 15 سنة)' : 'ثلاثة أرباع المعاش (أكثر من 10 سنوات حتى 15 سنة)'; }
+    else if (past(5)) { amount = fl(P / 2); fraction = '1/2'; category = upper ? 'نصف المعاش (من 5 إلى أقل من 10 سنوات)' : 'نصف المعاش (أكثر من 5 سنوات حتى 10 سنوات)'; }
+    else { amount = fl(P / 4); fraction = '1/4'; category = upper ? 'ربع المعاش (أقل من 5 سنوات)' : 'ربع المعاش (حتى 5 سنوات)'; }
+    steps.push('مدة الممارسة = ' + fmtYMD(dur) + '، وتقع ضمن شريحة: ' + category + '.');
+    if (!upper) steps.push('في الشرائح يدخل الحد في الشريحة الأدنى، وأي زيادة عليه ولو بيوم تنقل إلى الشريحة الأعلى.');
     if (fraction === 'كامل') steps.push('المعاش المستحق = الراتب الكامل = ' + fmt(P) + ' ل.س.');
     else steps.push('المعاش المستحق = ' + fmt(P) + ' × ' + fraction + ' = ' + fmt(amount) + ' ل.س.');
     return { amount: amount, category: category, fraction: fraction, steps: steps };
@@ -232,6 +314,37 @@
   var REL = {
     spouse: 'زوج/زوجة', son: 'ابن', daughter: 'ابنة', father: 'أب', mother: 'أم', sister: 'أخت', brother: 'أخ', other: 'قريب آخر'
   };
+
+  var STOP_FLAGS = { married: 1, hasIncome: 1, remarried: 1 };
+  /**
+   * أهلية الوارث في تاريخ معين مع «تاريخ توقف الاستحقاق» (زواج، عمل، انتهاء دراسة…):
+   * قبل هذا التاريخ تُهمل علامات الزواج/المورد، ومن بعده لا يستحق.
+   */
+  function heirEligibleAt(h, refDate) {
+    var stop = parseDate(h.stopDate), at = parseDate(refDate);
+    if (stop && at && cmp(at, stop) >= 0) return { ok: false, reason: 'توقف استحقاقه بتاريخ ' + fmtDate(stop) + '.' };
+    // قبل تاريخ التوقف يُهمل الشرط الذي سبّب التوقف فقط (زواج، عمل/مورد، زواج الأرمل/ة)؛ بقية الشروط تبقى كما هي
+    if (stop && STOP_FLAGS[h.stopReason]) { var hh = clone(h); hh[h.stopReason] = false; return heirPensionEligibility(hh, refDate); }
+    return heirPensionEligibility(h, refDate);
+  }
+
+  /**
+   * الأهلية سنة بسنة (رأي المختص): تُقدَّر عند بدء الصرف، ثم في أول كل سنة عند تقديم الوثائق السنوية؛
+   * من فقد أهليته تتوقف حصته من أول السنة التالية وتعود حصته لخزانة التقاعد (لا تُوزَّع على الباقين).
+   */
+  function heirYearEligible(h, year, startISO) {
+    var st = parseDate(startISO);
+    // من فقد أهليته خلال سنة (حتى لو في 1/1) تتوقف حصته من 1/1 للسنة التي تليها، فيُفحص آخر يوم من السنة السابقة
+    return heirEligibleAt(h, year <= st.y ? startISO : (year - 1) + '-12-31');
+  }
+  function heirStopFrom(h, startISO, untilYear) {
+    var st = parseDate(startISO);
+    for (var y = st.y + 1; y <= untilYear; y++) {
+      var e = heirYearEligible(h, y, startISO);
+      if (!e.ok) return { from: y + '-01-01', reason: e.reason };
+    }
+    return null;
+  }
 
   /** أهلية الوارث لمعاش الورثة في تاريخ معين */
   function heirPensionEligibility(h, refDate) {
@@ -264,11 +377,12 @@
   }
 
   /** حصص معاش الورثة: 3 حصص للزوجات، حصة لكل ولد، حصة للوالدين، حصة للأخوات + حصة لخزانة التقاعد */
-  function pensionShares(heirs, refDate, s) {
+  function pensionShares(heirs, refDate, s, untilYear) {
     s = s || DEFAULTS;
     var list = (heirs || []).map(function (h, i) {
-      var e = heirPensionEligibility(h, refDate);
-      return { idx: i, heir: h, eligible: e.ok, reason: e.reason };
+      var e = heirEligibleAt(h, refDate);
+      var stop = e.ok && untilYear ? heirStopFrom(h, refDate, untilYear) : null;
+      return { idx: i, heir: h, eligible: e.ok, reason: e.reason, stopFrom: stop ? stop.from : null, stopReason: stop ? stop.reason : '' };
     });
     var elig = list.filter(function (x) { return x.eligible; });
     var spouses = elig.filter(function (x) { return x.heir.relation === 'spouse'; });
@@ -287,14 +401,14 @@
 
   /** توزيع مبلغ شهري على الحصص مع التقريب لأسفل في كل خطوة كما في الأمثلة */
   function distribute(amount, shares) {
-    if (!shares.totalShares) return { unit: 0, perGroup: [], perHeir: {} };
+    if (!shares.totalShares) return { unit: 0, perGroup: [], perHeir: {}, treasury: 0 };
     var unit = fl(amount / shares.totalShares);
     var perHeir = {};
     var perGroup = shares.groups.map(function (g) {
       var gAmount = unit * g.shares;
       var each = fl(gAmount / g.members.length);
       g.members.forEach(function (m) { perHeir[m.idx] = each; });
-      return { key: g.key, label: g.label, shares: g.shares, amount: gAmount, each: each, count: g.members.length };
+      return { key: g.key, label: g.label, shares: g.shares, amount: gAmount, each: each, count: g.members.length, idx: g.members.map(function (m) { return m.idx; }) };
     });
     return { unit: unit, perGroup: perGroup, perHeir: perHeir, treasury: unit * shares.treasury };
   }
@@ -303,7 +417,7 @@
   /**
    * يبني الفترات من تاريخ بدء الصرف حتى نهاية الشهر المحدد،
    * مع إعادة حساب المعاش عند تغير قيمة الراتب الكامل، ودمج الأشهر المتماثلة.
-   * monthlyFn(P) => { total, perHeir? }
+   * monthlyFn(P, date) => { total, perHeir? }
    */
   function buildSchedule(startISO, untilYM, s, monthlyFn) {
     var start = parseDate(startISO);
@@ -315,7 +429,7 @@
     while ((y < until.y || (y === until.y && m <= until.m)) && guard++ < 1200) {
       var dayFrom = first ? start : { y: y, m: m, d: 1 };
       var pv = valueAt(s.pensionTable, dayFrom);
-      var calc = monthlyFn(pv.value);
+      var calc = monthlyFn(pv.value, dayFrom);
       var row;
       if (first && start.d !== 1) {
         var pr = prorate(calc.total, start), perHeir = {};
@@ -326,7 +440,7 @@
         periods.push(row);
       } else {
         var last = periods[periods.length - 1];
-        if (last && !last.partial && last.P === pv.value && last.monthly === calc.total) {
+        if (last && !last.partial && last.P === pv.value && last.monthly === calc.total && JSON.stringify(last.monthlyHeirs) === JSON.stringify(calc.perHeir || null)) {
           last.months += 1; last.to = toISO(endOfMonth(y, m)); last.total += calc.total;
           if (calc.perHeir) for (var k2 in calc.perHeir) last.totalHeirs[k2] += calc.perHeir[k2];
         } else {
@@ -346,7 +460,7 @@
   // ---------------------------------------------------------------- المعونات
   function aidExclusion(c, s) {
     // طالبو القيد بعمر يتجاوز 45 / إعادة القيد بعمر يتجاوز 45 مع ممارسة سابقة أقل من 5 سنوات
-    var age = ageAt(c.birthDate, c.registrationDecisionDate);
+    var age = ageAt(c.birthDate, c.registrationDecisionDate || c.joinDate);
     if (age === null) return null;
     if (!c.reRegistration && age > s.maxAidAgeAtRegistration)
       return 'عمر المحامي بتاريخ صدور قرار قيده كان ' + age + ' سنة، أي تجاوز الخامسة والأربعين، فلا يستفيد من خدمات صندوق معونة التقاعد والوفاة.';
@@ -385,21 +499,23 @@
     }
     steps.push('المحامي منتسب بتاريخ ' + fmtDate(join) + ' أي بعد ' + fmtDate(cutoff) + '، فيُطبق نظام المعونة النسبية.');
     steps.push('مدة الممارسة الصافية ' + fmtYMD(svc.net) + '، و' + yrs.text);
-    var Y = Math.min(yrs.years, 30), amount;
+    var Y = Math.min(yrs.years, 30), full;
     if (isHealth) {
       var parts = Math.max(Y, s.healthAidMinParts);
-      amount = fl(aid * parts / 30);
+      full = fl(aid * parts / 30);
       steps.push('بما أنه أحيل لأسباب صحية: يستحق معونة نسبية بعدد سنوات ممارسته على ألا تقل عن ' + s.healthAidMinParts + ' أجزاء من 30.' + (parts !== Y ? ' سنواته أقل من الحد الأدنى فتُعتمد ' + parts + ' أجزاء.' : ''));
-      steps.push('المعونة = ' + parts + ' × ' + fmt(aid) + ' ÷ 30 = ' + fmt(amount) + ' ل.س.');
-      return { amount: amount, eligible: true, steps: steps, regime: 'post' };
+      steps.push('المعونة النسبية المستحقة = ' + parts + ' × ' + fmt(aid) + ' ÷ 30 = ' + fmt(full) + ' ل.س.');
+    } else {
+      if (age === null || age < 65) {
+        steps.push('لم يتم الخامسة والستين من العمر ولم يُحل لأسباب صحية، فلا يستحق معونة التقاعد حسب التعميم.');
+        return { amount: 0, eligible: false, steps: steps, regime: 'post' };
+      }
+      if (Y >= 30) { full = aid; steps.push('أتم 65 سنة ومارس 30 سنة فأكثر، فالمعونة المستحقة كاملة = ' + fmt(aid) + ' ل.س.'); }
+      else { full = fl(aid * Y / 30); steps.push('أتم 65 سنة ومدة ممارسته أقل من 30 سنة، فالمعونة المستحقة ' + Y + ' جزءاً من 30: ' + Y + ' × ' + fmt(aid) + ' ÷ 30 = ' + fmt(full) + ' ل.س.'); }
     }
-    if (age === null || age < 65) {
-      steps.push('لم يتم الخامسة والستين من العمر ولم يُحل لأسباب صحية، فلا يستحق معونة التقاعد حسب التعميم.');
-      return { amount: 0, eligible: false, steps: steps, regime: 'post' };
-    }
-    if (Y >= 30) { amount = aid; steps.push('أتم 65 سنة ومارس 30 سنة فأكثر، فيستحق كامل المعونة = ' + fmt(aid) + ' ل.س.'); }
-    else { amount = fl(aid * Y / 30); steps.push('أتم 65 سنة ومدة ممارسته أقل من 30 سنة، فيستحق ' + Y + ' جزءاً من 30: ' + Y + ' × ' + fmt(aid) + ' ÷ 30 = ' + fmt(amount) + ' ل.س.'); }
-    return { amount: amount, eligible: true, steps: steps, regime: 'post' };
+    var amount = fl(full / 2);
+    steps.push('يُصرف للمحامي عند التقاعد نصف هذه المعونة = ' + fmt(full) + ' ÷ 2 = ' + fmt(amount) + ' ل.س، ويستحق ورثته النصف الثاني عند الوفاة بقيمة المعونة في سنة الوفاة (رأي المختص).');
+    return { amount: amount, full: full, eligible: true, steps: steps, regime: 'post' };
   }
 
   function deathAidBeneficiaries(c) {
@@ -452,15 +568,27 @@
       }
     } else {
       steps.push('المحامي منتسب بعد ' + fmtDate(cutoff) + '، فيستحق ورثته معونة نسبية تعادل سنوات ممارسته.');
-      if (c.status === 'retired' && c.receivedRetirementAid) {
-        steps.push('قبض المحامي معونة التقاعد والوفاة عند تقاعده (معونة واحدة للتقاعد والوفاة)، فلا تُصرف معونة وفاة إضافية. (يرجى التأكد من سجل الخزانة).');
+      if (c.status === 'retired' && c.receivedRetirementAid && !c.receivedHalfRetirementAid) {
+        // سجل من الإصدار السابق: «قبض معونة التقاعد كاملة» — لا تُصرف معونة وفاة إضافية
+        steps.push('سُجّل أن المحامي قبض معونة التقاعد والوفاة كاملة عند تقاعده، فلا تُصرف معونة وفاة إضافية.');
         return { amount: 0, steps: steps, distribution: [] };
       }
       var yrs = adoptYears(svc.net, s.aidYearMode);
       var Y = Math.min(yrs.years, 30);
       steps.push('مدة الممارسة الصافية ' + fmtYMD(svc.net) + '، و' + yrs.text);
-      amount = fl(Y * aid / 30);
-      steps.push('المعونة = سنوات الممارسة × مقدار المعونة ÷ 30 = ' + Y + ' × ' + fmt(aid) + ' ÷ 30 = ' + fmt(amount) + ' ل.س.');
+      // إذا حُدّد الخياران معاً (سجل قديم صُحّح دون إلغاء الخيار القديم) يُعتمد خيار النصف الصريح
+      var halfCase = c.status === 'retired' && c.receivedHalfRetirementAid;
+      var parts = Y;
+      if (halfCase && c.originalType === 'health' && Y < s.healthAidMinParts) {
+        parts = s.healthAidMinParts;
+        steps.push('أُحيل المحامي على التقاعد لأسباب صحية، فأساس معونته ' + parts + ' أجزاء على الأقل كما حُسبت عند تقاعده.');
+      }
+      var fullD = fl(parts * aid / 30);
+      steps.push('المعونة النسبية = ' + (parts === Y ? 'سنوات الممارسة' : 'عدد الأجزاء') + ' × مقدار المعونة ÷ 30 = ' + parts + ' × ' + fmt(aid) + ' ÷ 30 = ' + fmt(fullD) + ' ل.س.');
+      if (halfCase) {
+        amount = fl(fullD / 2);
+        steps.push('قبض المحامي نصف المعونة عند تقاعده، فيستحق ورثته النصف الثاني بقيمة المعونة في سنة الوفاة = ' + fmt(fullD) + ' ÷ 2 = ' + fmt(amount) + ' ل.س (رأي المختص).');
+      } else amount = fullD;
     }
     var ben = deathAidBeneficiaries(c);
     steps = steps.concat(ben.steps);
@@ -476,6 +604,12 @@
     return { amount: amount, steps: steps, distribution: distribution };
   }
 
+  function BRACKET_TXT(s) {
+    return s.bracketBoundary === 'upper'
+      ? '15 سنة فأكثر = كامل المعاش، من 10 إلى أقل من 15 = ثلاثة أرباع، من 5 إلى أقل من 10 = النصف، أقل من 5 = الربع'
+      : 'حتى 5 سنوات = الربع، أكثر من 5 حتى 10 = النصف، أكثر من 10 حتى 15 = ثلاثة الأرباع، أكثر من 15 (ولو بيوم) = كامل المعاش';
+  }
+
   // ---------------------------------------------------------------- الحساب الكامل لحالة
   /**
    * c = {
@@ -484,13 +618,15 @@
    *   birthDate, joinDate, registrationDecisionDate, reRegistration, priorPracticeYears,
    *   retirementDate, paymentStartDate, medicalDate, occupational, deathDate, deathDuringWork,
    *   service: {...}, heirs: [...], untilMonth: 'YYYY-MM',
-   *   includeAid, requestedHalfAid, receivedHalfAid, receivedRetirementAid
+   *   includeAid, requestedHalfAid, receivedHalfAid (قبل 2014), receivedHalfRetirementAid (بعد 2014),
+   *   receivedRetirementAid (سجل قديم: قبض المعونة كاملة), reviewDate, appealWaived, service.masterDate, service.stillTrainee
    * }
    */
   function computeCase(c, settings) {
     var s = settingsWith(settings);
     var R = { type: c.type, warnings: [], errors: [], settings: s };
-    var svc = computeService(c.service);
+    var svcIn = clone(c.service || {}); svcIn.trainingMaxYears = s.trainingMaxYears;
+    var svc = computeService(svcIn);
     if (svc.error) { R.errors.push(svc.error); return R; }
     R.service = svc;
     R.warnings = R.warnings.concat(svc.warnings);
@@ -500,14 +636,24 @@
     var startISO, baseFn, basis = [], label;
     if (c.type === 'ordinary') {
       label = 'تقاعد عادي';
-      startISO = c.paymentStartDate || c.retirementDate;
       baseFn = function (P) { return ordinaryPension(P, yrs.years, s); };
-      basis.push('المعاش العادي: 30 سنة = معاش كامل، أقل من 30 = معاش جزئي بنسبة السنوات، أكثر من 30 = معاش كامل مع علاوة عن السنوات الزائدة، وسقف السنوات المحسوبة ' + s.maxYears + ' سنة.');
+      basis.push('المعاش العادي: 30 سنة = معاش كامل، أقل من 30 = معاش جزئي بنسبة السنوات، أكثر من 30 = معاش كامل مع علاوة عن السنوات الزائدة، وسقف السنوات المحسوبة ' + s.maxYears + ' سنة. ' + (s.pensionYearMode === 'ceil' ? 'ويُحسب جزء السنة سنة كاملة (حسب الإعدادات).' : s.pensionYearMode === 'exact' ? 'وتُحسب كسور السنة نسبياً بالأشهر والأيام (حسب الإعدادات).' : 'ويُهمل كسر السنة وتُعتمد السنوات الكاملة.'));
+      var rv = parseDate(c.reviewDate), rd = parseDate(c.retirementDate);
+      if (rv && rd && cmp(rv, rd) < 0) { R.errors.push('تاريخ مشاهدة مراقب الخزانة (' + fmtDate(rv) + ') يسبق تاريخ قرار الإحالة على التقاعد (' + fmtDate(rd) + ').'); return R; }
+      if (rv) {
+        var fin = c.appealWaived ? rv : addMonths(rv, s.appealMonths);
+        startISO = toISO(fin);
+        basis.push('يُصرف المعاش من تاريخ اكتساب قرار الإحالة الدرجة القطعية، لا من تاريخ صدوره. شاهد مراقب الخزانة القرار في ' + fmtDate(rv) +
+          (c.appealWaived ? ' وأُسقط حق الطعن، فاكتسب القرار الدرجة القطعية في التاريخ نفسه ' + fmtDate(fin) + '.' : '، ولم يُسقط حق الطعن، فيكتسب الدرجة القطعية بعد مدة الطعن (' + s.appealMonths + ' شهر) في ' + fmtDate(fin) + '.'));
+      } else {
+        startISO = c.paymentStartDate || c.retirementDate;
+        basis.push('لم يُدخل تاريخ مشاهدة مراقب الخزانة للقرار، فيُعتمد ' + (c.paymentStartDate ? 'تاريخ بدء الصرف المدخل ' : 'تاريخ الإحالة ') + fmtDate(startISO) + ' لبدء الصرف.');
+      }
     } else if (c.type === 'health') {
       label = 'تقاعد صحي';
       startISO = c.medicalDate;
-      baseFn = function (P) { return bracketPension(P, yrs.years, !!c.occupational, 'الإصابة أو الحالة الصحية'); };
-      basis.push('التقاعد الصحي: 15 سنة فأكثر = كامل المعاش، من 10 إلى أقل من 15 = ثلاثة أرباع، من 5 إلى أقل من 10 = النصف، أقل من 5 = الربع، وإذا كانت الحالة ناتجة عن المهنة = كامل المعاش.');
+      baseFn = function (P) { return bracketPension(P, svc.net, !!c.occupational, 'الإصابة أو الحالة الصحية', s); };
+      basis.push('التقاعد الصحي: ' + BRACKET_TXT(s) + '، وإذا كانت الحالة ناتجة عن المهنة = كامل المعاش.');
       basis.push('يُصرف المعاش اعتباراً من تاريخ الخبرة الطبية الصادرة عن الفرع أو النقابة المركزية.');
     } else if (c.type === 'heirs') {
       var death = parseDate(c.deathDate);
@@ -515,15 +661,16 @@
       startISO = toISO(addDays(death, 1));
       if (c.status === 'retired') {
         label = 'معاش ورثة محامٍ متقاعد';
-        if (c.originalType === 'health') baseFn = function (P) { return bracketPension(P, yrs.years, !!c.occupational, 'الحالة الصحية للمورث'); };
+        if (c.originalType === 'health') baseFn = function (P) { return bracketPension(P, svc.net, !!c.occupational, 'الحالة الصحية للمورث', s); };
         else baseFn = function (P) { return ordinaryPension(P, yrs.years, s); };
         basis.push('معاش ورثة المتقاعد: يوزع معاش المحامي المتقاعد نفسه على المستحقين من ورثته.');
       } else {
         label = 'معاش ورثة محامٍ متوفى على رأس عمله';
-        baseFn = function (P) { return bracketPension(P, yrs.years, !!c.deathDuringWork, 'الوفاة (أثناء المرافعة أو بسبب المهنة)'); };
-        basis.push('معاش ورثة المتوفى على رأس عمله: أكثر من 15 سنة = كامل، من 10 إلى 15 = ثلاثة أرباع، من 5 إلى 10 = النصف، أقل من 5 = الربع، وإذا حدثت الوفاة أثناء المرافعة أو بسبب المهنة = كامل المعاش.');
+        baseFn = function (P) { return bracketPension(P, svc.net, !!c.deathDuringWork, 'الوفاة (أثناء المرافعة أو بسبب المهنة)', s); };
+        basis.push('معاش ورثة المتوفى على رأس عمله: ' + BRACKET_TXT(s) + '، وإذا حدثت الوفاة أثناء المرافعة أو بسبب المهنة = كامل المعاش.');
       }
-      basis.push('يبدأ صرف معاش الورثة من اليوم التالي للوفاة. التوزيع: 3 حصص للزوجة/الزوجات أو الزوج، حصة لكل ولد مستحق، حصة للوالدين، حصة للأخوات' + (s.treasuryShare ? '، وحصة لخزانة التقاعد (حسب أمثلة التعميم).' : '.'));
+      basis.push('يبدأ صرف معاش الورثة من اليوم التالي للوفاة. التوزيع: 3 حصص للزوجة/الزوجات أو الزوج، حصة لكل ولد مستحق، حصة للوالدين، حصة للأخوات' + '، وحصة واحدة لخزانة التقاعد دائماً مهما كان عدد الورثة.');
+      basis.push('تُراجع أهلية الورثة سنوياً عند تقديم الوثائق: من فقد أهليته تتوقف حصته من أول السنة التالية وتعود حصته لخزانة التقاعد ولا تُوزَّع على الباقين.');
     } else { R.errors.push('نوع الحالة غير معروف'); return R; }
     R.label = label;
     R.basis = basis;
@@ -541,20 +688,35 @@
     R.baseStart = baseFn(Pstart);
 
     if (c.type === 'heirs') {
-      var sh = pensionShares(c.heirs, refDate, s);
+      var untilY = parseDate(refDate).y;
+      var sh = pensionShares(c.heirs, startISO, s, untilY);
       R.shares = sh;
       if (!sh.heirShares) R.warnings.push('لا يوجد ورثة مستحقون لمعاش الورثة حسب البيانات المدخلة.');
-      R.distNow = distribute(R.baseNow.amount, sh);
-      R.schedule = buildSchedule(startISO, c.untilMonth, s, function (P) {
-        var b = baseFn(P), d = distribute(b.amount, sh);
-        return { total: sumObj(d.perHeir), perHeir: d.perHeir };
-      });
-      // تنبيه على تغير الأهلية خلال المدة
-      (c.heirs || []).forEach(function (h) {
-        if (h.relation === 'son' && !h.disabled) {
-          var a0 = ageAt(h.birth, startISO), a1 = ageAt(h.birth, refDate);
-          if (a0 !== null && a1 !== null && a0 < 18 && a1 >= 18) R.warnings.push('الابن ' + (h.name || '') + ' أتم 18 سنة خلال فترة الحساب؛ الأهلية محسوبة بتاريخ ' + fmtDate(refDate) + ' ويجب مراجعة الأشهر السابقة لبلوغه يدوياً.');
+      var yearCache = {};
+      var heirsInYear = function (year) {
+        if (!yearCache[year]) {
+          var ok = {};
+          sh.list.forEach(function (x) { ok[x.idx] = x.eligible && heirYearEligible(x.heir, year, startISO).ok; });
+          yearCache[year] = ok;
         }
+        return yearCache[year];
+      };
+      var distAt = function (amount, year) {
+        var d = distribute(amount, sh), ok = heirsInYear(year), per = {}, forfeit = 0;
+        for (var k in d.perHeir) { if (ok[k]) per[k] = d.perHeir[k]; else { per[k] = 0; forfeit += d.perHeir[k]; } }
+        d.perHeir = per; d.forfeit = forfeit; d.treasury += forfeit;
+        // لقطة واحدة: مبلغ كل مجموعة بعد التوقف، والحصص المتوقفة تظهر في الخزانة فقط
+        d.perGroup.forEach(function (g) {
+          g.stopped = g.idx.filter(function (k) { return !ok[k]; }).length;
+          g.amount = g.idx.reduce(function (a, k) { return a + per[k]; }, 0);
+        });
+        return d;
+      };
+      R.distNow = distAt(R.baseNow.amount, untilY);
+      R.distStart = distAt(R.baseStart.amount, parseDate(startISO).y);
+      R.schedule = buildSchedule(startISO, c.untilMonth, s, function (P, d) {
+        var dd = distAt(baseFn(P).amount, d.y);
+        return { total: sumObj(dd.perHeir), perHeir: dd.perHeir };
       });
     } else {
       R.schedule = buildSchedule(startISO, c.untilMonth, s, function (P) { return { total: baseFn(P).amount }; });
@@ -608,7 +770,7 @@
     ageAt: ageAt, valueAt: valueAt, diffYMD: diffYMD, spanInclusive: spanInclusive,
     computeService: computeService, adoptYears: adoptYears,
     ordinaryPension: ordinaryPension, bracketPension: bracketPension, prorate: prorate,
-    heirPensionEligibility: heirPensionEligibility, pensionShares: pensionShares, distribute: distribute,
+    heirPensionEligibility: heirPensionEligibility, heirEligibleAt: heirEligibleAt, heirYearEligible: heirYearEligible, addMonths: addMonths, addYears: addYears, pensionShares: pensionShares, distribute: distribute,
     buildSchedule: buildSchedule, retirementAid: retirementAid, deathAid: deathAid,
     computeCase: computeCase, tafqit: tafqit, amountWords: amountWords
   };
