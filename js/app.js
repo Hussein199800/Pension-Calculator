@@ -13,7 +13,9 @@ const C = window.PensionCalc, Rp = window.PensionReport;
 const APP_VERSION = "3.0.0";
 const KEY_CASES = "pc.cases.v1", KEY_SET = "pc.settings.v1", KEY_DRAFT = "pc.draft.v1", KEY_USERS = "pc.users.v1", KEY_SESSION = "pc_session", KEY_THEME = "pc_theme";
 /* مفاتيح قسم الرسوم (جديدة، منفصلة عن حالات التقاعد) */
-const KEY_FEES = "pc.fees.v1", KEY_FDRAFT = "pc.feesDraft.v1";
+const KEY_FEES = "pc.fees.v1", KEY_FDRAFT = "pc.feesDraft.v1", KEY_FSET = "pc.feeSettings.v1";
+/* إعدادات طباعة تقرير التقاعد (جديدة v3، منفصلة عن إعدادات الرسوم) */
+const KEY_PPRINT = "pc.pensionPrint.v1";
 const BACKUP_FORMAT = "pension-calculator-backup", BACKUP_VERSION = 1;
 
 /* =========================================================
@@ -207,8 +209,10 @@ async function changePassword() {
    ========================================================= */
 const PAGES = {
     calc: { title: "حاسبة الراتب التقاعدي", group: "الراتب التقاعدي" }, report: { title: "تقرير التقاعد", group: "الراتب التقاعدي" }, cases: { title: "حالات التقاعد", group: "الراتب التقاعدي" },
+    settings: { title: "إعدادات التقاعد", group: "الراتب التقاعدي" },
     fcalc: { title: "حاسبة الرسوم", group: "الانتساب والرسوم" }, freport: { title: "تقرير الرسوم", group: "الانتساب والرسوم" }, fcases: { title: "حسابات الرسوم", group: "الانتساب والرسوم" },
-    help: { title: "الشرح", group: "عام" }, settings: { title: "الإعدادات والقيم", group: "عام" }, backup: { title: "النسخ الاحتياطي", group: "عام" }
+    fsettings: { title: "إعدادات الرسوم", group: "الانتساب والرسوم" },
+    help: { title: "الشرح", group: "عام" }, backup: { title: "النسخ الاحتياطي", group: "عام" }
 };
 let current = "calc";
 function go(sec) {
@@ -265,6 +269,43 @@ $(".side-foot").addEventListener("click", async function (e) {
    الإعدادات والقيم
    ========================================================= */
 function getSettings() { return load(KEY_SET, null) || { org: "" }; }
+
+/* ---------- محرر التوقيعات (يستعمله القسمان، وكل قسم يحفظ توقيعاته في مفتاحه) ---------- */
+function signEditor(box, list) {
+    box.innerHTML = '<div class="table-wrap"><table class="edit"><thead><tr><th>الصفة</th><th>الاسم</th><th></th></tr></thead><tbody></tbody></table></div>' +
+        '<button type="button" class="btn sm" data-sign-add style="margin-top:10px"><i class="ti ti-plus"></i>إضافة توقيع</button>' +
+        '<p class="hint-line" style="margin:8px 0 0">الاسم الثابت الفارغ يترك خطاً للتوقيع باليد. «من الحاسبة» يأخذ الاسم المكتوب في حقل منظم التقرير أو المدقق.</p>';
+    const tb = box.querySelector("tbody");
+    function row(x) {
+        x = x || { title: "", src: "fixed", name: "" };
+        const tr = document.createElement("tr");
+        tr.innerHTML = '<td><input data-k="title" placeholder="مثال: رئيس الفرع"></td>' +
+            '<td><div class="sign-name"><select data-k="src"><option value="fixed">اسم ثابت</option><option value="preparer">من الحاسبة: منظم التقرير</option><option value="reviewer">من الحاسبة: المدقق</option></select><input data-k="name" placeholder="فارغ = خط للكتابة باليد"></div></td>' +
+            '<td class="sign-ops"><button type="button" class="x up" aria-label="أعلى" data-sign-up><i class="ti ti-arrow-up"></i></button><button type="button" class="x" aria-label="حذف" data-sign-del><i class="ti ti-trash"></i></button></td>';
+        tr.querySelector("[data-k=title]").value = x.title || "";
+        tr.querySelector("[data-k=src]").value = x.src || "fixed";
+        tr.querySelector("[data-k=name]").value = x.name || "";
+        const upd = function () { tr.querySelector("[data-k=name]").hidden = tr.querySelector("[data-k=src]").value !== "fixed"; };
+        tr.querySelector("[data-k=src]").onchange = upd; upd();
+        tb.appendChild(tr);
+    }
+    (list || []).forEach(row);
+    box.onclick = function (e) {
+        if (e.target.closest("[data-sign-add]")) row();
+        const tr = e.target.closest("tr");
+        if (tr && e.target.closest("[data-sign-del]")) tr.remove();
+        if (tr && e.target.closest("[data-sign-up]") && tr.previousElementSibling) tr.parentNode.insertBefore(tr, tr.previousElementSibling);
+    };
+}
+function readSigns(box) {
+    return $$("tbody tr", box).map(function (tr) {
+        const src = $("[data-k=src]", tr).value;
+        return { title: $("[data-k=title]", tr).value.trim(), src: src, name: src === "fixed" ? $("[data-k=name]", tr).value.trim() : "" };
+    }).filter(function (x) { return x.title || x.name || x.src !== "fixed"; });
+}
+/* طباعة تقرير التقاعد: حجم الخط والنص الختامي والتوقيعات. الغائب = الشكل السابق تماماً */
+function pensionPrint() { return load(KEY_PPRINT, null) || {}; }
+function rptMeta() { const pp = pensionPrint(); return { org: getSettings().org, fontSize: pp.fontSize || "", footer: pp.footer || "", signs: pp.signs || null }; }
 function effSettings() { const s = getSettings(), o = {}; for (const k in s) if (k !== "org") o[k] = s[k]; return o; }
 function addValRow(id, r) {
     const tr = $("#valRow").content.firstElementChild.cloneNode(true);
@@ -279,6 +320,9 @@ function readValTable(id) {
 function fillSettings() {
     const s = C.settingsWith(effSettings()), raw = getSettings();
     $("#setOrg").value = raw.org || "";
+    const pp = pensionPrint();
+    $("#pFont").value = pp.fontSize || ""; $("#pFooter").value = pp.footer || "";
+    signEditor($("#pSigns"), pp.signs || Rp.PENSION_SIGNS);
     $("#pensionTbl tbody").innerHTML = ""; s.pensionTable.forEach(function (r) { addValRow("pensionTbl", r); });
     $("#aidTbl tbody").innerHTML = ""; s.aidTable.forEach(function (r) { addValRow("aidTbl", r); });
     $("#setCutoff").value = s.cutoffDate; $("#setMax").value = s.maxYears;
@@ -296,11 +340,12 @@ $("#saveSettings").onclick = function () {
     };
     if (!s.pensionTable.length || !s.aidTable.length) { toast("يجب إدخال قيمة واحدة على الأقل للمعاش وللمعونة.", "bad"); return; }
     if (!(Number.isInteger(s.trainingMaxYears) && s.trainingMaxYears >= 0)) { toast("أقصى مدة تمرين يجب أن تكون عدداً صحيحاً من السنوات (0 أو أكثر).", "bad"); $("#setTraining").focus(); return; }
-    if (store(KEY_SET, s)) toast("حُفظت الإعدادات", "ok"); else toast("تعذر الحفظ في هذا المتصفح.", "bad");
+    const pp = { fontSize: $("#pFont").value, footer: $("#pFooter").value.trim(), signs: readSigns($("#pSigns")) };
+    if (store(KEY_SET, s) && store(KEY_PPRINT, pp)) toast("حُفظت إعدادات التقاعد", "ok"); else toast("تعذر الحفظ في هذا المتصفح.", "bad");
     if (lastCase) rerender();
 };
 $("#resetSettings").onclick = async function () {
-    if (!await confirmBox("استعادة القيم الافتراضية", "ستعود جداول القيم وقواعد الحساب إلى ما ورد في التعاميم. اسم الجهة يبقى كما هو.", "استعادة")) return;
+    if (!await confirmBox("استعادة القيم الافتراضية", "ستعود جداول القيم وقواعد الحساب إلى ما ورد في التعاميم. اسم الجهة وإعدادات الطباعة تبقى كما هي.", "استعادة")) return;
     store(KEY_SET, { org: getSettings().org || "" }); fillSettings(); toast("استُعيدت القيم الافتراضية", "ok");
 };
 
@@ -399,7 +444,7 @@ function compute(c) {
 function rerender() {
     if (!lastCase) return;
     const out = compute(lastCase);
-    if (out.R) { lastResult = out.R; $("#report").innerHTML = Rp.render(lastCase, out.R, { org: getSettings().org }); }
+    if (out.R) { lastResult = out.R; $("#report").innerHTML = Rp.render(lastCase, out.R, rptMeta()); }
 }
 form.addEventListener("submit", function (e) {
     e.preventDefault();
@@ -407,7 +452,7 @@ form.addEventListener("submit", function (e) {
     if (out.errors) { showErrors(out.errors); return; }
     showErrors([]);
     lastCase = c; lastResult = out.R;
-    $("#report").innerHTML = Rp.render(c, out.R, { org: getSettings().org });
+    $("#report").innerHTML = Rp.render(c, out.R, rptMeta());
     $("#reportEmpty").hidden = true; $("#reportBox").hidden = false;
     go("report");
     toast("أُنشئ التقرير", "ok", 2500);
@@ -541,7 +586,7 @@ $("#casesList").addEventListener("click", async function (e) {
         const out = compute(collect());
         if (out.errors) { go("calc"); showErrors(out.errors); return; }
         lastCase = collect(); lastResult = out.R;
-        $("#report").innerHTML = Rp.render(lastCase, out.R, { org: getSettings().org });
+        $("#report").innerHTML = Rp.render(lastCase, out.R, rptMeta());
         $("#reportEmpty").hidden = true; $("#reportBox").hidden = false; go("report");
     }
     if (d) {
@@ -581,7 +626,7 @@ function renderBackupInfo() {
     $("#backupInfo").innerHTML = "على هذا الجهاز <b>" + n + "</b> حالة تقاعد و<b>" + nf + "</b> حساب رسوم محفوظ." + (last ? " آخر نسخة احتياطية: " + new Date(last).toLocaleString("ar-SY", { dateStyle: "medium", timeStyle: "short" }) + "." : " لم تُحمَّل أي نسخة احتياطية بعد.");
 }
 function downloadBackup() {
-    const data = { format: BACKUP_FORMAT, version: BACKUP_VERSION, app: "pension-calculator", appVersion: APP_VERSION, exportedAt: new Date().toISOString(), cases: load(KEY_CASES, []), settings: getSettings(), fees: load(KEY_FEES, []) };
+    const data = { format: BACKUP_FORMAT, version: BACKUP_VERSION, app: "pension-calculator", appVersion: APP_VERSION, exportedAt: new Date().toISOString(), cases: load(KEY_CASES, []), settings: getSettings(), fees: load(KEY_FEES, []), pensionPrint: load(KEY_PPRINT, null), feeSettings: load(KEY_FSET, null) };
     const d = new Date(), stamp = d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
     download("نسخة احتياطية - حاسبة المحامي - " + stamp + ".json", JSON.stringify(data, null, 2), "application/json");
     lsSet("pc.lastBackup", d.toISOString()); renderBackupInfo();
@@ -595,8 +640,12 @@ $("#restoreInput").addEventListener("change", function (e) {
         let data;
         try { data = JSON.parse(rd.result); } catch (err) { toast("الملف ليس نسخة احتياطية صالحة.", "bad"); return; }
         /* يقبل: نسخة احتياطية كاملة، أو ملف حالة واحدة صُدِّر من الإصدار الأول */
-        let incoming = [], settings = null, incomingFees = [];
-        if (data && data.format === BACKUP_FORMAT && Array.isArray(data.cases)) { incoming = data.cases; settings = data.settings || null; incomingFees = Array.isArray(data.fees) ? data.fees : []; }
+        let incoming = [], settings = null, incomingFees = [], pPrint = null, fSet = null;
+        if (data && data.format === BACKUP_FORMAT && Array.isArray(data.cases)) {
+            incoming = data.cases; settings = data.settings || null; incomingFees = Array.isArray(data.fees) ? data.fees : [];
+            pPrint = data.pensionPrint && typeof data.pensionPrint === "object" ? data.pensionPrint : null;
+            fSet = data.feeSettings && typeof data.feeSettings === "object" ? data.feeSettings : null;
+        }
         else if (data && data.case && data.case.type) incoming = [data.case];
         else if (data && data.type && data.service) incoming = [data];
         else { toast("الملف ليس نسخة احتياطية صالحة.", "bad"); return; }
@@ -611,8 +660,9 @@ $("#restoreInput").addEventListener("change", function (e) {
             else if ((c.savedAt || "") > (old.savedAt || "")) { list[list.indexOf(old)] = c; byId[c.id] = c; updated++; }
             else kept++;
         });
-        let useSettings = false;
-        if (settings && await confirmBox("استيراد الإعدادات؟", "تحتوي النسخة على إعدادات (جداول القيم وقواعد الحساب). هل تريد اعتمادها بدل الإعدادات الحالية؟", "اعتماد إعدادات النسخة")) useSettings = true;
+        let useSettings = false, useFeeSet = false;
+        if ((settings || pPrint) && await confirmBox("استيراد إعدادات التقاعد؟", "تحتوي النسخة على إعدادات قسم الراتب التقاعدي (جداول القيم وقواعد الحساب والطباعة). هل تريد اعتمادها بدل الحالية؟", "اعتماد إعدادات التقاعد")) useSettings = true;
+        if (fSet && await confirmBox("استيراد إعدادات الرسوم؟", "تحتوي النسخة على إعدادات قسم الرسوم (الجداول والطباعة). هل تريد اعتمادها بدل الحالية؟", "اعتماد إعدادات الرسوم")) useFeeSet = true;
         list.sort(function (a, b) { return (b.savedAt || "") > (a.savedAt || "") ? 1 : -1; });
         /* حسابات الرسوم: القاعدة نفسها (إضافة/تحديث بالمعرّف، والأحدث يفوز، ولا حذف) */
         const flist = load(KEY_FEES, []), fById = {};
@@ -626,7 +676,9 @@ $("#restoreInput").addEventListener("change", function (e) {
         });
         flist.sort(function (a, b) { return (b.savedAt || "") > (a.savedAt || "") ? 1 : -1; });
         if (!store(KEY_CASES, list) || !store(KEY_FEES, flist)) { toast("تعذر الحفظ في هذا المتصفح.", "bad"); return; }
-        if (useSettings) store(KEY_SET, settings);
+        if (useSettings && settings) store(KEY_SET, settings);
+        if (useSettings && pPrint) store(KEY_PPRINT, pPrint);
+        if (useFeeSet) store(KEY_FSET, fSet);
         renderBackupInfo();
         toast("اكتمل الاستيراد: أُضيفت " + added + "، حُدّثت " + updated + "، بقيت " + kept + " كما هي (الأحدث محفوظ)." +
             (incomingFees.length ? " حسابات الرسوم: أُضيف " + fAdded + " وحُدّث " + fUpdated + "." : ""), "ok", 6000);

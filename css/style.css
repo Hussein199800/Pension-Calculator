@@ -1004,3 +1004,26 @@ details.how li { margin: 4px 0; }
 }
 /* لا شريط سفلي بعد الآن: شريط الأزرار اللاصق ينزل إلى أسفل الشاشة */
 .sticky-actions { bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+
+/* ---------- الإعدادات المنفصلة لكل قسم: محرر التوقيعات وشبكة جداول الرسوم ---------- */
+.sign-name { display: flex; gap: 8px; flex-wrap: wrap; }
+.sign-name select { flex: 1 1 170px; }
+.sign-name input { flex: 1 1 170px; }
+.sign-ops { white-space: nowrap; }
+.sign-ops .x + .x { margin-inline-start: 6px; }
+.x.up { border-color: var(--line-strong); color: var(--text-2); }
+.fee-grid { min-width: 860px; }
+.fee-grid th { font-size: var(--fs-xs); white-space: normal; }
+.fee-grid td { padding: 3px 4px; }
+.fee-grid input { min-width: 64px; width: 100%; height: 34px; padding: 4px 6px; text-align: center; font-variant-numeric: tabular-nums; }
+.fee-grid .sum-cell { font-weight: 700; color: var(--accent-text); white-space: nowrap; }
+input.bad { border-color: var(--danger) !important; background: var(--danger-bg) !important; }
+#fsAnnual input { max-width: 160px; }
+.sign-ops .x { display: inline-grid; vertical-align: middle; }
+@media (max-width: 640px) {
+    .sign-editor table, .sign-editor tbody, .sign-editor tr, .sign-editor td { display: block; width: 100%; }
+    .sign-editor thead { display: none; }
+    .sign-editor tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .sign-editor td { padding: 4px 0 !important; border: 0 !important; }
+    .sign-editor .table-wrap { overflow: visible; border: 0; }
+}

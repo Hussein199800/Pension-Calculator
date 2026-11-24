@@ -39,24 +39,27 @@
             "<li>من كان عمره عند القيد <b>فوق 45</b> لا يستفيد من صندوق المعونة.</li></ul>")
     ].join("");
 
+    let D = F.DEFAULTS, DATA = null;
     function feeTableHTML(year) {
-        const ages = []; for (let a = 30; a <= 50; a++) ages.push(a);
-        const cols = F.COLS.filter(function (c) { return c[0] !== "exam" || F.TABLES[year].exam; });
+        const ages = F.AGES;
+        const cols = F.COLS.filter(function (c) { return c[0] !== "exam" || ages.some(function (a) { return D.TABLES[year].rows[a].exam; }); });
         return '<div class="table-wrap"><table class="fee-tbl small"><thead><tr><th>العمر</th>' + cols.map(function (c) { return "<th>" + c[1] + "</th>"; }).join("") + '<th>المجموع</th></tr></thead><tbody>' +
             ages.map(function (a) {
-                const r = F.tableRow(year, a); let s = 0;
+                const r = F.tableRow(year, a, DATA); let s = 0;
                 return "<tr><td>" + a + "</td>" + cols.map(function (c) { s += r[c[0]]; return '<td class="n">' + (c[0] === "death" && a > 45 ? "—" : fmt(r[c[0]])) + "</td>"; }).join("") + '<td class="n"><b>' + fmt(s) + "</b></td></tr>";
             }).join("") + "</tbody></table></div>";
     }
-    const annualRows = Object.keys(F.ANNUAL).map(function (y) {
-        return "<tr><td>" + y + '</td><td class="n">' + fmt(F.ANNUAL[y]) + '</td><td class="n">' + fmt(F.ANNUAL_OVER45[y] || F.ANNUAL[y]) + "</td></tr>";
+    function feesHTML() {
+    const X = D.flat, n = fmt;
+    const annualRows = Object.keys(D.ANNUAL).map(function (y) {
+        return "<tr><td>" + y + '</td><td class="n">' + fmt(D.ANNUAL[y]) + '</td><td class="n">' + fmt(y in D.ANNUAL_OVER45 ? D.ANNUAL_OVER45[y] : D.ANNUAL[y]) + "</td></tr>";
     }).join("");
-
-    const fees = [
+    const last = D.TABLE_YEARS[D.TABLE_YEARS.length - 1];
+    return [
         sec("user-plus", "الانتساب الجديد",
             "<ol><li><b>العمر</b> = تاريخ الانتساب − تاريخ الميلاد. <b>أي كسر يرفعه لسنة</b>: 30 سنة ويوم = سطر 31. دون 30 يأخذ سطر 30.</li>" +
             "<li>من تجاوز <b>50</b> لا يحق له التسجيل إلا بظرف خاص: يُحسب على سطر 50 ويظهر تنبيه.</li>" +
-            "<li><b>الجدول</b>: جدول سنة الانتساب نفسها، وإن لم يوجد <b>فالجدول الذي بعدها</b> لا الذي قبلها. الجداول المتوفرة: " + F.TABLE_YEARS.join("، ") + ".</li>" +
+            "<li><b>الجدول</b>: جدول سنة الانتساب نفسها، وإن لم يوجد <b>فالجدول الذي بعدها</b> لا الذي قبلها. الجداول المتوفرة: " + D.TABLE_YEARS.join("، ") + ".</li>" +
             "<li>يُؤخذ من سطر العمر كل البنود <b>ما عدا الرسم السنوي</b>، ثم يُضاف <b>الرسم السنوي لكل سنة</b> من سنة الانتساب حتى سنة النهاية.</li>" +
             "<li><b>سنة النهاية</b>: قيده سارٍ ← السنة الحالية. مرقّن ← سنة الترقين. متوفى ← سنة الوفاة. وضع آخر ← سنة تكتبها. والسنة نفسها محسوبة.</li>" +
             "<li>معونة الوفاة تُدفع لمن عمره <b>45 فما دون</b>. ومن انتسب فوق 45 رسمه السنوي أقل لأنه لا يدفع حصة الوفاة.</li>" +
@@ -64,26 +67,33 @@
             ex("منتسب في 10/3/2019 ومولود في 1/6/1985: عمره 33 سنة و9 أشهر ← سطر 34. لا يوجد جدول 2019 فيُعتمد جدول 2020 بلا رسمه السنوي، ثم الرسم السنوي لكل سنة: 2019 (145) و2020 (155) و2021 (400) و2022 (650) و2023 (750) و2024 (750) و2025 (750) و2026 (5,000).")),
         sec("refresh", "إعادة القيد والحالات الأخرى",
             '<div class="table-wrap"><table class="fee-tbl"><thead><tr><th>الحالة</th><th>الرسوم</th></tr></thead><tbody>' +
-            "<tr><td>مشطوب أمني</td><td>الرسم السنوي لكل سنة من 2011 حتى سنة قرار إعادة القيد. الهوية والإجازة والشارة اختيارية.</td></tr>" +
-            "<tr><td>مشطوب إداري</td><td>نقابة 20,000 + تقاعد 20,000 + معونة وفاة 2,500 (إن كان عمره يوم القرار 45 فما دون) + 2,500 عن كل سنة انقطاع + مطبوعات 1,000 + تثبيت ممارسة 1,000. والهوية والإجازة والشارة اختيارية.</td></tr>" +
+            "<tr><td>مشطوب أمني</td><td>الرسم السنوي لكل سنة من " + X.securityFrom + " حتى سنة قرار إعادة القيد. الهوية والإجازة والشارة اختيارية.</td></tr>" +
+            "<tr><td>مشطوب إداري</td><td>نقابة " + n(X.admUnion) + " + تقاعد " + n(X.admPension) + " + معونة وفاة " + n(X.deathAid) + " (إن كان عمره يوم القرار 45 فما دون) + " + n(X.gapYear) + " عن كل سنة انقطاع + مطبوعات " + n(X.prints) + " + تثبيت ممارسة " + n(X.practice) + ". والهوية والإجازة والشارة اختيارية.</td></tr>" +
             "<tr><td>ترقين بطلب المحامي</td><td>رسم سنة الترقين وكل رسم سابق غير مدفوع، لأنه يجب أن يكون بريء الذمة.</td></tr>" +
-            "<tr><td>إعادة قيد بعد الترقين</td><td>نقابة 10,000 + تقاعد 10,000 + معونة وفاة 2,500 (بشرط العمر نفسه) + 2,500 عن كل سنة انقطاع + مطبوعات 1,000 + تثبيت ممارسة 1,000. والهوية والإجازة والشارة اختيارية.</td></tr>" +
-            "<tr><td>مُغفَل</td><td>نقابة 3,000 + تقاعد 7,000 + كل الرسوم السنوية غير المدفوعة بعد آخر سنة دفعها.</td></tr>" +
-            "<tr><td>نقل من فرع لآخر</td><td>نقابة 5,000 + تقاعد 5,000، بشرط براءة الذمة.</td></tr>" +
-            "<tr><td>نقل متمرن إلى الأساتذة</td><td>نقابة 1,000 + تقاعد 2,000 + رسم إجازة 1,000 + هوية 1,000 + ثمن إجازة 50 = 5,050.</td></tr>" +
+            "<tr><td>إعادة قيد بعد الترقين</td><td>نقابة " + n(X.reUnion) + " + تقاعد " + n(X.rePension) + " + معونة وفاة " + n(X.deathAid) + " (بشرط العمر نفسه) + " + n(X.gapYear) + " عن كل سنة انقطاع + مطبوعات " + n(X.prints) + " + تثبيت ممارسة " + n(X.practice) + ". والهوية والإجازة والشارة اختيارية.</td></tr>" +
+            "<tr><td>مُغفَل</td><td>نقابة " + n(X.omUnion) + " + تقاعد " + n(X.omPension) + " + كل الرسوم السنوية غير المدفوعة بعد آخر سنة دفعها.</td></tr>" +
+            "<tr><td>نقل من فرع لآخر</td><td>نقابة " + n(X.trfUnion) + " + تقاعد " + n(X.trfPension) + "، بشرط براءة الذمة.</td></tr>" +
+            "<tr><td>نقل متمرن إلى الأساتذة</td><td>نقابة " + n(X.tmUnion) + " + تقاعد " + n(X.tmPension) + " + رسم إجازة " + n(X.tmLicenseFee) + " + هوية " + n(X.tmId) + " + ثمن إجازة " + n(X.tmLicensePrice) + " = " + n(X.tmUnion + X.tmPension + X.tmLicenseFee + X.tmId + X.tmLicensePrice) + ".</td></tr>" +
             "<tr><td>معفى من التمرين</td><td>قيد الدراسة.</td></tr></tbody></table></div>" +
             "<p><b>سنوات الانقطاع</b> تُحسب من تاريخ الشطب أو الترقين حتى قرار إعادة القيد، وأي جزء من سنة = سنة، ويمكنك تعديل العدد يدوياً.</p>" +
-            ex("مشطوب إداري في 1/1/2022، وأُعيد قيده في 1/2/2025، وعمره 40: الانقطاع 3 سنوات وشهر ← 4 سنوات. المجموع: 20,000 + 20,000 + 2,500 + (4 × 2,500) + 1,000 + 1,000 = 54,500.")),
+            ex("مشطوب إداري في 1/1/2022، وأُعيد قيده في 1/2/2025، وعمره 40: الانقطاع 3 سنوات وشهر ← 4 سنوات. المجموع: " + n(X.admUnion) + " + " + n(X.admPension) + " + " + n(X.deathAid) + " + (4 × " + n(X.gapYear) + ") + " + n(X.prints) + " + " + n(X.practice) + " = " + n(X.admUnion + X.admPension + X.deathAid + 4 * X.gapYear + X.prints + X.practice) + ".")),
         sec("calendar-dollar", "الرسم السنوي لكل سنة (ل.س — العملة الجديدة)",
             '<div class="table-wrap"><table class="fee-tbl small"><thead><tr><th>السنة</th><th>حتى 45</th><th>من انتسب فوق 45</th></tr></thead><tbody>' + annualRows + "</tbody></table></div>" +
-            '<p class="muted">السنوات 2011–2019 بالمبلغ نفسه للجميع. وما بعد 2026 يُحسب برسم 2026 مع تنبيه حتى يُضاف الجدول الجديد.</p>'),
+            '<p class="muted">السنوات التي لا جدول انتساب لها بالمبلغ نفسه للجميع ما لم يُحدَّد غير ذلك. وما بعد ' + D.LAST + " يُحسب برسم " + D.LAST + " مع تنبيه حتى تُضاف السنة الجديدة في «إعدادات الرسوم».</p>"),
         sec("table", "جدول رسوم الانتساب حسب العمر",
-            '<div class="seg help-years" id="helpYears">' + F.TABLE_YEARS.map(function (y, i) { return '<button type="button" data-hy="' + y + '"' + (i === F.TABLE_YEARS.length - 1 ? ' class="on"' : "") + ">" + y + "</button>"; }).join("") + "</div>" +
-            '<div id="helpYearTable">' + feeTableHTML(F.TABLE_YEARS[F.TABLE_YEARS.length - 1]) + "</div>")
+            '<div class="seg help-years" id="helpYears">' + D.TABLE_YEARS.map(function (y) { return '<button type="button" data-hy="' + y + '"' + (y === last ? ' class="on"' : "") + ">" + y + "</button>"; }).join("") + "</div>" +
+            '<div id="helpYearTable">' + feeTableHTML(last) + "</div>")
     ].join("");
+    }
 
-    $("#helpPension").innerHTML = pension;
-    $("#helpFees").innerHTML = fees;
+    function render() {
+        DATA = window.FeesUI ? window.FeesUI.settings().data || null : null;
+        D = F.dataWith(DATA);
+        $("#helpPension").innerHTML = pension;
+        $("#helpFees").innerHTML = feesHTML();
+    }
+    window.HelpUI = { render: render };
+    render();
     $("#helpSeg").addEventListener("click", function (e) {
         const b = e.target.closest("[data-help]"); if (!b) return;
         $$("#helpSeg button").forEach(function (x) { x.classList.toggle("on", x === b); });

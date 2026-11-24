@@ -12,50 +12,103 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  /* ---------- البيانات ---------- */
+  /* ---------- البيانات الافتراضية (بالعملة الجديدة) ----------
+     يستطيع المستخدم تعديلها من «إعدادات الرسوم» (pc.feeSettings.v1)، والمحفوظ يُدمج فوق هذه القيم
+     بدالة dataWith. لا تُعدَّل هذه القيم في الكود إلا بطلب صريح من المالك يذكر الرقم ومصدره. */
 
   /* الرسم السنوي لكل سنة (الورقة السنوية) */
-  var ANNUAL = { 2011: 60, 2012: 60, 2013: 105, 2014: 105, 2015: 135, 2016: 135, 2017: 135, 2018: 145, 2019: 145, 2020: 155, 2021: 400, 2022: 650, 2023: 750, 2024: 750, 2025: 750, 2026: 5000 };
+  var DEF_ANNUAL = { 2011: 60, 2012: 60, 2013: 105, 2014: 105, 2015: 135, 2016: 135, 2017: 135, 2018: 145, 2019: 145, 2020: 155, 2021: 400, 2022: 650, 2023: 750, 2024: 750, 2025: 750, 2026: 5000 };
   /* الرسم السنوي لمن انتسب بعمر فوق 45 (لا يستفيد من معونة الوفاة): من سطور 46–50 في جدول السنة.
-     2025 = 600 (قرار المالك)، و2011–2019 مثل غيره (المبلغ نفسه). */
-  var ANNUAL_OVER45 = { 2020: 130, 2021: 300, 2022: 500, 2023: 600, 2024: 600, 2025: 600, 2026: 4000 };
+     2025 = 600 (قرار المالك)، و2011–2019 مثل غيره (المبلغ نفسه، فلا سطر لها هنا). */
+  var DEF_OVER45 = { 2020: 130, 2021: 300, 2022: 500, 2023: 600, 2024: 600, 2025: 600, 2026: 4000 };
 
   /* بنود جدول الانتساب بالترتيب */
   var COLS = [
     ['union', 'قيد النقابة'], ['pension', 'قيد التقاعد'], ['annual', 'الرسم السنوي'], ['practice', 'دفتر أو تثبيت ممارسة'],
     ['id', 'الهوية'], ['badge', 'الشارة'], ['prints', 'المطبوعات'], ['death', 'معونة الوفاة'], ['exam', 'رسم الامتحان']
   ];
+  var AGES = []; for (var _a = 30; _a <= 50; _a++) AGES.push(_a);
   function ramp(parts) { /* parts: [[startValue, step, count], ...] متتابعة */
     var out = []; parts.forEach(function (p) { for (var i = 0; i < p[2]; i++) out.push(p[0] + p[1] * i); }); return out;
   }
-  /* لكل جدول: from = بداية النفاذ (للعرض)، والقيم الثابتة، وعمود قيد التقاعد والوفاة حسب العمر 30..50 */
-  var TABLES = {
-    2020: { from: '2020-07-01', union: 150, annual: [155, 130], practice: 50, id: 50, badge: 10, prints: 10, exam: 0,
-      pension: ramp([[250, 50, 11], [900, 150, 5], [1750, 250, 5]]), death: ramp([[200, 30, 11], [550, 50, 5]]) },
-    2021: { from: '2021-01-01', union: 250, annual: [400, 300], practice: 50, id: 50, badge: 20, prints: 20, exam: 0,
-      pension: ramp([[300, 100, 11], [1500, 200, 5], [2800, 500, 5]]), death: ramp([[350, 100, 11], [1500, 150, 5]]) },
-    2022: { from: '2022-01-01', union: 250, annual: [650, 500], practice: 50, id: 100, badge: 50, prints: 50, exam: 0,
-      pension: ramp([[400, 150, 11], [2150, 250, 5], [3650, 500, 5]]), death: ramp([[450, 150, 11], [2150, 200, 5]]) },
-    2023: { from: '2023-09-17', union: 250, annual: [750, 600], practice: 50, id: 250, badge: 250, prints: 50, exam: 100,
-      pension: ramp([[400, 150, 11], [2150, 250, 5], [3650, 500, 5]]), death: ramp([[450, 150, 11], [2150, 200, 5]]) },
-    2024: { from: '2024-09-01', union: 500, annual: [750, 600], practice: 250, id: 250, badge: 500, prints: 250, exam: 250,
-      pension: ramp([[750, 250, 11], [3650, 400, 4], [5600, 750, 6]]), death: ramp([[750, 250, 11], [3650, 400, 4], [5250, 0, 1]]) },
-    2026: { from: '2026-01-01', union: 5000, annual: [5000, 4000], practice: 1000, id: 1000, badge: 1000, prints: 1000, exam: 2000,
-      pension: ramp([[15000, 1500, 11], [32000, 2000, 4], [40500, 2500, 6]]), death: ramp([[4000, 250, 16]]) }
+  /* كل جدول يُبنى سطراً سطراً (العمر 30..50 × البنود)، ومعونة الوفاة صفر فوق 45 */
+  function build(from, k, pension, death) {
+    var rows = {};
+    AGES.forEach(function (age, i) {
+      rows[age] = { union: k.union, pension: pension[i], annual: k.annual[age > 45 ? 1 : 0], practice: k.practice, id: k.id, badge: k.badge, prints: k.prints, death: age <= 45 ? death[i] : 0, exam: k.exam };
+    });
+    return { from: from, rows: rows };
+  }
+  var DEF_TABLES = {
+    2020: build('2020-07-01', { union: 150, annual: [155, 130], practice: 50, id: 50, badge: 10, prints: 10, exam: 0 },
+      ramp([[250, 50, 11], [900, 150, 5], [1750, 250, 5]]), ramp([[200, 30, 11], [550, 50, 5]])),
+    2021: build('2021-01-01', { union: 250, annual: [400, 300], practice: 50, id: 50, badge: 20, prints: 20, exam: 0 },
+      ramp([[300, 100, 11], [1500, 200, 5], [2800, 500, 5]]), ramp([[350, 100, 11], [1500, 150, 5]])),
+    2022: build('2022-01-01', { union: 250, annual: [650, 500], practice: 50, id: 100, badge: 50, prints: 50, exam: 0 },
+      ramp([[400, 150, 11], [2150, 250, 5], [3650, 500, 5]]), ramp([[450, 150, 11], [2150, 200, 5]])),
+    2023: build('2023-09-17', { union: 250, annual: [750, 600], practice: 50, id: 250, badge: 250, prints: 50, exam: 100 },
+      ramp([[400, 150, 11], [2150, 250, 5], [3650, 500, 5]]), ramp([[450, 150, 11], [2150, 200, 5]])),
+    2024: build('2024-09-01', { union: 500, annual: [750, 600], practice: 250, id: 250, badge: 500, prints: 250, exam: 250 },
+      ramp([[750, 250, 11], [3650, 400, 4], [5600, 750, 6]]), ramp([[750, 250, 11], [3650, 400, 4], [5250, 0, 1]])),
+    2026: build('2026-01-01', { union: 5000, annual: [5000, 4000], practice: 1000, id: 1000, badge: 1000, prints: 1000, exam: 2000 },
+      ramp([[15000, 1500, 11], [32000, 2000, 4], [40500, 2500, 6]]), ramp([[4000, 250, 16]]))
   };
-  var TABLE_YEARS = Object.keys(TABLES).map(Number).sort();
 
-  /* رسوم ثابتة لحالات إعادة القيد والنقل */
-  var FIXED = {
-    admStruck: { union: 20000, pension: 20000 },
-    reCancel: { union: 10000, pension: 10000 },
-    omitted: { union: 3000, pension: 7000 },
-    transfer: { union: 5000, pension: 5000 },
-    deathAid: 2500, gapYear: 2500, prints: 1000, practice: 1000,
-    optional: { id: ['الهوية', 1000], license: ['إجازة المحاماة', 1000], badge: ['شارة الصدر', 1000] },
-    trainee: [['قيد النقابة', 1000], ['قيد التقاعد', 2000], ['رسم إجازة المحاماة', 1000], ['الهوية', 1000], ['ثمن إجازة المحاماة', 50]],
-    securityFrom: 2011
-  };
+  /* رسوم ثابتة لحالات إعادة القيد والنقل (مسطّحة ليسهل تعديلها من الإعدادات) */
+  var FIXED_FIELDS = [
+    ['admUnion', 'مشطوب إداري: رسم النقابة', 20000], ['admPension', 'مشطوب إداري: رسم التقاعد', 20000],
+    ['reUnion', 'إعادة قيد بعد الترقين: رسم النقابة', 10000], ['rePension', 'إعادة قيد بعد الترقين: رسم التقاعد', 10000],
+    ['omUnion', 'مُغفَل: رسم النقابة', 3000], ['omPension', 'مُغفَل: رسم التقاعد', 7000],
+    ['trfUnion', 'النقل من فرع لآخر: رسم النقابة', 5000], ['trfPension', 'النقل من فرع لآخر: رسم التقاعد', 5000],
+    ['deathAid', 'رسم معونة الوفاة عند إعادة القيد', 2500], ['gapYear', 'عن كل سنة انقطاع', 2500],
+    ['prints', 'المطبوعات (إعادة القيد)', 1000], ['practice', 'تثبيت ممارسة (إعادة القيد)', 1000],
+    ['optId', 'اختياري: الهوية', 1000], ['optLicense', 'اختياري: إجازة المحاماة', 1000], ['optBadge', 'اختياري: شارة الصدر', 1000],
+    ['tmUnion', 'متمرن إلى الأساتذة: قيد النقابة', 1000], ['tmPension', 'متمرن إلى الأساتذة: قيد التقاعد', 2000],
+    ['tmLicenseFee', 'متمرن إلى الأساتذة: رسم إجازة المحاماة', 1000], ['tmId', 'متمرن إلى الأساتذة: الهوية', 1000],
+    ['tmLicensePrice', 'متمرن إلى الأساتذة: ثمن إجازة المحاماة', 50],
+    ['securityFrom', 'المشطوب الأمني يدفع الرسوم السنوية اعتباراً من سنة', 2011]
+  ];
+
+  function isAmount(v) { return typeof v === 'number' && isFinite(v) && v >= 0; }
+  /* يدمج إعدادات المستخدم فوق القيم الافتراضية، ويتجاهل أي قيمة غير صالحة (فيبقى الافتراضي) */
+  function dataWith(over) {
+    over = over || {};
+    var annual = {}, over45 = {}, tables = {}, flat = {}, k;
+    for (k in DEF_ANNUAL) annual[k] = DEF_ANNUAL[k];
+    for (k in DEF_OVER45) over45[k] = DEF_OVER45[k];
+    if (over.annual) for (k in over.annual) { if (/^\d{4}$/.test(k)) { if (over.annual[k] === null) delete annual[k]; else if (isAmount(over.annual[k])) annual[k] = over.annual[k]; } }
+    if (over.over45) for (k in over.over45) { if (/^\d{4}$/.test(k)) { if (over.over45[k] === null) delete over45[k]; else if (isAmount(over.over45[k])) over45[k] = over.over45[k]; } }
+    for (k in DEF_TABLES) tables[k] = DEF_TABLES[k];
+    if (over.tables) for (k in over.tables) {
+      var t = over.tables[k];
+      if (!/^\d{4}$/.test(k)) continue;
+      if (t === null) { delete tables[k]; continue; }
+      var ok = t && t.rows && AGES.every(function (a) { var r = t.rows[a]; return r && COLS.every(function (c) { return isAmount(r[c[0]]); }); });
+      if (ok) tables[k] = t;
+    }
+    if (!Object.keys(tables).length) tables = DEF_TABLES;
+    if (!Object.keys(annual).length) annual = DEF_ANNUAL;
+    FIXED_FIELDS.forEach(function (f) { var v = over.fixed && over.fixed[f[0]]; flat[f[0]] = isAmount(v) ? v : f[2]; });
+    var years = Object.keys(annual).map(Number).sort(function (a, b) { return a - b; });
+    return {
+      ANNUAL: annual, ANNUAL_OVER45: over45, TABLES: tables, flat: flat,
+      TABLE_YEARS: Object.keys(tables).map(Number).sort(function (a, b) { return a - b; }),
+      FIRST: years[0], LAST: years[years.length - 1],
+      FIXED: {
+        admStruck: { union: flat.admUnion, pension: flat.admPension },
+        reCancel: { union: flat.reUnion, pension: flat.rePension },
+        omitted: { union: flat.omUnion, pension: flat.omPension },
+        transfer: { union: flat.trfUnion, pension: flat.trfPension },
+        deathAid: flat.deathAid, gapYear: flat.gapYear, prints: flat.prints, practice: flat.practice,
+        optional: { id: ['الهوية', flat.optId], license: ['إجازة المحاماة', flat.optLicense], badge: ['شارة الصدر', flat.optBadge] },
+        trainee: [['قيد النقابة', flat.tmUnion], ['قيد التقاعد', flat.tmPension], ['رسم إجازة المحاماة', flat.tmLicenseFee], ['الهوية', flat.tmId], ['ثمن إجازة المحاماة', flat.tmLicensePrice]],
+        securityFrom: flat.securityFrom
+      }
+    };
+  }
+  var DEF = dataWith(null);
+  var D = DEF; /* البيانات النافذة أثناء الحساب الجاري (الحساب متزامن، فتُعاد إلى الافتراضي بعده) */
+  function using(data, fn) { var prev = D; D = data ? dataWith(data) : DEF; try { return fn(); } finally { D = prev; } }
 
   var KINDS = {
     new: 'انتساب جديد',
@@ -99,8 +152,9 @@
 
   /* الجدول: جدول السنة نفسها، وإلا الجدول الذي بعدها (لا الذي قبلها) */
   function pickTable(year) {
-    for (var i = 0; i < TABLE_YEARS.length; i++) if (TABLE_YEARS[i] >= year) return { year: TABLE_YEARS[i], exact: TABLE_YEARS[i] === year, beyond: false };
-    return { year: TABLE_YEARS[TABLE_YEARS.length - 1], exact: false, beyond: true };
+    var Y = D.TABLE_YEARS;
+    for (var i = 0; i < Y.length; i++) if (Y[i] >= year) return { year: Y[i], exact: Y[i] === year, beyond: false };
+    return { year: Y[Y.length - 1], exact: false, beyond: true };
   }
   /* سطر العمر: أي كسر يرفعه لسنة، ودون 30 = 30، وفوق 50 = 50 مع تنبيه */
   function ageRow(birth, at) {
@@ -110,28 +164,28 @@
     return { ymd: p, raw: raw, row: Math.min(50, Math.max(30, raw)), over50: raw > 50, under30: raw < 30 };
   }
   function tableRow(year, row) {
-    var T = TABLES[year], i = row - 30, r = {};
-    r.union = T.union; r.pension = T.pension[i]; r.annual = T.annual[row > 45 ? 1 : 0]; r.practice = T.practice;
-    r.id = T.id; r.badge = T.badge; r.prints = T.prints; r.death = row <= 45 ? T.death[i] : 0; r.exam = T.exam;
+    var src = D.TABLES[year].rows[row], r = {};
+    COLS.forEach(function (c) { r[c[0]] = src[c[0]]; });
+    if (row > 45) r.death = 0;
     return r;
   }
   function annualFee(year, over45) {
-    var last = 2026;
-    var y = year > last ? last : year;
-    if (!(y in ANNUAL)) return null;
-    return over45 && (y in ANNUAL_OVER45) ? ANNUAL_OVER45[y] : ANNUAL[y];
+    var y = year > D.LAST ? D.LAST : year;
+    if (!(y in D.ANNUAL)) return null;
+    return over45 && (y in D.ANNUAL_OVER45) ? D.ANNUAL_OVER45[y] : D.ANNUAL[y];
   }
 
   /* قائمة سنوات الرسم السنوي من..إلى، مع خانة «مدفوع» */
   function yearsList(from, to, over45, paid, warnings) {
     var out = [], paidSet = {};
     (paid || []).forEach(function (y) { paidSet[+y] = true; });
-    if (from < 2011) { warnings.push('لا يوجد رسم سنوي معتمد قبل 2011؛ بدأ الحساب من 2011.'); from = 2011; }
-    var warnedBeyond = false;
+    if (from < D.FIRST) { warnings.push('لا يوجد رسم سنوي معتمد قبل ' + D.FIRST + '؛ بدأ الحساب من ' + D.FIRST + '.'); from = D.FIRST; }
+    var warnedBeyond = false, warnedGap = false;
     for (var y = from; y <= to; y++) {
       var a = annualFee(y, over45);
-      if (y > 2026 && !warnedBeyond) { warnings.push('لا يوجد رسم سنوي معتمد بعد 2026؛ حُسبت السنوات اللاحقة برسم 2026. أضف الجدول الجديد عند صدوره.'); warnedBeyond = true; }
-      out.push({ year: y, amount: a || 0, paid: !!paidSet[y], over45: !!(over45 && ((y > 2026 ? 2026 : y) in ANNUAL_OVER45)) });
+      if (y > D.LAST && !warnedBeyond) { warnings.push('لا يوجد رسم سنوي معتمد بعد ' + D.LAST + '؛ حُسبت السنوات اللاحقة برسم ' + D.LAST + '. أضف رسم السنة الجديدة من «إعدادات الرسوم».'); warnedBeyond = true; }
+      if (a === null && !warnedGap) { warnings.push('لا يوجد رسم سنوي لسنة ' + y + ' في الإعدادات؛ حُسبت صفراً.'); warnedGap = true; }
+      out.push({ year: y, amount: a || 0, paid: !!paidSet[y], over45: !!(over45 && ((y > D.LAST ? D.LAST : y) in D.ANNUAL_OVER45)) });
     }
     return out;
   }
@@ -146,7 +200,10 @@
 
   /* ---------- الحساب ---------- */
   function compute(inp, opts) {
-    inp = inp || {}; opts = opts || {};
+    opts = opts || {};
+    return using(opts.data, function () { return computeIn(inp || {}, opts); });
+  }
+  function computeIn(inp, opts) {
     var today = parseDate(opts.today) || (function () { var t = new Date(); return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate() }; })();
     var R = { kind: inp.kind || 'new', kindName: KINDS[inp.kind || 'new'] || '', items: [], years: [], warnings: [], errors: [], steps: [], total: 0 };
     var kind = R.kind;
@@ -194,9 +251,9 @@
     else if (kind === 'secStruck') {
       var dd = parseDate(inp.decisionDate);
       if (!dd) { R.errors.push('أدخل تاريخ قرار إعادة القيد.'); return R; }
-      R.steps.push('المشطوب الأمني يدفع الرسم السنوي لكل سنة من ' + FIXED.securityFrom + ' حتى سنة القرار ' + dd.y + ' (السنتان محسوبتان).');
+      R.steps.push('المشطوب الأمني يدفع الرسم السنوي لكل سنة من ' + D.FIXED.securityFrom + ' حتى سنة القرار ' + dd.y + ' (السنتان محسوبتان).');
       if (over45) R.steps.push('انتسب بعمر فوق 45، فيُعتمد الرسم السنوي المخفّض في السنوات التي لها جدول.');
-      R.years = yearsList(FIXED.securityFrom, dd.y, over45, paid, R.warnings);
+      R.years = yearsList(D.FIXED.securityFrom, dd.y, over45, paid, R.warnings);
       optional();
     }
 
@@ -205,12 +262,12 @@
       if (!d2) R.errors.push('أدخل تاريخ قرار إعادة القيد.');
       if (!parseDate(inp.birthDate)) R.errors.push('أدخل تاريخ الميلاد (لشرط العمر في معونة الوفاة).');
       if (R.errors.length) return R;
-      var F = FIXED[kind], word = kind === 'admStruck' ? 'الشطب' : 'الترقين';
-      item('رسم النقابة', F.union, '', 'fix'); item('رسم التقاعد', F.pension, '', 'fix');
+      var FX = D.FIXED[kind], word = kind === 'admStruck' ? 'الشطب' : 'الترقين';
+      item('رسم النقابة', FX.union, '', 'fix'); item('رسم التقاعد', FX.pension, '', 'fix');
       var ad = ageRow(inp.birthDate, inp.decisionDate);
       R.age = ad;
       R.steps.push('العمر بتاريخ قرار إعادة القيد = ' + fmtYMD(ad.ymd) + ' ← ' + ad.raw + ' سنة.');
-      if (ad.raw <= 45) { item('رسم معونة الوفاة', FIXED.deathAid, 'عمره 45 فما دون', 'fix'); R.steps.push('عمره 45 فما دون، فيدفع رسم معونة الوفاة ويستفيد منها.'); }
+      if (ad.raw <= 45) { item('رسم معونة الوفاة', D.FIXED.deathAid, 'عمره 45 فما دون', 'fix'); R.steps.push('عمره 45 فما دون، فيدفع رسم معونة الوفاة ويستفيد منها.'); }
       else R.steps.push('عمره فوق 45، فلا يدفع رسم معونة الوفاة ولا يستفيد منها.');
       var gap = null, manual = num(inp.gapYears);
       if (ev && cmpD(ev, d2) < 0) {
@@ -220,8 +277,8 @@
       if (manual !== null && manual >= 0 && manual !== gap) { R.steps.push('عُدّل عدد سنوات الانقطاع يدوياً إلى ' + manual + '.'); gap = manual; }
       if (gap === null) { gap = 0; R.warnings.push('لم تُحسب سنوات الانقطاع: أدخل تاريخ ' + word + ' أو العدد يدوياً.'); }
       R.gapYears = gap;
-      if (gap) item('سنوات الانقطاع', gap * FIXED.gapYear, gap + ' × ' + fmt(FIXED.gapYear), 'fix');
-      item('المطبوعات', FIXED.prints, '', 'fix'); item('تثبيت ممارسة', FIXED.practice, '', 'fix');
+      if (gap) item('سنوات الانقطاع', gap * D.FIXED.gapYear, gap + ' × ' + fmt(D.FIXED.gapYear), 'fix');
+      item('المطبوعات', D.FIXED.prints, '', 'fix'); item('تثبيت ممارسة', D.FIXED.practice, '', 'fix');
       optional();
     }
 
@@ -232,8 +289,8 @@
       var from = lp ? lp + 1 : (jy ? jy.y : null);
       if (!from) { R.errors.push('أدخل آخر سنة دفع رسمها، أو تاريخ الانتساب.'); return R; }
       if (kind === 'omitted') {
-        item('رسم النقابة', FIXED.omitted.union, '', 'fix'); item('رسم التقاعد', FIXED.omitted.pension, '', 'fix');
-        R.steps.push('المُغفَل يدفع رسوم استعادة القيد (نقابة ' + fmt(FIXED.omitted.union) + ' + تقاعد ' + fmt(FIXED.omitted.pension) + ')، إضافة إلى كل الرسوم السنوية المترتبة عليه.');
+        item('رسم النقابة', D.FIXED.omitted.union, '', 'fix'); item('رسم التقاعد', D.FIXED.omitted.pension, '', 'fix');
+        R.steps.push('المُغفَل يدفع رسوم استعادة القيد (نقابة ' + fmt(D.FIXED.omitted.union) + ' + تقاعد ' + fmt(D.FIXED.omitted.pension) + ')، إضافة إلى كل الرسوم السنوية المترتبة عليه.');
       } else {
         R.steps.push('الترقين بطلب المحامي: يدفع رسم سنة الترقين ' + refDate.y + '، وكل رسم سابق غير مدفوع، لأنه يجب أن يكون بريء الذمة وقت الترقين.');
       }
@@ -243,20 +300,20 @@
     }
 
     else if (kind === 'transfer') {
-      item('رسم النقابة', FIXED.transfer.union, '', 'fix'); item('رسم التقاعد', FIXED.transfer.pension, '', 'fix');
-      R.steps.push('رسم النقل من فرع إلى آخر ثابت: نقابة ' + fmt(FIXED.transfer.union) + ' + تقاعد ' + fmt(FIXED.transfer.pension) + '.');
+      item('رسم النقابة', D.FIXED.transfer.union, '', 'fix'); item('رسم التقاعد', D.FIXED.transfer.pension, '', 'fix');
+      R.steps.push('رسم النقل من فرع إلى آخر ثابت: نقابة ' + fmt(D.FIXED.transfer.union) + ' + تقاعد ' + fmt(D.FIXED.transfer.pension) + '.');
       if (!inp.clearance) R.warnings.push('النقل مشروط بأن يكون المحامي بريء الذمة. تأكد من ذلك قبل القبض.');
     }
 
     else if (kind === 'traineeToMaster') {
-      FIXED.trainee.forEach(function (t) { item(t[0], t[1], '', 'fix'); });
+      D.FIXED.trainee.forEach(function (t) { item(t[0], t[1], '', 'fix'); });
       R.steps.push('رسم نقل المتمرن إلى جدول الأساتذة ثابت حسب الجدول المعتمد.');
     }
 
     function optional() {
       var o = inp.optional || {};
-      Object.keys(FIXED.optional).forEach(function (k) {
-        if (o[k]) item(FIXED.optional[k][0], FIXED.optional[k][1], 'اختياري', 'opt');
+      Object.keys(D.FIXED.optional).forEach(function (k) {
+        if (o[k]) item(D.FIXED.optional[k][0], D.FIXED.optional[k][1], 'اختياري', 'opt');
       });
     }
 
@@ -274,8 +331,11 @@
   function cmpD(a, b) { return (a.y - b.y) || (a.m - b.m) || (a.d - b.d); }
 
   return {
-    compute: compute, pickTable: pickTable, ageRow: ageRow, tableRow: tableRow, annualFee: annualFee,
-    TABLES: TABLES, TABLE_YEARS: TABLE_YEARS, ANNUAL: ANNUAL, ANNUAL_OVER45: ANNUAL_OVER45, COLS: COLS, FIXED: FIXED,
+    compute: compute, ageRow: ageRow, dataWith: dataWith,
+    pickTable: function (year, data) { return using(data, function () { return pickTable(year); }); },
+    tableRow: function (year, row, data) { return using(data, function () { return tableRow(year, row); }); },
+    annualFee: function (year, over45, data) { return using(data, function () { return annualFee(year, over45); }); },
+    DEFAULTS: DEF, TABLE_YEARS: DEF.TABLE_YEARS, ANNUAL: DEF_ANNUAL, ANNUAL_OVER45: DEF_OVER45, COLS: COLS, AGES: AGES, FIXED_FIELDS: FIXED_FIELDS,
     KINDS: KINDS, STATUS: STATUS, fmt: fmt, fmtDate: fmtDate, fmtYMD: fmtYMD, parseDate: parseDate, diffYMD: diffYMD
   };
 });

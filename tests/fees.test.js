@@ -148,4 +148,32 @@ t('النقل 10,000 مع تنبيه براءة الذمة', () => {
 t('نقل المتمرن إلى الأساتذة 5,050', () => assert.strictEqual(F.compute({ kind: 'traineeToMaster' }, TODAY).total, 5050));
 t('المعفى من التمرين: قيد الدراسة', () => assert.ok(F.compute({ kind: 'exempt' }, TODAY).errors.length));
 
+// ---------- إعدادات المستخدم (تعديل الجداول) — بلا إعدادات تبقى النتائج كما هي
+t('بلا إعدادات = القيم الافتراضية تماماً', () => {
+  const a = newCase({ birthDate: '1985-06-01', joinDate: '2019-03-10' });
+  const b = F.compute({ kind: 'new', status: 'active', birthDate: '1985-06-01', joinDate: '2019-03-10' }, { today: '2026-11-24', data: {} });
+  assert.strictEqual(a.total, b.total);
+});
+t('تعديل رسم سنة، وإضافة سنة 2027 وجدولها', () => {
+  const t27 = JSON.parse(JSON.stringify(F.DEFAULTS.TABLES[2026])); t27.rows[30].union = 6000;
+  const data = { annual: { 2026: 5500, 2027: 6000 }, over45: { 2027: 4800 }, tables: { 2027: t27 } };
+  const R = F.compute({ kind: 'new', status: 'active', birthDate: '1997-03-01', joinDate: '2027-03-01' }, { today: '2027-05-01', data });
+  assert.strictEqual(R.table, 2027);
+  assert.strictEqual(R.total, 35000 - 5000 + 1000 + 6000);
+  const R2 = F.compute({ kind: 'secStruck', decisionDate: '2026-05-01' }, { today: '2026-11-24', data });
+  assert.strictEqual(R2.total, sum(F.ANNUAL) + 500);
+});
+t('رسوم إعادة القيد قابلة للتعديل، والقيمة غير الصالحة تُهمل', () => {
+  const R = F.compute({ kind: 'transfer', clearance: true }, { data: { fixed: { trfUnion: 6000, trfPension: -5 } } });
+  assert.strictEqual(R.total, 11000);
+});
+t('جدول ناقص لا يُقبل ويبقى الافتراضي', () => {
+  const R = F.compute({ kind: 'new', status: 'active', birthDate: '1996-03-01', joinDate: '2026-03-01' }, { today: '2026-11-24', data: { tables: { 2026: { rows: {} } } } });
+  assert.strictEqual(R.total, 35000);
+});
+t('حذف رسم سنة (null) يظهر تنبيهاً', () => {
+  const R = F.compute({ kind: 'secStruck', decisionDate: '2026-05-01' }, { today: '2026-11-24', data: { annual: { 2015: null } } });
+  assert.ok(R.warnings.some(w => w.indexOf('2015') >= 0));
+});
+
 console.log('\n' + passed + ' اختباراً ناجحاً');

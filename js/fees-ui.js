@@ -12,6 +12,9 @@
     const fform = $("#feeForm");
     const fmt = F.fmt;
     let fCurrentId = null, fLastInput = null, fLastResult = null, paidYears = [];
+    /* إعدادات قسم الرسوم (pc.feeSettings.v1): الجهة والطباعة والجداول المعدّلة. الغائب = المعتمد */
+    const FEES_SIGNS = [{ title: "منظم التقرير", src: "preparer" }, { title: "المدقق", src: "reviewer" }, { title: "الخازن / المحاسب", src: "fixed", name: "" }];
+    function feeSettings() { return load(KEY_FSET, null) || {}; }
 
     /* ---------- الجمع والتعبئة ---------- */
     function fval(n) { const el = fform.elements[n]; if (!el) return ""; if (el.type === "checkbox") return el.checked; return (el.value || "").trim(); }
@@ -54,7 +57,24 @@
     }
 
     /* ---------- النتيجة الحية تحت النموذج ---------- */
-    function compute(c) { return F.compute(c); }
+    function compute(c) { return F.compute(c, { data: feeSettings().data }); }
+    /* أوصاف أنواع العملية تُكتب من الجداول النافذة، فتبقى صحيحة بعد أي تعديل في الإعدادات */
+    function updateHints() {
+        const X = F.dataWith(feeSettings().data).flat, n = fmt;
+        const hints = {
+            secStruck: "الرسوم السنوية من " + X.securityFrom + " حتى سنة القرار",
+            admStruck: "نقابة " + n(X.admUnion) + " + تقاعد " + n(X.admPension) + " + سنوات الانقطاع",
+            reCancel: "نقابة " + n(X.reUnion) + " + تقاعد " + n(X.rePension) + " + سنوات الانقطاع",
+            omitted: "نقابة " + n(X.omUnion) + " + تقاعد " + n(X.omPension) + " + الرسوم المترتبة",
+            transfer: "نقابة " + n(X.trfUnion) + " + تقاعد " + n(X.trfPension),
+            traineeToMaster: n(X.tmUnion + X.tmPension + X.tmLicenseFee + X.tmId + X.tmLicensePrice) + " ثابتة"
+        };
+        Object.keys(hints).forEach(function (k) { const el = fform.querySelector('input[name=kind][value="' + k + '"] + span small'); if (el) el.textContent = hints[k]; });
+        $$("#feeForm .opt-row .check").forEach(function (l) {
+            const nm = l.querySelector("input").name, v = { opt_id: X.optId, opt_license: X.optLicense, opt_badge: X.optBadge }[nm];
+            l.lastChild.textContent = " " + { opt_id: "الهوية", opt_license: "إجازة المحاماة", opt_badge: "شارة الصدر" }[nm] + " (" + n(v) + ")";
+        });
+    }
     function renderLive() {
         const c = fcollect(), R = compute(c), box = $("#feeLive");
         if (R.errors.length) {
@@ -106,7 +126,8 @@
         box.classList.remove("hidden"); box.scrollIntoView({ behavior: "smooth", block: "center" });
     }
     function buildReport(c, R) {
-        const org = (getSettings().org || "نقابة المحامين");
+        const fs = feeSettings();
+        const org = fs.org || "نقابة المحامين";
         const kv = function (rows) {
             return '<table class="rkv"><tbody>' + rows.filter(function (r) { return r[1] !== "" && r[1] !== undefined && r[1] !== null; })
                 .map(function (r) { return "<tr><td>" + esc(r[0]) + "</td><td>" + r[1] + "</td></tr>"; }).join("") + "</tbody></table>";
@@ -114,7 +135,7 @@
         const d = function (s) { return s ? F.fmtDate(s) : ""; };
         const now = new Date();
         const h = [];
-        h.push('<div class="rpt"><div class="rpt-head"><div><div class="org">' + esc(org) + "</div><h1>تقرير رسوم: " + esc(R.kindName) + "</h1></div>" +
+        h.push('<div class="rpt' + Rp.sizeClass(fs.fontSize) + '"><div class="rpt-head"><div><div class="org">' + esc(org) + "</div><h1>تقرير رسوم: " + esc(R.kindName) + "</h1></div>" +
             '<div class="meta">تاريخ التقرير: ' + now.getDate() + "/" + (now.getMonth() + 1) + "/" + now.getFullYear() + (c.fileNo ? "<br>رقم الإضبارة: " + esc(c.fileNo) : "") + (c.memberNo ? "<br>رقم العضوية: " + esc(c.memberNo) : "") + "</div></div>");
         h.push("<h2>بيانات المحامي</h2>" + kv([
             ["الاسم", esc(c.name)], ["اسم الأب", esc(c.fatherName)], ["اسم الأم", esc(c.motherName)], ["تاريخ الميلاد", d(c.birthDate)],
@@ -146,8 +167,8 @@
             (R.items.length ? "البنود " + fmt(R.itemsTotal) : "") + (R.items.length && R.years.length ? " + " : "") + (R.years.length ? "الرسوم السنوية " + fmt(R.yearsTotal) : "") + "</div></div></div>");
         h.push('<h2>كيف حُسب؟</h2><ol class="steps">' + R.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol>");
         if (c.notes) h.push('<h2>ملاحظات</h2><div class="note">' + esc(c.notes).replace(/\n/g, "<br>") + "</div>");
-        h.push('<div class="sign"><div>منظم التقرير<br><b>' + esc(c.preparer) + "</b></div><div>المدقق<br><b>" + esc(c.reviewer) + "</b></div><div>الخازن / المحاسب</div></div>");
-        h.push('<div class="foot">أُعدّ هذا التقرير بواسطة حاسبة المحامي وفق جداول رسوم الانتساب والرسوم السنوية المعتمدة في النقابة (المبالغ بالعملة الجديدة)، ويُعتمد بعد تدقيق الإيصالات والوثائق في إضبارة المحامي.</div></div>');
+        h.push(Rp.signBlock(fs.signs || FEES_SIGNS, c));
+        h.push('<div class="foot">' + (fs.footer ? esc(fs.footer).replace(/\n/g, "<br>") : "أُعدّ هذا التقرير بواسطة حاسبة المحامي وفق جداول رسوم الانتساب والرسوم السنوية المعتمدة في النقابة (المبالغ بالعملة الجديدة)، ويُعتمد بعد تدقيق الإيصالات والوثائق في إضبارة المحامي.") + "</div></div>");
         return h.join("");
     }
     function showReport(c, R) {
@@ -243,9 +264,16 @@
     window.FeesUI = {
         onPage: function (sec) {
             if (sec === "fcases") renderList();
-            if (sec === "fcalc") renderLive();
-        }
+            if (sec === "fcalc") { updateHints(); renderLive(); }
+            if (sec === "fsettings" && window.FeeSettingsUI) window.FeeSettingsUI.fill();
+            if (sec === "help" && window.HelpUI) window.HelpUI.render();
+        },
+        settings: feeSettings,
+        signs: FEES_SIGNS,
+        /* بعد حفظ الإعدادات: تحديث الأوصاف والنتيجة الحية والتقرير المفتوح */
+        refresh: function () { updateHints(); renderLive(); if (fLastInput) showReport(fLastInput, compute(fLastInput)); }
     };
+    updateHints();
     const draft = load(KEY_FDRAFT, null);
     ffill(draft && draft.kind ? draft : { kind: "new", status: "active" });
 })();
