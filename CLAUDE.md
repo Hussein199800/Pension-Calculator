@@ -1,16 +1,17 @@
-# حاسبة الراتب التقاعدي — Pension Calculator
+# حاسبة المحامي — Lawyer Calculator (repo: Pension-Calculator)
 
-Arabic (RTL) single-page web app that computes lawyers' pensions (ordinary / health / heirs) and retirement/death aid per the pension-fund circulars and Law 30/2010, and produces a detailed printable report for the lawyer's file. Plain HTML/CSS/JS, no build step. Same owner and conventions as Sarrafa (https://github.com/Hussein199800/Sarrafa) and Work_1.
+Arabic (RTL) single-page web app with two SEPARATE sections: (1) lawyers' pensions (ordinary / health / heirs) and retirement/death aid per the pension-fund circulars and Law 30/2010; (2) registration / re-registration / transfer fees and annual fees by age (since v3.0.0, 2026-11-24). Each section has its own calculator, report and saved cases. Plain HTML/CSS/JS, no build step. Same owner and conventions as Sarrafa (https://github.com/Hussein199800/Sarrafa) and Work_1.
 
 ## ⚠️ Never lose the user's data
-- localStorage keys are fixed since v1: `pc.cases.v1` (saved cases), `pc.settings.v1`, `pc.draft.v1`; plus `pc.users.v1`, `pc_session`, `pc_theme`, `pc.lastBackup`. Never rename or clear them.
-- Backup import is additive (adds/updates by id, newer `savedAt` wins, never deletes). Backup format: `format: "pension-calculator-backup"`, `version: 1`; import also accepts the v1 single-case export `{case: …}`.
+- localStorage keys are fixed since v1: `pc.cases.v1` (saved pension cases), `pc.settings.v1`, `pc.draft.v1`; plus `pc.users.v1`, `pc_session`, `pc_theme`, `pc.lastBackup`. Fees section (v3): `pc.fees.v1` (saved fee calculations, each with `savedTotal`), `pc.feesDraft.v1`, `pc.feeSettings.v1` (`{org, fontSize, footer, signs, data}`; `data` = only the differences from the approved tables, a removed default year = `null`). Pension print settings (v3): `pc.pensionPrint.v1` (`{fontSize, footer, signs}`), separate from `pc.settings.v1`. Never rename or clear them. All the owner's sites share the `hussein199800.github.io` origin: never touch other projects' keys (`audit_*`, `enc_*`, `currentUser`, `activeSection`).
+- Backup import is additive (adds/updates by id, newer `savedAt` wins, never deletes). Backup format: `format: "pension-calculator-backup"`, `version: 1`, with optional `fees`, `pensionPrint`, `feeSettings` (v3; older backups without them import as before; each section's settings are imported only after its own confirmation); import also accepts the v1 single-case export `{case: …}`.
 
 ## Files
-- `index.html` — login, top bar, pages (`[data-page]`: calc, report, cases, more, settings, backup), bottom tab bar.
-- `css/style.css` — «الزيتون والعاج» identity (tokens at top, light + dark), calculator section, and «الطبقة الثانية» at the end.
-- `js/calc.js` — pure calculation engine (works in Node). `js/report.js` — report HTML + its CSS. `js/app.js` — UI, session, saving, backup.
-- `tests/calc.test.js` — every numeric example from the circulars.
+- `index.html` — login, top bar (☰ menu button), sidebar `#sidebar` (groups: الراتب التقاعدي / الانتساب والرسوم / عام), pages (`[data-page]`: calc, report, cases, settings | fcalc, freport, fcases, fsettings | help, backup). Each section has its OWN settings page (user decision 2026-11-24): values, report header, signatures, font size, footer — nothing shared between the two sections. No bottom tab bar and no «المزيد» page since v3 (`#more` redirects to settings).
+- `css/style.css` — «الزيتون والعاج» identity (tokens at top, light + dark), calculator section, «الطبقة الثانية», then «الطبقة الثالثة» (sidebar, fees section, help).
+- `js/calc.js` — pure pension engine (works in Node). `js/report.js` — pension report HTML + report CSS (`.rpt`, reused by the fees report). `js/app.js` — navigation, session, pension UI, saving, backup.
+- `js/fees.js` — pure fees engine + tables (`FeesCalc`, works in Node). `js/fees-ui.js` — fees form, live result, fees report, fee cases (uses `data-fact`, never the pension `data-act`). `js/fees-settings.js` — «إعدادات الرسوم» (editable annual fees, age tables incl. adding a new year, re-registration/transfer fees, print). `js/help.js` — «الشرح» page (fee numbers read from the active data, so they follow the settings). `report.js` exports `signBlock` / `sizeClass`; with no print settings the pension report HTML is byte-identical to before.
+- `tests/calc.test.js` — every numeric example from the circulars. `tests/golden.test.js` + `golden.cases.js` + `golden.expected.json` — 30 pension cases whose results must stay identical (never regenerate without the owner's explicit request). `tests/fees.test.js` + `fees.source.json` (copied verbatim from fees_2026.xlsx).
 
 ## Design — «الزيتون والعاج» (user decision 2026-11-17)
 - The user asked for an identity distinct from Sarrafa («الجواهر») and Work_1 («التيتانيوم والنحاس»), "as if another programmer made it", **CSS only** (HTML/JS untouched). Colors were left to Claude.
@@ -18,7 +19,7 @@ Arabic (RTL) single-page web app that computes lawyers' pensions (ordinary / hea
 - Primitive names kept to avoid breakage: `--emerald-*` = olive, `--plum-*` = ink, `--gold-*` = saffron, `--wine-*` = brick. Use semantic tokens in new CSS.
 - Font Readex Pro (via `@import` in `style.css`), Tabler icons. Tighter radii (6/9/12/16), flat cards with a saffron title mark, linear indicator on the active bottom tab.
 - «الطبقة الثانية» at the end of `style.css` remaps the old hard-coded «الجواهر» colors and restyles the on-screen/printed report (`.rpt`) with `!important`. The downloaded standalone report HTML uses the embedded CSS in `report.js` (same olive/ink/saffron colors).
-- Layout unchanged: sticky top bar + bottom tabs (الحاسبة، التقرير، الحالات، المزيد); settings, backup, account in «المزيد».
+- Layout (user decision 2026-11-24): vertical sidebar like Work_1's arrangement but in this site's own colors and code (ink-olive panel, saffron group labels, olive active item); always visible from 1100px, a ☰ drawer below. Account (name, change password, logout) at the sidebar foot.
 - Messages via `toast()` / `confirmBox()` / `modal()` — never `alert()` / `confirm()`.
 - Telegram backup upload and Firebase sync/Google sign-in are **UI only, disabled ("قريباً")** until the user decides to implement them.
 
@@ -35,7 +36,21 @@ Override the circulars' examples where they differ; all are covered by `tests/ca
 - Join date = registration date (the separate "registration decision date" field was removed; `registrationDecisionDate` = `joinDate`, except that a different value saved by v1 is kept, shown as an editable/clearable field on those cases only, and used for the age-45 aid rule).
 - Ordinary pension starts when the retirement decision becomes final: the treasury controller's review date (`reviewDate`) if the appeal right was waived (`appealWaived`), otherwise one month later. A review date before the retirement decision is rejected. Without `reviewDate`, the retirement date (or a legacy `paymentStartDate`, shown as an editable field only on cases that carry it) is used. Health stays from the medical-board date; heirs from the day after death.
 
+## Fees section — owner decisions (2026-11-24), full spec in `docs/superpowers/specs/2026-11-24-fees-calculator-design.md`
+- All amounts in the new currency exactly as in fees_2026.xlsx. Tables 2020, 2021, 2022, 2023, 2024, 2026 (ages 30–50); annual fee per year 2011–2026.
+- Table = the join year's table, else the NEXT one (2011–2019 → 2020, 2025 → 2026), never the previous one.
+- Age at join date; any fraction rounds UP (30y 1d → row 31); under 30 → row 30; over 50 → row 50 with a warning (special cases exist), calculation continues.
+- New registration total = row items EXCEPT its annual fee + the annual fee of every year from the join year to the end year (active → current year; cancelled / deceased / other → that year, inclusive); per-year «مدفوع» subtracts it. Death aid only for row ≤ 45.
+- Joined over 45: reduced annual fee where a table exists (2020: 130, 2021: 300, 2022: 500, 2023–2025: 600, 2026: 4,000); 2011–2019 same as everyone; 2025 = 750 / 600.
+- Re-registration: security-struck = annual fees 2011..decision year; administratively struck = 20,000 + 20,000 + 2,500 death aid (age at decision ≤ 45) + 2,500 × gap years + 1,000 prints + 1,000 practice; self-cancel = cancel year + earlier unpaid; re-registration after cancel = 10,000 + 10,000 + same extras; omitted = 3,000 + 7,000 + unpaid annual fees after «last paid year»; transfer = 5,000 + 5,000 (clearance warning); trainee → master = 5,050. ID / license / badge optional (1,000 each). Gap years from the dates, any fraction = a full year, editable. Exempt from training: «قيد الدراسة» (disabled).
+
+## Owner principles (from the owner's CALCULATOR-CLAUDE.md, 2026-11-24)
+- Results are sacred: no change to any formula, rate, fee table or rounding rule without the owner's explicit request naming the new number and its source. Run the golden test after every change; if one number changes, stop and tell the owner.
+- Add, don't change: new things are optional or out of the way; saved data and workflows keep working.
+- Ask with the clickable question bar (recommended option first). Warnings warn, they don't block. Numbers shown with Western digits and thousands separators; inputs accept Arabic digits.
+- Before handing over: golden + feature tests, no JS errors, screenshots at 390 / 820 / 1366, light and dark, no horizontal scroll. Remind the owner to download a backup before merging.
+
 ## Conventions
 - The user writes in Arabic; answer in Arabic. Ask with the clickable question bar, recommended option first.
 - Develop on the session branch; the user merges.
-- Verify: `node --check js/app.js && node tests/calc.test.js`.
+- Verify: `node --check js/app.js && node --check js/fees-ui.js && npm test` (calc + golden + fees).

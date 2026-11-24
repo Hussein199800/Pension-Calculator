@@ -17,8 +17,8 @@
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-    <title>حاسبة الراتب التقاعدي</title>
-    <meta name="description" content="حساب الراتب التقاعدي ومعونات التقاعد والوفاة للمحامين مع تقرير مفصل للإضبارة">
+    <title>حاسبة المحامي</title>
+    <meta name="description" content="حساب الراتب التقاعدي ومعونات التقاعد والوفاة ورسوم الانتساب وإعادة القيد للمحامين مع تقارير مفصلة للإضبارة">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,8 +39,8 @@
         <div class="login-shell">
             <div class="login-art">
                 <div class="login-seal" aria-hidden="true"><svg class="seal seal-xl" data-seal viewBox="0 0 64 64"></svg></div>
-                <p class="login-art-org">خزانة تقاعد المحامين</p>
-                <h1>حاسبة الراتب التقاعدي</h1>
+                <p class="login-art-org">نقابة المحامين · خزانة التقاعد</p>
+                <h1>حاسبة المحامي</h1>
                 <p class="login-subtitle">سجّل الدخول بحسابك للمتابعة</p>
             </div>
 
@@ -68,12 +68,12 @@
     <section id="app" class="app-page hidden">
 
         <header class="topbar">
-            <button type="button" class="top-btn hidden" id="backBtn" aria-label="رجوع إلى المزيد"><i class="ti ti-arrow-right"></i></button>
+            <button type="button" class="top-btn menu-btn" id="menuBtn" aria-label="فتح القائمة" aria-controls="sidebar" aria-expanded="false"><i class="ti ti-menu-2"></i></button>
             <div class="top-brand">
                 <svg class="seal" data-seal viewBox="0 0 64 64" aria-hidden="true"></svg>
                 <div class="top-text">
-                    <b id="topTitle">حاسبة الراتب التقاعدي</b>
-                    <span id="topSub">خزانة تقاعد المحامين</span>
+                    <b id="topTitle">حاسبة المحامي</b>
+                    <span id="topSub">الراتب التقاعدي</span>
                 </div>
             </div>
             <span class="sync-pill" title="المزامنة غير مفعّلة بعد"><i class="dot"></i><span>على هذا الجهاز</span></span>
@@ -81,6 +81,41 @@
                 <i class="ti ti-moon theme-when-light"></i><i class="ti ti-sun theme-when-dark"></i>
             </button>
         </header>
+
+        <div class="nav-overlay" id="navOverlay"></div>
+        <aside class="sidebar" id="sidebar" aria-label="أقسام الموقع">
+            <div class="side-head">
+                <svg class="seal" data-seal viewBox="0 0 64 64" aria-hidden="true"></svg>
+                <div class="side-brand"><b>حاسبة المحامي</b><small>نقابة المحامين · خزانة التقاعد</small></div>
+                <button type="button" class="side-close" id="sideClose" aria-label="إغلاق القائمة"><i class="ti ti-x"></i></button>
+            </div>
+            <nav class="side-nav" id="sideNav">
+                <p class="nav-group"><i class="ti ti-cash"></i>الراتب التقاعدي</p>
+                <button type="button" data-sec="calc"><i class="ti ti-calculator"></i><span class="nav-text"><b>الحاسبة</b><small>المعاش والمعونات</small></span></button>
+                <button type="button" data-sec="report"><i class="ti ti-file-text"></i><span class="nav-text"><b>التقرير</b><small>تقرير التقاعد للإضبارة</small></span></button>
+                <button type="button" data-sec="cases"><i class="ti ti-folders"></i><span class="nav-text"><b>الحالات</b><small>حالات التقاعد المحفوظة</small></span></button>
+                <button type="button" data-sec="settings"><i class="ti ti-adjustments"></i><span class="nav-text"><b>الإعدادات</b><small>قيم الراتب والمعونة والطباعة</small></span></button>
+
+                <p class="nav-group"><i class="ti ti-receipt"></i>الانتساب والرسوم</p>
+                <button type="button" data-sec="fcalc"><i class="ti ti-calculator"></i><span class="nav-text"><b>الحاسبة</b><small>الانتساب وإعادة القيد والنقل</small></span></button>
+                <button type="button" data-sec="freport"><i class="ti ti-file-invoice"></i><span class="nav-text"><b>التقرير</b><small>تقرير الرسوم للإضبارة</small></span></button>
+                <button type="button" data-sec="fcases"><i class="ti ti-folders"></i><span class="nav-text"><b>الحالات</b><small>حسابات الرسوم المحفوظة</small></span></button>
+                <button type="button" data-sec="fsettings"><i class="ti ti-adjustments"></i><span class="nav-text"><b>الإعدادات</b><small>جداول الرسوم والطباعة</small></span></button>
+
+                <p class="nav-group"><i class="ti ti-settings"></i>عام</p>
+                <button type="button" data-sec="help"><i class="ti ti-help-circle"></i><span class="nav-text"><b>الشرح</b><small>كيف يتم الحساب</small></span></button>
+                <button type="button" data-sec="backup"><i class="ti ti-database-export"></i><span class="nav-text"><b>النسخ الاحتياطي</b><small>تحميل واستيراد</small></span></button>
+            </nav>
+            <div class="side-foot">
+                <div class="side-user"><span class="side-av"><i class="ti ti-user-shield"></i></span><span class="nav-text"><b id="sideUserName"></b><small class="ltr" id="sideUserLogin"></small></span></div>
+                <div class="side-warn hidden" id="sidePwWarn"><i class="ti ti-alert-triangle"></i>كلمة المرور ما زالت الافتراضية</div>
+                <div class="side-actions">
+                    <button type="button" class="btn sm" data-side="pw"><i class="ti ti-key"></i>بيانات الدخول</button>
+                    <button type="button" class="btn sm danger" data-side="logout"><i class="ti ti-logout"></i>خروج</button>
+                </div>
+                <p class="side-ver" id="sideVer"></p>
+            </div>
+        </aside>
 
         <main class="app-main">
             <div class="main-content" id="main" tabindex="-1">
@@ -247,18 +282,149 @@
                     </div>
                 </section>
 
-                <!-- ============ المزيد ============ -->
-                <section data-page="more" hidden></section>
+                <!-- ============ الرسوم: الحاسبة ============ -->
+                <section data-page="fcalc" hidden>
+                    <div class="page-title">
+                        <span class="page-icon"><i class="ti ti-receipt"></i></span>
+                        <div class="page-text"><h2>حساب رسوم الانتساب وإعادة القيد</h2><p>أدخل بيانات المحامي ونوع العملية، فتظهر الرسوم بنداً بنداً</p></div>
+                        <span class="badge" id="feeBadge">حساب جديد</span>
+                    </div>
+
+                    <form id="feeForm" autocomplete="off" novalidate>
+                        <div class="card">
+                            <h3><span class="step-no">1</span>بيانات المحامي</h3>
+                            <div class="grid g3 form-g">
+                                <label class="field"><span>الاسم الكامل <b class="req">*</b></span><input name="name" placeholder="مثال: محمد أحمد العلي"></label>
+                                <label class="field"><span>اسم الأب</span><input name="fatherName"></label>
+                                <label class="field"><span>اسم الأم</span><input name="motherName"></label>
+                                <label class="field"><span>تاريخ الميلاد <b class="req" data-fk="new admStruck reCancel">*</b></span><input type="date" name="birthDate"></label>
+                                <label class="field"><span>الرقم الوطني</span><input name="nationalId" inputmode="numeric" class="num-in"></label>
+                                <label class="field"><span>رقم العضوية في النقابة</span><input name="memberNo" class="num-in"></label>
+                                <label class="field"><span>الفرع</span><input name="branch" placeholder="مثال: فرع دمشق"></label>
+                                <label class="field"><span>رقم الإضبارة</span><input name="fileNo" class="num-in"></label>
+                                <label class="field"><span>رقم الهاتف</span><input name="phone" inputmode="tel" class="num-in"></label>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3><span class="step-no">2</span>نوع العملية</h3>
+                            <div class="types ftypes" role="radiogroup">
+                                <label class="type"><input type="radio" name="kind" value="new" checked><span><b>انتساب جديد</b><small>حسب العمر وجدول سنة الانتساب، مع الرسوم السنوية</small></span></label>
+                                <label class="type"><input type="radio" name="kind" value="secStruck"><span><b>مشطوب أمني</b><small>الرسوم السنوية من 2011 حتى سنة القرار</small></span></label>
+                                <label class="type"><input type="radio" name="kind" value="admStruck"><span><b>مشطوب إداري</b><small>نقابة 20,000 + تقاعد 20,000 + سنوات الانقطاع</small></span></label>
+                                <label class="type"><input type="radio" name="kind" value="cancelSelf"><span><b>ترقين بطلب المحامي</b><small>رسم سنة الترقين وما سبقه غير مدفوع</small></span></label>
+                                <label class="type"><input type="radio" name="kind" value="reCancel"><span><b>إعادة قيد بعد الترقين</b><small>نقابة 10,000 + تقاعد 10,000 + سنوات الانقطاع</small></span></label>
+                                <label class="type"><input type="radio" name="kind" value="omitted"><span><b>مُغفَل</b><small>نقابة 3,000 + تقاعد 7,000 + الرسوم المترتبة</small></span></label>
+                                <label class="type"><input type="radio" name="kind" value="transfer"><span><b>نقل من فرع لآخر</b><small>نقابة 5,000 + تقاعد 5,000</small></span></label>
+                                <label class="type"><input type="radio" name="kind" value="traineeToMaster"><span><b>متمرن إلى الأساتذة</b><small>5,050 ثابتة</small></span></label>
+                                <label class="type is-off" title="قيد الدراسة"><input type="radio" name="kind" value="exempt" disabled><span><b>المعفى من التمرين</b><small><i class="ti ti-clock"></i> قيد الدراسة</small></span></label>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3><span class="step-no">3</span>التواريخ والوضع</h3>
+                            <div class="grid g3 form-g">
+                                <label class="field" data-fk="new secStruck cancelSelf omitted"><span><span data-fk="new">تاريخ الانتساب <b class="req">*</b></span><span data-fk="secStruck cancelSelf omitted">تاريخ الانتساب الأصلي</span></span><input type="date" name="joinDate"><small class="hint" data-fk="secStruck cancelSelf omitted">اختياري: مع تاريخ الميلاد يحدد إن كان انتسب فوق 45 (رسم سنوي أقل)</small></label>
+                                <label class="field" data-fk="new"><span>وضع المحامي الآن</span>
+                                    <select name="status"><option value="active">قيده سارٍ (حتى السنة الحالية)</option><option value="cancelled">مرقّن القيد</option><option value="deceased">متوفى</option><option value="other">وضع آخر</option></select></label>
+                                <label class="field" data-fk="new" data-fstatus="cancelled deceased other"><span><span data-fstatus="cancelled">سنة الترقين</span><span data-fstatus="deceased">سنة الوفاة</span><span data-fstatus="other">حتى سنة</span> <b class="req">*</b></span><input name="statusYear" inputmode="numeric" class="num-in" placeholder="مثال: 2025"><small class="hint">السنة نفسها محسوبة</small></label>
+                                <label class="field" data-fk="admStruck reCancel cancelSelf"><span><span data-fk="admStruck">تاريخ الشطب</span><span data-fk="reCancel cancelSelf">تاريخ الترقين</span> <b class="req" data-fk="cancelSelf">*</b></span><input type="date" name="eventDate"></label>
+                                <label class="field" data-fk="secStruck admStruck reCancel omitted"><span>تاريخ قرار إعادة القيد <b class="req">*</b></span><input type="date" name="decisionDate"></label>
+                                <label class="field" data-fk="admStruck reCancel"><span>عدد سنوات الانقطاع (يدوي)</span><input name="gapYears" inputmode="numeric" class="num-in" placeholder="يُحسب من التاريخين"><small class="hint">اتركه فارغاً ليُحسب من التاريخين (أي جزء من سنة = سنة)</small></label>
+                                <label class="field" data-fk="cancelSelf omitted"><span>آخر سنة دفع رسمها</span><input name="lastPaidYear" inputmode="numeric" class="num-in" placeholder="مثال: 2023"><small class="hint">فارغ = يُحسب من سنة الانتساب</small></label>
+                                <label class="check" data-fk="transfer"><input type="checkbox" name="clearance"> المحامي بريء الذمة</label>
+                            </div>
+                            <div data-fk="secStruck admStruck reCancel" class="opt-row">
+                                <p class="hint-line" style="margin:12px 0 8px">اختياري: يُسأل المحامي إن كان يريدها</p>
+                                <label class="check"><input type="checkbox" name="opt_id"> الهوية (1,000)</label>
+                                <label class="check"><input type="checkbox" name="opt_license"> إجازة المحاماة (1,000)</label>
+                                <label class="check"><input type="checkbox" name="opt_badge"> شارة الصدر (1,000)</label>
+                            </div>
+                        </div>
+
+                        <div class="card fee-live" id="feeLive" aria-live="polite"></div>
+
+                        <div class="card">
+                            <h3><span class="step-no">4</span>التقرير</h3>
+                            <div class="grid g3 form-g">
+                                <label class="field"><span>اسم منظم التقرير</span><input name="preparer"></label>
+                                <label class="field"><span>اسم المدقق</span><input name="reviewer"></label>
+                                <label class="field" style="grid-column:1/-1"><span>ملاحظات تُضاف للتقرير</span><textarea name="notes" rows="2"></textarea></label>
+                            </div>
+                        </div>
+
+                        <div class="alert bad hidden" id="feeErrors"></div>
+                        <div class="sticky-actions">
+                            <button type="submit" class="btn primary big"><i class="ti ti-file-invoice"></i>احسب وأنشئ التقرير</button>
+                            <button type="button" class="btn big" data-fact="save"><i class="ti ti-device-floppy"></i>حفظ الحساب</button>
+                            <button type="button" class="btn big ghost" data-fact="new"><i class="ti ti-eraser"></i>حساب جديد</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- ============ الرسوم: التقرير ============ -->
+                <section data-page="freport" hidden>
+                    <div class="page-title">
+                        <span class="page-icon"><i class="ti ti-file-invoice"></i></span>
+                        <div class="page-text"><h2>تقرير الرسوم</h2><p>جاهز للطباعة والإضافة إلى إضبارة المحامي</p></div>
+                    </div>
+                    <div id="feeReportEmpty" class="card empty">
+                        <p>لم يُنشأ تقرير رسوم بعد. املأ البيانات في «حاسبة الرسوم» ثم اضغط «احسب وأنشئ التقرير».</p>
+                        <button type="button" class="btn primary" data-go="fcalc" style="margin-top:12px"><i class="ti ti-calculator"></i>إلى حاسبة الرسوم</button>
+                    </div>
+                    <div id="feeReportBox" hidden>
+                        <div class="sticky-actions" style="position:static;margin-bottom:16px">
+                            <button type="button" class="btn primary" data-fact="print"><i class="ti ti-printer"></i>طباعة / حفظ PDF</button>
+                            <button type="button" class="btn" data-fact="download"><i class="ti ti-download"></i>تنزيل التقرير</button>
+                            <button type="button" class="btn" data-fact="save"><i class="ti ti-device-floppy"></i>حفظ الحساب</button>
+                            <button type="button" class="btn ghost" data-go="fcalc"><i class="ti ti-edit"></i>تعديل البيانات</button>
+                        </div>
+                        <div class="report-paper" id="feeReport"></div>
+                    </div>
+                </section>
+
+                <!-- ============ الرسوم: الحالات ============ -->
+                <section data-page="fcases" hidden>
+                    <div class="page-title">
+                        <span class="page-icon"><i class="ti ti-folders"></i></span>
+                        <div class="page-text"><h2>حسابات الرسوم المحفوظة</h2><p>منفصلة عن حالات التقاعد، ومحفوظة على هذا الجهاز</p></div>
+                        <button type="button" class="btn primary" data-fact="new"><i class="ti ti-plus"></i>حساب جديد</button>
+                    </div>
+                    <div class="card">
+                        <label class="field" style="margin-bottom:8px"><span><i class="ti ti-search"></i> بحث بالاسم أو رقم الإضبارة أو العضوية</span><input id="feeSearch" placeholder="اكتب للبحث…"></label>
+                        <div id="feeCasesList"></div>
+                    </div>
+                </section>
+
+                <!-- ============ الشرح ============ -->
+                <section data-page="help" hidden>
+                    <div class="page-title">
+                        <span class="page-icon"><i class="ti ti-help-circle"></i></span>
+                        <div class="page-text"><h2>كيف يتم الحساب؟</h2><p>شرح مبسط لطريقة حساب الراتب التقاعدي والرسوم، مع أمثلة</p></div>
+                    </div>
+                    <div class="seg help-seg" id="helpSeg" role="tablist">
+                        <button type="button" class="on" data-help="pension"><i class="ti ti-cash"></i>الراتب التقاعدي</button>
+                        <button type="button" data-help="fees"><i class="ti ti-receipt"></i>الانتساب والرسوم</button>
+                    </div>
+                    <div id="helpPension" class="help-body"></div>
+                    <div id="helpFees" class="help-body" hidden></div>
+                </section>
 
                 <!-- ============ الإعدادات والقيم ============ -->
                 <section data-page="settings" hidden>
                     <div class="page-title">
                         <span class="page-icon"><i class="ti ti-adjustments"></i></span>
-                        <div class="page-text"><h2>الإعدادات والقيم المعتمدة</h2><p>عند صدور زيادة جديدة أضف سطراً بتاريخ نفاذها، وكل شهر يُحسب بالقيمة النافذة فيه</p></div>
+                        <div class="page-text"><h2>إعدادات الراتب التقاعدي</h2><p>خاصة بقسم التقاعد فقط. عند صدور زيادة جديدة أضف سطراً بتاريخ نفاذها، وكل شهر يُحسب بالقيمة النافذة فيه</p></div>
                     </div>
                     <div class="card">
-                        <h3><i class="ti ti-building-bank"></i>الجهة</h3>
-                        <label class="field"><span>اسم الجهة (يظهر في رأس التقرير)</span><input id="setOrg" placeholder="مثال: نقابة المحامين – فرع ... – خزانة التقاعد"></label>
+                        <h3><i class="ti ti-printer"></i>التقرير والطباعة</h3>
+                        <div class="grid g2 form-g">
+                            <label class="field"><span>اسم الجهة (يظهر في رأس التقرير)</span><input id="setOrg" placeholder="مثال: نقابة المحامين – فرع ... – خزانة التقاعد"></label>
+                            <label class="field"><span>حجم خط التقرير</span><select id="pFont"><option value="">عادي</option><option value="s">صغير</option><option value="l">كبير</option></select></label>
+                            <label class="field" style="grid-column:1/-1"><span>نص أسفل التقرير (اختياري)</span><textarea id="pFooter" rows="2" placeholder="فارغ = النص الافتراضي"></textarea></label>
+                        </div>
+                        <p class="fee-sub">التوقيعات أسفل التقرير</p>
+                        <div class="sign-editor" id="pSigns"></div>
                     </div>
                     <div class="card">
                         <h3><i class="ti ti-cash"></i>قيمة المعاش التقاعدي الكامل (30 سنة)</h3>
@@ -286,8 +452,51 @@
                         </div>
                     </div>
                     <div class="row">
-                        <button type="button" class="btn primary big" id="saveSettings"><i class="ti ti-device-floppy"></i>حفظ الإعدادات</button>
+                        <button type="button" class="btn primary big" id="saveSettings"><i class="ti ti-device-floppy"></i>حفظ إعدادات التقاعد</button>
                         <button type="button" class="btn big" id="resetSettings"><i class="ti ti-restore"></i>استعادة القيم الافتراضية</button>
+                    </div>
+                </section>
+
+                <!-- ============ الرسوم: الإعدادات ============ -->
+                <section data-page="fsettings" hidden>
+                    <div class="page-title">
+                        <span class="page-icon"><i class="ti ti-adjustments"></i></span>
+                        <div class="page-text"><h2>إعدادات الرسوم</h2><p>خاصة بقسم الانتساب والرسوم فقط. القيم الحالية هي المعتمدة في النقابة، وأي تعديل يُطبَّق على الحسابات الجديدة</p></div>
+                    </div>
+                    <div class="card">
+                        <h3><i class="ti ti-printer"></i>التقرير والطباعة</h3>
+                        <div class="grid g2 form-g">
+                            <label class="field"><span>اسم الجهة (يظهر في رأس تقرير الرسوم)</span><input id="fsOrg" placeholder="مثال: نقابة المحامين – فرع ..."></label>
+                            <label class="field"><span>حجم خط التقرير</span><select id="fsFont"><option value="">عادي</option><option value="s">صغير</option><option value="l">كبير</option></select></label>
+                            <label class="field" style="grid-column:1/-1"><span>نص أسفل التقرير (اختياري)</span><textarea id="fsFooter" rows="2" placeholder="فارغ = النص الافتراضي"></textarea></label>
+                        </div>
+                        <p class="fee-sub">التوقيعات أسفل التقرير</p>
+                        <div class="sign-editor" id="fsSigns"></div>
+                    </div>
+                    <div class="card">
+                        <h3><i class="ti ti-calendar-dollar"></i>الرسم السنوي لكل سنة</h3>
+                        <p class="hint-line" style="margin:0 0 10px">«فوق 45» لمن انتسب بعمر فوق 45 (لا يدفع حصة الوفاة). اتركه فارغاً ليكون مثل «حتى 45».</p>
+                        <div class="table-wrap"><table class="edit" id="fsAnnual"><thead><tr><th>السنة</th><th>حتى 45 (ل.س)</th><th>فوق 45 (ل.س)</th><th></th></tr></thead><tbody></tbody></table></div>
+                        <button type="button" class="btn sm" id="fsAddYear" style="margin-top:10px"><i class="ti ti-plus"></i>إضافة سنة</button>
+                    </div>
+                    <div class="card">
+                        <h3><i class="ti ti-table"></i>جداول الانتساب حسب العمر</h3>
+                        <p class="hint-line" style="margin:0 0 10px">الانتساب يأخذ جدول سنته، وإن لم يوجد فالجدول الذي بعدها. معونة الوفاة لا تُحسب فوق 45.</p>
+                        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+                            <div class="seg" id="fsYears"></div>
+                            <button type="button" class="btn sm" id="fsAddTable"><i class="ti ti-plus"></i>جدول سنة جديدة</button>
+                            <button type="button" class="btn sm danger" id="fsDelTable"><i class="ti ti-trash"></i>حذف هذا الجدول</button>
+                        </div>
+                        <label class="field" style="max-width:260px;margin-bottom:10px"><span>نافذ اعتباراً من (للعرض)</span><input type="date" id="fsFrom"></label>
+                        <div class="table-wrap"><table class="edit fee-grid" id="fsGrid"></table></div>
+                    </div>
+                    <div class="card">
+                        <h3><i class="ti ti-refresh"></i>رسوم إعادة القيد والنقل</h3>
+                        <div class="grid g3 form-g" id="fsFixed"></div>
+                    </div>
+                    <div class="row">
+                        <button type="button" class="btn primary big" id="fsSave"><i class="ti ti-device-floppy"></i>حفظ إعدادات الرسوم</button>
+                        <button type="button" class="btn big" id="fsReset"><i class="ti ti-restore"></i>استعادة الجداول المعتمدة</button>
                     </div>
                 </section>
 
@@ -295,7 +504,7 @@
                 <section data-page="backup" hidden>
                     <div class="page-title">
                         <span class="page-icon"><i class="ti ti-database-export"></i></span>
-                        <div class="page-text"><h2>النسخ الاحتياطي</h2><p>احفظ نسخة من كل الحالات والإعدادات واستعدها على أي جهاز</p></div>
+                        <div class="page-text"><h2>النسخ الاحتياطي</h2><p>نسخة واحدة تضم القسمين: حالات التقاعد وحسابات الرسوم وإعدادات كل منهما</p></div>
                     </div>
 
                     <div class="card">
@@ -344,12 +553,6 @@
             </div>
         </main>
 
-        <nav class="tabbar" id="tabbar" aria-label="القائمة الرئيسية">
-            <button type="button" data-sec="calc"><i class="ti ti-calculator"></i><span>الحاسبة</span></button>
-            <button type="button" data-sec="report"><i class="ti ti-file-text"></i><span>التقرير</span></button>
-            <button type="button" data-sec="cases"><i class="ti ti-folders"></i><span>الحالات</span></button>
-            <button type="button" data-sec="more"><i class="ti ti-dots-circle-horizontal"></i><span>المزيد</span></button>
-        </nav>
     </section>
 
     <template id="exRow">
@@ -395,7 +598,11 @@
 
     <script src="js/calc.js"></script>
     <script src="js/report.js"></script>
+    <script src="js/fees.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/fees-ui.js"></script>
+    <script src="js/fees-settings.js"></script>
+    <script src="js/help.js"></script>
 </body>
 
 </html>

@@ -35,8 +35,9 @@
     '.rpt .sign div{border-top:1px solid #333;padding-top:6px;min-height:70px}',
     '.rpt .foot{margin-top:20px;font-size:12px;color:#555;border-top:1px solid #ccc;padding-top:8px}',
     '.rpt dl.gl{margin:0}.rpt dl.gl dt{font-weight:700;color:#1f2318}.rpt dl.gl dd{margin:0 0 6px 0;padding-right:14px}',
+    '.rpt.fs-s{font-size:13px}.rpt.fs-l{font-size:16.5px}',
     '@media (max-width:640px){.rpt{padding:16px 12px}.rpt-head{flex-direction:column}.rpt-head .meta{text-align:right}.rpt .sign{grid-template-columns:1fr}}',
-    '@media print{@page{size:A4;margin:14mm 12mm}.rpt{border:0;padding:0;max-width:none;font-size:13px}.rpt h2{-webkit-print-color-adjust:exact;print-color-adjust:exact}.rpt th,.rpt .box,.rpt .formula,.rpt .note,.rpt .warn,.rpt .rkv td:first-child,.rpt .total td{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+    '@media print{@page{size:A4;margin:14mm 12mm}.rpt{border:0;padding:0;max-width:none;font-size:13px}.rpt.fs-s{font-size:11.5px}.rpt.fs-l{font-size:15px}.rpt h2{-webkit-print-color-adjust:exact;print-color-adjust:exact}.rpt th,.rpt .box,.rpt .formula,.rpt .note,.rpt .warn,.rpt .rkv td:first-child,.rpt .total td{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
   ].join('\n');
 
   function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -58,7 +59,7 @@
     var heirs = c.heirs || [];
     var eligible = R.shares ? R.shares.list.filter(function (x) { return x.eligible; }) : [];
 
-    h.push('<article class="rpt">');
+    h.push('<article class="rpt' + sizeClass(meta.fontSize) + '">');
     // ---------- الرأس
     h.push('<header class="rpt-head"><div><div class="org">' + esc(meta.org || 'خزانة تقاعد المحامين') + '</div>' +
       '<h1>تقرير حساب الراتب التقاعدي</h1><div>' + esc(R.label) + '</div></div>' +
@@ -233,8 +234,8 @@
       '<dt>الشطب / ترقين القيد / المنع</dt><dd>حالات يتوقف فيها المحامي عن ممارسة المهنة رسمياً، ولا تُحسب مدتها من سنوات الممارسة.</dd></dl>');
 
     // ---------- التوقيع
-    h.push('<div class="sign"><div>منظم التقرير<br><b>' + esc(c.preparer || '') + '</b></div><div>المدقق<br><b>' + esc(c.reviewer || '') + '</b></div><div>يعتمد<br>رئيس الفرع / مدير الخزانة</div></div>');
-    h.push('<div class="foot">أُعدّ هذا التقرير بواسطة حاسبة الراتب التقاعدي بناءً على البيانات المدخلة والقيم المعتمدة في الإعدادات، ويُعتمد بعد تدقيق الوثائق الأصلية في إضبارة المحامي.</div>');
+    h.push(signBlock(meta.signs || PENSION_SIGNS, c));
+    h.push('<div class="foot">' + (meta.footer ? esc(meta.footer).replace(/\n/g, '<br>') : 'أُعدّ هذا التقرير بواسطة حاسبة المحامي (قسم الراتب التقاعدي) بناءً على البيانات المدخلة والقيم المعتمدة في الإعدادات، ويُعتمد بعد تدقيق الوثائق الأصلية في إضبارة المحامي.') + '</div>');
     h.push('</article>');
     return h.join('\n');
   }
@@ -246,11 +247,25 @@
     return 'في ' + what + ' تُعتمد السنوات الكاملة فقط ويُهمل كسر السنة.';
   }
 
+  /* التوقيعات: قائمة {title, src, name}. src = preparer أو reviewer يأخذ الاسم من حقول الحاسبة،
+     و fixed يكتب الاسم الثابت (أو يترك خطاً للكتابة باليد إن كان فارغاً). القيم الافتراضية تعطي الشكل السابق نفسه. */
+  var PENSION_SIGNS = [{ title: 'منظم التقرير', src: 'preparer' }, { title: 'المدقق', src: 'reviewer' }, { title: 'يعتمد', src: 'fixed', name: 'رئيس الفرع / مدير الخزانة' }];
+  function signBlock(signs, c) {
+    signs = (signs || []).filter(function (x) { return x && (x.title || x.name || x.src !== 'fixed'); });
+    if (!signs.length) return '';
+    var cells = signs.map(function (x) {
+      var nm = x.src === 'preparer' ? '<br><b>' + esc(c.preparer || '') + '</b>' : x.src === 'reviewer' ? '<br><b>' + esc(c.reviewer || '') + '</b>' : (x.name ? '<br>' + esc(x.name) : '');
+      return '<div>' + esc(x.title || '') + nm + '</div>';
+    }).join('');
+    return '<div class="sign"' + (signs.length !== 3 ? ' style="grid-template-columns:repeat(' + Math.min(signs.length, 4) + ',1fr)"' : '') + '>' + cells + '</div>';
+  }
+  function sizeClass(sz) { return sz === 's' ? ' fs-s' : sz === 'l' ? ' fs-l' : ''; }
+
   function standalone(html, title) {
     return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + esc(title) + '</title>' +
       '<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;600;700&display=swap" rel="stylesheet">' +
       '<style>body{margin:0;background:#fff;padding:16px}' + REPORT_CSS + '</style></head><body>' + html + '</body></html>';
   }
 
-  root.PensionReport = { render: render, standalone: standalone, CSS: REPORT_CSS, esc: esc };
+  root.PensionReport = { render: render, standalone: standalone, CSS: REPORT_CSS, esc: esc, signBlock: signBlock, sizeClass: sizeClass, PENSION_SIGNS: PENSION_SIGNS };
 })(typeof self !== 'undefined' ? self : this);
