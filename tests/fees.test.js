@@ -146,6 +146,16 @@ t('النقل 10,000 مع تنبيه براءة الذمة', () => {
   assert.ok(!F.compute({ kind: 'transfer', clearance: true }, TODAY).warnings.length);
 });
 t('نقل المتمرن إلى الأساتذة 5,050', () => assert.strictEqual(F.compute({ kind: 'traineeToMaster' }, TODAY).total, 5050));
+t('الأستذة حسب التاريخ: قبل 1/3/2026 مركزية 950، ومنه 5,050؛ والفرع 5,000 قابل للتعديل', () => {
+  const k = (o) => F.compute(Object.assign({ kinds: ['traineeToMaster'], scope: 'both' }, o), TODAY);
+  assert.strictEqual(k({ masterDate: '2026-02-28' }).centralTotal, 950);
+  assert.strictEqual(k({ masterDate: '2025-06-01' }).centralTotal, 950);
+  assert.strictEqual(k({ masterDate: '2026-03-01' }).centralTotal, 5050);
+  assert.strictEqual(k({ masterDate: '2026-03-01' }).branchTotal, 5000);
+  assert.strictEqual(k({ masterDate: '2025-06-01', brMasterAmount: '3000' }).branchTotal, 3000);
+  assert.ok(k({}).warnings.some(w => w.indexOf('تاريخ الانتقال') >= 0));
+  assert.strictEqual(F.compute({ kinds: ['traineeToMaster'], scope: 'both', masterDate: '2025-06-01' }, { data: { fixed: { tmOld: 1000, brMaster: 4000 } } }).total, 5000);
+});
 t('المعفى من التمرين: قيد الدراسة', () => assert.ok(F.compute({ kind: 'exempt' }, TODAY).errors.length));
 
 // ---------- إعدادات المستخدم (تعديل الجداول) — بلا إعدادات تبقى النتائج كما هي
@@ -174,6 +184,73 @@ t('جدول ناقص لا يُقبل ويبقى الافتراضي', () => {
 t('حذف رسم سنة (null) يظهر تنبيهاً', () => {
   const R = F.compute({ kind: 'secStruck', decisionDate: '2026-05-01' }, { today: '2026-11-24', data: { annual: { 2015: null } } });
   assert.ok(R.warnings.some(w => w.indexOf('2015') >= 0));
+});
+
+// ---------- رسوم الفروع والعمليات المتعددة
+const BR_TOTALS = [26000, 28500, 31000, 33500, 36000, 38500, 41000, 43500, 46000, 48500, 51000, 54000, 54000, 57000, 60000, 63000, 66500, 70000, 73500, 77000, 80500];
+t('جدول الفروع 2026 يطابق عمود «مجموع رسوم الفرع» في الصورة لكل الأعمار', () => {
+  F.AGES.forEach((a, i) => assert.strictEqual(sum(F.DEFAULTS.BRANCH_TABLES[2026].rows[a]), BR_TOTALS[i], 'عمر ' + a));
+});
+const nb = (o) => F.compute(Object.assign({ kinds: ['new'], status: 'active', scope: 'both' }, o), TODAY);
+t('انتساب 2026 بعمر 30: مركزية 35,000 + فرع 26,000', () => {
+  const R = nb({ birthDate: '1996-03-01', joinDate: '2026-03-01' });
+  assert.strictEqual(R.centralTotal, 35000); assert.strictEqual(R.branchTotal, 26000); assert.strictEqual(R.total, 61000);
+  assert.strictEqual(F.compute({ kinds: ['new'], status: 'active', scope: 'branch', birthDate: '1996-03-01', joinDate: '2026-03-01' }, TODAY).total, 26000);
+});
+t('بلا scope (حسابات محفوظة قديمة) = مركزية فقط', () => {
+  assert.strictEqual(F.compute({ kind: 'new', status: 'active', birthDate: '1996-03-01', joinDate: '2026-03-01' }, TODAY).total, 35000);
+});
+t('منتسب 2019 مع الفرع: رسم الفرع السنوي من 2026 فقط', () => {
+  const R = nb({ birthDate: '1985-06-01', joinDate: '2019-03-10' });
+  const brRow = F.DEFAULTS.BRANCH_TABLES[2026].rows[34];
+  assert.strictEqual(R.branchTotal, sum(brRow) - brRow.annual + 3000);
+  assert.deepStrictEqual(R.years.filter(y => y.branch).map(y => y.year), [2026]);
+});
+t('مطبوعات الفرع: خانة ومبلغ يدوي', () => {
+  const R = nb({ birthDate: '1996-03-01', joinDate: '2026-03-01', branchPrints: { on: true, amount: '1500' } });
+  assert.strictEqual(R.branchTotal, 27500);
+});
+t('انتساب + أستذة: البنود المكررة تُحسب مرتين، ويمكن إلغاء التكرار', () => {
+  const R = nb({ kinds: ['new', 'traineeToMaster'], birthDate: '1996-03-01', joinDate: '2026-03-01' });
+  assert.strictEqual(R.total, 61000 + 5050 + 5000);
+  const dup = R.items.find(i => i.dup && i.label === 'الهوية');
+  assert.ok(dup);
+  const R2 = nb({ kinds: ['new', 'traineeToMaster'], birthDate: '1996-03-01', joinDate: '2026-03-01', excludeDup: [dup.key] });
+  assert.strictEqual(R2.total, R.total - 1000);
+});
+t('إعادة قيد بعد الترقين + أستذة (مركزية + فرع)', () => {
+  const R = F.compute({ kinds: ['reCancel', 'traineeToMaster'], scope: 'both', birthDate: '1990-01-01', eventDate: '2023-06-01', decisionDate: '2026-06-01' }, TODAY);
+  assert.strictEqual(R.centralTotal, 10000 + 10000 + 2500 + 3 * 2500 + 1000 + 1000 + 5050);
+  assert.strictEqual(R.branchTotal, 10000 + 5000);
+});
+t('النقل: مركزية 10,000 + فرع 5,000', () => assert.strictEqual(F.compute({ kinds: ['transfer'], scope: 'both', clearance: true }, TODAY).total, 15000));
+t('المشطوب الأمني: رسم الفرع 20,000 ويمكن الإعفاء منه', () => {
+  const a = F.compute({ kinds: ['secStruck'], scope: 'both', decisionDate: '2026-05-01' }, TODAY);
+  const b = F.compute({ kinds: ['secStruck'], scope: 'both', decisionDate: '2026-05-01', secBranchWaived: true }, TODAY);
+  assert.strictEqual(a.total - b.total, 20000);
+  assert.strictEqual(b.total, sum(F.ANNUAL) + 3000);
+});
+t('نفقات إدارية ومتطلبات تمرين لا تُحسب هنا (حتى في حساب قديم فيه branchExtra)', () => {
+  assert.strictEqual(F.compute({ kinds: ['transfer'], scope: 'both', clearance: true, branchExtra: { admin: true, training: true } }, TODAY).total, 15000);
+  assert.ok(!F.FIXED_FIELDS.some(f => f[0] === 'brAdmin' || f[0] === 'brTraining'));
+});
+t('عمليتان بسنوات مشتركة: كل سنة مرة واحدة', () => {
+  const R = F.compute({ kinds: ['secStruck', 'omitted'], scope: 'central', decisionDate: '2026-05-01', lastPaidYear: '2023' }, TODAY);
+  assert.strictEqual(R.years.length, 16);
+  assert.strictEqual(R.total, sum(F.ANNUAL) + 10000);
+});
+
+t('الإعفاء لكل عملية ولكل طرف (مع رسومها السنوية) ويظهر سببه', () => {
+  const base = { kinds: ['reCancel', 'traineeToMaster'], scope: 'both', birthDate: '1990-01-01', eventDate: '2023-06-01', decisionDate: '2026-06-01' };
+  const a = F.compute(base, TODAY);
+  const b = F.compute(Object.assign({ exempt: { reCancel: { branch: true, reason: 'قرار مجلس الفرع' } } }, base), TODAY);
+  assert.strictEqual(a.total - b.total, 10000);
+  assert.ok(b.steps.some(s => s.indexOf('قرار مجلس الفرع') >= 0));
+  const c = F.compute(Object.assign({ exempt: { traineeToMaster: { central: true, branch: true } } }, base), TODAY);
+  assert.strictEqual(a.total - c.total, 5050 + 5000);
+  const s1 = F.compute({ kinds: ['secStruck'], scope: 'both', decisionDate: '2026-05-01', exempt: { secStruck: { central: true } } }, TODAY);
+  assert.strictEqual(s1.total, 20000 + 3000); // معفى من الرسوم السنوية المركزية، ويبقى الفرع
+  assert.ok(s1.years.every(y => y.central === 0 && y.exempt === 'central'));
 });
 
 console.log('\n' + passed + ' اختباراً ناجحاً');

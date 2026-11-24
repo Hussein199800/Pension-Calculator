@@ -4,6 +4,6 @@
   "private": true,
   "description": "حاسبة المحامي: الراتب التقاعدي ومعونات التقاعد والوفاة، ورسوم الانتساب وإعادة القيد، مع تقارير مفصلة قابلة للطباعة",
   "scripts": {
-    "test": "node tests/calc.test.js && node tests/golden.test.js && node tests/fees.test.js"
+    "test": "node tests/calc.test.js && node tests/golden.test.js && node tests/fees.test.js && node tests/learn.test.js"
   }
 }
