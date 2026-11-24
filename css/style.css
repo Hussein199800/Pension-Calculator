@@ -1027,3 +1027,27 @@ input.bad { border-color: var(--danger) !important; background: var(--danger-bg)
     .sign-editor td { padding: 4px 0 !important; border: 0 !important; }
     .sign-editor .table-wrap { overflow: visible; border: 0; }
 }
+
+/* ---------- الرسوم: النطاق (مركزية / فرع) والعمليات المتعددة ---------- */
+.scope-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.scope-label { font-weight: 700; color: var(--heading); }
+.seg label { position: relative; cursor: pointer; }
+.seg label input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label span { display: inline-block; padding: 7px 14px; border-radius: var(--r-sm); font-weight: 600; color: var(--text-2); font-size: var(--fs-sm); }
+.seg label:hover span { color: var(--accent-strong); background: var(--surface); }
+.seg label input:checked + span { background: var(--grad-primary); color: #fff; box-shadow: 0 4px 10px -8px rgba(74, 87, 24, 0.8); }
+.seg label input:focus-visible + span { box-shadow: var(--ring); }
+.fund-tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.fund-tag.central { background: var(--accent-soft); color: var(--accent-text); }
+.fund-tag.branch { background: color-mix(in srgb, var(--gold-300) 55%, transparent); color: var(--gold-700); }
+[data-theme="dark"] .fund-tag.central { background: var(--surface-3); color: #c3cf8f; }
+[data-theme="dark"] .fund-tag.branch { background: rgba(232, 181, 77, 0.16); color: var(--gold); }
+.fund-sums { display: flex; gap: 16px; flex-wrap: wrap; margin: 4px 0 8px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fund-sums span { display: inline-flex; gap: 6px; align-items: center; }
+.dup-chk { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: var(--fs-xs); color: var(--warning); font-weight: 600; cursor: pointer; }
+.fee-tbl tr.is-excluded td { color: var(--text-3); }
+.yr-split { font-size: 10.5px !important; color: var(--text-2) !important; }
+.branch-box { margin-top: 14px; padding: 4px 14px 12px; border-radius: var(--r-md); border: 1px dashed color-mix(in srgb, var(--gold-500) 60%, transparent); background: color-mix(in srgb, var(--gold-300) 12%, transparent); }
+.branch-opts { display: grid; gap: 6px; }
+.branch-opts .field { max-width: 280px; }
+.ftypes .type input[type=checkbox] { margin-top: 3px; }

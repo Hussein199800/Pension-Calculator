@@ -307,17 +307,26 @@
                         </div>
 
                         <div class="card">
-                            <h3><span class="step-no">2</span>نوع العملية</h3>
-                            <div class="types ftypes" role="radiogroup">
-                                <label class="type"><input type="radio" name="kind" value="new" checked><span><b>انتساب جديد</b><small>حسب العمر وجدول سنة الانتساب، مع الرسوم السنوية</small></span></label>
-                                <label class="type"><input type="radio" name="kind" value="secStruck"><span><b>مشطوب أمني</b><small>الرسوم السنوية من 2011 حتى سنة القرار</small></span></label>
-                                <label class="type"><input type="radio" name="kind" value="admStruck"><span><b>مشطوب إداري</b><small>نقابة 20,000 + تقاعد 20,000 + سنوات الانقطاع</small></span></label>
-                                <label class="type"><input type="radio" name="kind" value="cancelSelf"><span><b>ترقين بطلب المحامي</b><small>رسم سنة الترقين وما سبقه غير مدفوع</small></span></label>
-                                <label class="type"><input type="radio" name="kind" value="reCancel"><span><b>إعادة قيد بعد الترقين</b><small>نقابة 10,000 + تقاعد 10,000 + سنوات الانقطاع</small></span></label>
-                                <label class="type"><input type="radio" name="kind" value="omitted"><span><b>مُغفَل</b><small>نقابة 3,000 + تقاعد 7,000 + الرسوم المترتبة</small></span></label>
-                                <label class="type"><input type="radio" name="kind" value="transfer"><span><b>نقل من فرع لآخر</b><small>نقابة 5,000 + تقاعد 5,000</small></span></label>
-                                <label class="type"><input type="radio" name="kind" value="traineeToMaster"><span><b>متمرن إلى الأساتذة</b><small>5,050 ثابتة</small></span></label>
-                                <label class="type is-off" title="قيد الدراسة"><input type="radio" name="kind" value="exempt" disabled><span><b>المعفى من التمرين</b><small><i class="ti ti-clock"></i> قيد الدراسة</small></span></label>
+                            <h3><span class="step-no">2</span>نوع العملية والنطاق</h3>
+                            <div class="scope-row">
+                                <span class="scope-label">نطاق الحساب:</span>
+                                <div class="seg" id="feeScope" role="radiogroup" aria-label="نطاق الحساب">
+                                    <label><input type="radio" name="scope" value="both" checked><span>مركزية + فرع</span></label>
+                                    <label><input type="radio" name="scope" value="central"><span>مركزية فقط</span></label>
+                                    <label><input type="radio" name="scope" value="branch"><span>فرع فقط</span></label>
+                                </div>
+                            </div>
+                            <p class="hint-line" style="margin:8px 0 12px">اختر عملية أو أكثر معاً (مثلاً: إعادة قيد + أستذة، أو انتساب + أستذة).</p>
+                            <div class="types ftypes" role="group" aria-label="نوع العملية">
+                                <label class="type"><input type="checkbox" name="kinds" value="new" checked><span><b>انتساب جديد</b><small>حسب العمر وجدول سنة الانتساب، مع الرسوم السنوية</small></span></label>
+                                <label class="type"><input type="checkbox" name="kinds" value="secStruck"><span><b>مشطوب أمني</b><small>الرسوم السنوية من 2011 حتى سنة القرار</small></span></label>
+                                <label class="type"><input type="checkbox" name="kinds" value="admStruck"><span><b>مشطوب إداري</b><small>نقابة 20,000 + تقاعد 20,000 + سنوات الانقطاع</small></span></label>
+                                <label class="type"><input type="checkbox" name="kinds" value="cancelSelf"><span><b>ترقين بطلب المحامي</b><small>رسم سنة الترقين وما سبقه غير مدفوع</small></span></label>
+                                <label class="type"><input type="checkbox" name="kinds" value="reCancel"><span><b>إعادة قيد بعد الترقين</b><small>نقابة 10,000 + تقاعد 10,000 + سنوات الانقطاع</small></span></label>
+                                <label class="type"><input type="checkbox" name="kinds" value="omitted"><span><b>مُغفَل</b><small>نقابة 3,000 + تقاعد 7,000 + الرسوم المترتبة</small></span></label>
+                                <label class="type"><input type="checkbox" name="kinds" value="transfer"><span><b>نقل من فرع لآخر</b><small>نقابة 5,000 + تقاعد 5,000</small></span></label>
+                                <label class="type"><input type="checkbox" name="kinds" value="traineeToMaster"><span><b>أستذة (متمرن إلى الأساتذة)</b><small>5,050 ثابتة</small></span></label>
+                                <label class="type is-off" title="قيد الدراسة"><input type="checkbox" name="kinds" value="exempt" disabled><span><b>المعفى من التمرين</b><small><i class="ti ti-clock"></i> قيد الدراسة</small></span></label>
                             </div>
                         </div>
 
@@ -339,6 +348,16 @@
                                 <label class="check"><input type="checkbox" name="opt_id"> الهوية (1,000)</label>
                                 <label class="check"><input type="checkbox" name="opt_license"> إجازة المحاماة (1,000)</label>
                                 <label class="check"><input type="checkbox" name="opt_badge"> شارة الصدر (1,000)</label>
+                            </div>
+                            <div class="branch-box" id="branchBox">
+                                <p class="fee-sub"><i class="ti ti-building"></i> خيارات الفرع</p>
+                                <div class="branch-opts">
+                                    <label class="check" data-fk="new"><input type="checkbox" name="bp_on"> مطبوعات + مفكرة (حسب المطبوعات الموجودة)</label>
+                                    <label class="field bp-amount" data-fk="new"><span>مبلغ المطبوعات والمفكرة</span><input name="bp_amount" inputmode="numeric" class="num-in" placeholder="0"></label>
+                                    <label class="check" data-fk="secStruck"><input type="checkbox" name="secBranchWaived"> إعفاء المشطوب الأمني من رسم إعادة القيد للفرع</label>
+                                    <label class="check"><input type="checkbox" name="bx_admin"> رسم نفقات إدارية (اختياري)</label>
+                                    <label class="check"><input type="checkbox" name="bx_training"> متطلبات تمرين (اختياري)</label>
+                                </div>
                             </div>
                         </div>
 
@@ -475,13 +494,14 @@
                     </div>
                     <div class="card">
                         <h3><i class="ti ti-calendar-dollar"></i>الرسم السنوي لكل سنة</h3>
-                        <p class="hint-line" style="margin:0 0 10px">«فوق 45» لمن انتسب بعمر فوق 45 (لا يدفع حصة الوفاة). اتركه فارغاً ليكون مثل «حتى 45».</p>
-                        <div class="table-wrap"><table class="edit" id="fsAnnual"><thead><tr><th>السنة</th><th>حتى 45 (ل.س)</th><th>فوق 45 (ل.س)</th><th></th></tr></thead><tbody></tbody></table></div>
+                        <p class="hint-line" style="margin:0 0 10px">«فوق 45» لمن انتسب بعمر فوق 45 (لا يدفع حصة الوفاة)، فارغ = مثل «حتى 45». «الفرع» = الرسم السنوي للفرع، فارغ = لا رسم فرع لتلك السنة.</p>
+                        <div class="table-wrap"><table class="edit" id="fsAnnual"><thead><tr><th>السنة</th><th>مركزية: حتى 45</th><th>مركزية: فوق 45</th><th>الفرع</th><th></th></tr></thead><tbody></tbody></table></div>
                         <button type="button" class="btn sm" id="fsAddYear" style="margin-top:10px"><i class="ti ti-plus"></i>إضافة سنة</button>
                     </div>
                     <div class="card">
                         <h3><i class="ti ti-table"></i>جداول الانتساب حسب العمر</h3>
                         <p class="hint-line" style="margin:0 0 10px">الانتساب يأخذ جدول سنته، وإن لم يوجد فالجدول الذي بعدها. معونة الوفاة لا تُحسب فوق 45.</p>
+                        <div class="seg" id="fsFund" style="margin-bottom:10px"><button type="button" class="on" data-fund="central">الجداول المركزية</button><button type="button" data-fund="branch">جداول الفروع</button></div>
                         <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
                             <div class="seg" id="fsYears"></div>
                             <button type="button" class="btn sm" id="fsAddTable"><i class="ti ti-plus"></i>جدول سنة جديدة</button>
@@ -491,7 +511,7 @@
                         <div class="table-wrap"><table class="edit fee-grid" id="fsGrid"></table></div>
                     </div>
                     <div class="card">
-                        <h3><i class="ti ti-refresh"></i>رسوم إعادة القيد والنقل</h3>
+                        <h3><i class="ti ti-refresh"></i>رسوم إعادة القيد والنقل والأستذة (مركزية وفرع)</h3>
                         <div class="grid g3 form-g" id="fsFixed"></div>
                     </div>
                     <div class="row">
