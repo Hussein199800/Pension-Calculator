@@ -51,6 +51,7 @@
             nationalId: fval("nationalId"), memberNo: fval("memberNo"), branch: fval("branch"), fileNo: fval("fileNo"), phone: fval("phone"),
             kinds: ks, kind: ks[0] || "", scope: scope(),
             joinDate: fval("joinDate"), status: fval("status") || "active", statusYear: toLatin(fval("statusYear")),
+            masterDate: fval("masterDate"), brMasterAmount: toLatin(fval("brMasterAmount")),
             eventDate: fval("eventDate"), decisionDate: fval("decisionDate"), gapYears: toLatin(fval("gapYears")), lastPaidYear: toLatin(fval("lastPaidYear")),
             clearance: fval("clearance"), optional: { id: fval("opt_id"), license: fval("opt_license"), badge: fval("opt_badge") },
             branchPrints: { on: fval("bp_on"), amount: toLatin(fval("bp_amount")) },
@@ -97,6 +98,7 @@
         $$("#feeForm [data-fstatus]").forEach(function (el) { if (el.hidden) return; el.hidden = el.getAttribute("data-fstatus").split(" ").indexOf(st) < 0; });
         $("#branchBox").hidden = sc === "central" || ks.indexOf("new") < 0;
         $$("#feeForm .opt-row").forEach(function (el) { if (sc === "branch") el.hidden = true; });
+        $$("#feeForm .fee-brm").forEach(function (el) { if (!el.hidden) el.hidden = sc === "central"; });
         $$("#feeForm .bp-amount").forEach(function (el) { if (!el.hidden) el.hidden = !fval("bp_on"); });
         $$("#feeForm .ftypes .type").forEach(function (l) { const i = l.querySelector("input"); l.classList.toggle("on", i.checked); });
         renderLive();
@@ -117,7 +119,7 @@
             cancelSelf: "رسم سنة الترقين وما سبقه غير مدفوع",
             omitted: both("نقابة " + n(X.omUnion) + " + تقاعد " + n(X.omPension) + " + الرسوم المترتبة", n(X.brOmitted)),
             transfer: both("نقابة " + n(X.trfUnion) + " + تقاعد " + n(X.trfPension), n(X.brTransfer)),
-            traineeToMaster: both("مركزية " + n(X.tmUnion + X.tmPension + X.tmLicenseFee + X.tmId + X.tmLicensePrice), n(X.brMaster))
+            traineeToMaster: both("مركزية " + n(X.tmUnion + X.tmPension + X.tmLicenseFee + X.tmId + X.tmLicensePrice) + " من 1/3/2026 (" + n(X.tmOld) + " قبلها)", n(X.brMaster))
         };
         Object.keys(hints).forEach(function (k) { const el = fform.querySelector('input[name=kinds][value="' + k + '"] + span small'); if (el) el.textContent = hints[k]; });
         $$("#feeForm .opt-row .check").forEach(function (l) {
@@ -229,6 +231,7 @@
         if (c.decisionDate && ["secStruck", "admStruck", "reCancel", "omitted"].some(has)) op.push(["تاريخ قرار إعادة القيد", d(c.decisionDate)]);
         if (R.gapYears !== undefined) op.push(["سنوات الانقطاع", R.gapYears + " سنة"]);
         if (c.lastPaidYear && (has("cancelSelf") || has("omitted"))) op.push(["آخر سنة مدفوعة", esc(c.lastPaidYear)]);
+        if (has("traineeToMaster")) op.push(["تاريخ الانتقال لجدول الأساتذة", c.masterDate ? d(c.masterDate) : "لم يُدخل (اعتُمد تاريخ اليوم)"]);
         if (has("transfer")) op.push(["براءة الذمة", c.clearance ? '<span class="yes">بريء الذمة</span>' : '<span class="no">لم يُؤكَّد</span>']);
         const exl = [];
         Object.keys(R.exempt || {}).filter(has).forEach(function (k) {

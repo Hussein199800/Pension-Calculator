@@ -66,6 +66,7 @@
     ['tmUnion', 'متمرن إلى الأساتذة: قيد النقابة', 1000], ['tmPension', 'متمرن إلى الأساتذة: قيد التقاعد', 2000],
     ['tmLicenseFee', 'متمرن إلى الأساتذة: رسم إجازة المحاماة', 1000], ['tmId', 'متمرن إلى الأساتذة: الهوية', 1000],
     ['tmLicensePrice', 'متمرن إلى الأساتذة: ثمن إجازة المحاماة', 50],
+    ['tmOld', 'متمرن إلى الأساتذة قبل 1/3/2026: الرسم المركزي (إجمالي)', 950],
     ['securityFrom', 'المشطوب الأمني يدفع الرسوم السنوية اعتباراً من سنة', 2011]
   ];
 
@@ -255,6 +256,7 @@
     return using(opts.data, function () { return computeIn(inp || {}, opts); });
   }
   var FUND = { central: 'مركزية', branch: 'فرع' };
+  var TM_CUTOFF = { y: 2026, m: 3, d: 1 }; /* بداية رسم الأستذة المركزي الجديد */
   var SCOPE = { both: 'مركزية + فرع', central: 'مركزية فقط', branch: 'فرع فقط' };
   var KIND_ORDER = ['new', 'secStruck', 'admStruck', 'cancelSelf', 'reCancel', 'omitted', 'transfer', 'traineeToMaster', 'exempt'];
 
@@ -435,9 +437,22 @@
       }
 
       else if (kind === 'traineeToMaster') {
-        if (useC) D.FIXED.trainee.forEach(function (t) { item('central', t[0], t[1]); });
-        if (useB) item('branch', 'رسم الأستذة', D.flat.brMaster);
-        step('رسم نقل المتمرن إلى جدول الأساتذة (الأستذة) ثابت' + (useB ? '، ويُضاف رسم الأستذة للفرع ' + fmt(D.flat.brMaster) : '') + '.');
+        /* الرسم المركزي حسب تاريخ الانتقال إلى جدول الأساتذة: قبل 1/3/2026 = 950 إجمالاً، ومنه = 5,050 مفصّلاً (قرار المالك).
+           رسم الفرع: 5,000 افتراضياً (قبل 1/3/2026 غير محدد)، ويمكن تغييره لكل حساب أو من الإعدادات. */
+        var md = parseDate(inp.masterDate), mdUsed = md || today, before = cmpD(mdUsed, TM_CUTOFF) < 0;
+        if (!md) R.warnings.push('لم يُدخل تاريخ الانتقال إلى جدول الأساتذة؛ اعتُمد تاريخ اليوم ' + fmtDate(today) + ' لاختيار الرسم.');
+        R.masterDate = md ? inp.masterDate : '';
+        step('تاريخ الانتقال إلى جدول الأساتذة ' + fmtDate(mdUsed) + (md ? '' : ' (تاريخ اليوم)') + '، فيُطبَّق رسم ' + (before ? 'ما قبل' : 'ما بعد') + ' 1/3/2026.');
+        if (useC) {
+          if (before) { item('central', 'رسم نقل المتمرن إلى جدول الأساتذة', D.flat.tmOld, 'قبل 1/3/2026'); step('المركزية: الرسم قبل 1/3/2026 = ' + fmt(D.flat.tmOld) + '.'); }
+          else { D.FIXED.trainee.forEach(function (t) { item('central', t[0], t[1]); }); step('المركزية: الرسم من 1/3/2026 = ' + fmt(D.FIXED.trainee.reduce(function (s, t) { return s + t[1]; }, 0)) + ' (مفصّلاً).'); }
+        }
+        if (useB) {
+          var bm = num(inp.brMasterAmount), manualB = bm !== null && bm >= 0;
+          var bmv = manualB ? bm : D.flat.brMaster;
+          item('branch', 'رسم الأستذة', bmv, manualB ? 'مبلغ معدّل في هذا الحساب' : (before ? 'غير محدد قبل 1/3/2026، القيمة الافتراضية' : ''));
+          step('الفرع: رسم الأستذة ' + fmt(bmv) + (manualB ? ' (عُدّل في هذا الحساب)' : before ? ' (رسم الفرع قبل 1/3/2026 غير محدد، فاعتُمدت القيمة الافتراضية)' : '') + '.');
+        }
       }
     });
 
