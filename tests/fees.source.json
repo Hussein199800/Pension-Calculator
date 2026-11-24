@@ -1,0 +1,1357 @@
+{
+"annual": {
+"2011": 60,
+"2012": 60,
+"2013": 105,
+"2014": 105,
+"2015": 135,
+"2016": 135,
+"2017": 135,
+"2018": 145,
+"2019": 145,
+"2020": 155,
+"2021": 400,
+"2022": 650,
+"2023": 750,
+"2024": 750,
+"2025": 750,
+"2026": 5000
+},
+"tables": {
+"2020": {
+"30": {
+"union": 150,
+"pension": 250,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 200
+},
+"31": {
+"union": 150,
+"pension": 300,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 230
+},
+"32": {
+"union": 150,
+"pension": 350,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 260
+},
+"33": {
+"union": 150,
+"pension": 400,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 290
+},
+"34": {
+"union": 150,
+"pension": 450,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 320
+},
+"35": {
+"union": 150,
+"pension": 500,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 350
+},
+"36": {
+"union": 150,
+"pension": 550,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 380
+},
+"37": {
+"union": 150,
+"pension": 600,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 410
+},
+"38": {
+"union": 150,
+"pension": 650,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 440
+},
+"39": {
+"union": 150,
+"pension": 700,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 470
+},
+"40": {
+"union": 150,
+"pension": 750,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 500
+},
+"41": {
+"union": 150,
+"pension": 900,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 550
+},
+"42": {
+"union": 150,
+"pension": 1050,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 600
+},
+"43": {
+"union": 150,
+"pension": 1200,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 650
+},
+"44": {
+"union": 150,
+"pension": 1350,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 700
+},
+"45": {
+"union": 150,
+"pension": 1500,
+"annual": 155,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 750
+},
+"46": {
+"union": 150,
+"pension": 1750,
+"annual": 130,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 0
+},
+"47": {
+"union": 150,
+"pension": 2000,
+"annual": 130,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 0
+},
+"48": {
+"union": 150,
+"pension": 2250,
+"annual": 130,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 0
+},
+"49": {
+"union": 150,
+"pension": 2500,
+"annual": 130,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 0
+},
+"50": {
+"union": 150,
+"pension": 2750,
+"annual": 130,
+"practice": 50,
+"id": 50,
+"badge": 10,
+"prints": 10,
+"death": 0
+}
+},
+"2021": {
+"30": {
+"union": 250,
+"pension": 300,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 350
+},
+"31": {
+"union": 250,
+"pension": 400,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 450
+},
+"32": {
+"union": 250,
+"pension": 500,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 550
+},
+"33": {
+"union": 250,
+"pension": 600,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 650
+},
+"34": {
+"union": 250,
+"pension": 700,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 750
+},
+"35": {
+"union": 250,
+"pension": 800,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 850
+},
+"36": {
+"union": 250,
+"pension": 900,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 950
+},
+"37": {
+"union": 250,
+"pension": 1000,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 1050
+},
+"38": {
+"union": 250,
+"pension": 1100,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 1150
+},
+"39": {
+"union": 250,
+"pension": 1200,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 1250
+},
+"40": {
+"union": 250,
+"pension": 1300,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 1350
+},
+"41": {
+"union": 250,
+"pension": 1500,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 1500
+},
+"42": {
+"union": 250,
+"pension": 1700,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 1650
+},
+"43": {
+"union": 250,
+"pension": 1900,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 1800
+},
+"44": {
+"union": 250,
+"pension": 2100,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 1950
+},
+"45": {
+"union": 250,
+"pension": 2300,
+"annual": 400,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 2100
+},
+"46": {
+"union": 250,
+"pension": 2800,
+"annual": 300,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 0
+},
+"47": {
+"union": 250,
+"pension": 3300,
+"annual": 300,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 0
+},
+"48": {
+"union": 250,
+"pension": 3800,
+"annual": 300,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 0
+},
+"49": {
+"union": 250,
+"pension": 4300,
+"annual": 300,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 0
+},
+"50": {
+"union": 250,
+"pension": 4800,
+"annual": 300,
+"practice": 50,
+"id": 50,
+"badge": 20,
+"prints": 20,
+"death": 0
+}
+},
+"2022": {
+"30": {
+"union": 250,
+"pension": 400,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 450
+},
+"31": {
+"union": 250,
+"pension": 550,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 600
+},
+"32": {
+"union": 250,
+"pension": 700,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 750
+},
+"33": {
+"union": 250,
+"pension": 850,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 900
+},
+"34": {
+"union": 250,
+"pension": 1000,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 1050
+},
+"35": {
+"union": 250,
+"pension": 1150,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 1200
+},
+"36": {
+"union": 250,
+"pension": 1300,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 1350
+},
+"37": {
+"union": 250,
+"pension": 1450,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 1500
+},
+"38": {
+"union": 250,
+"pension": 1600,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 1650
+},
+"39": {
+"union": 250,
+"pension": 1750,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 1800
+},
+"40": {
+"union": 250,
+"pension": 1900,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 1950
+},
+"41": {
+"union": 250,
+"pension": 2150,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 2150
+},
+"42": {
+"union": 250,
+"pension": 2400,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 2350
+},
+"43": {
+"union": 250,
+"pension": 2650,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 2550
+},
+"44": {
+"union": 250,
+"pension": 2900,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 2750
+},
+"45": {
+"union": 250,
+"pension": 3150,
+"annual": 650,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 2950
+},
+"46": {
+"union": 250,
+"pension": 3650,
+"annual": 500,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 0
+},
+"47": {
+"union": 250,
+"pension": 4150,
+"annual": 500,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 0
+},
+"48": {
+"union": 250,
+"pension": 4650,
+"annual": 500,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 0
+},
+"49": {
+"union": 250,
+"pension": 5150,
+"annual": 500,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 0
+},
+"50": {
+"union": 250,
+"pension": 5650,
+"annual": 500,
+"practice": 50,
+"id": 100,
+"badge": 50,
+"prints": 50,
+"death": 0
+}
+},
+"2023": {
+"30": {
+"union": 250,
+"pension": 400,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 450,
+"exam": 100
+},
+"31": {
+"union": 250,
+"pension": 550,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 600,
+"exam": 100
+},
+"32": {
+"union": 250,
+"pension": 700,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 750,
+"exam": 100
+},
+"33": {
+"union": 250,
+"pension": 850,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 900,
+"exam": 100
+},
+"34": {
+"union": 250,
+"pension": 1000,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 1050,
+"exam": 100
+},
+"35": {
+"union": 250,
+"pension": 1150,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 1200,
+"exam": 100
+},
+"36": {
+"union": 250,
+"pension": 1300,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 1350,
+"exam": 100
+},
+"37": {
+"union": 250,
+"pension": 1450,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 1500,
+"exam": 100
+},
+"38": {
+"union": 250,
+"pension": 1600,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 1650,
+"exam": 100
+},
+"39": {
+"union": 250,
+"pension": 1750,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 1800,
+"exam": 100
+},
+"40": {
+"union": 250,
+"pension": 1900,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 1950,
+"exam": 100
+},
+"41": {
+"union": 250,
+"pension": 2150,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 2150,
+"exam": 100
+},
+"42": {
+"union": 250,
+"pension": 2400,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 2350,
+"exam": 100
+},
+"43": {
+"union": 250,
+"pension": 2650,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 2550,
+"exam": 100
+},
+"44": {
+"union": 250,
+"pension": 2900,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 2750,
+"exam": 100
+},
+"45": {
+"union": 250,
+"pension": 3150,
+"annual": 750,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 2950,
+"exam": 100
+},
+"46": {
+"union": 250,
+"pension": 3650,
+"annual": 600,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 0,
+"exam": 100
+},
+"47": {
+"union": 250,
+"pension": 4150,
+"annual": 600,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 0,
+"exam": 100
+},
+"48": {
+"union": 250,
+"pension": 4650,
+"annual": 600,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 0,
+"exam": 100
+},
+"49": {
+"union": 250,
+"pension": 5150,
+"annual": 600,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 0,
+"exam": 100
+},
+"50": {
+"union": 250,
+"pension": 5650,
+"annual": 600,
+"practice": 50,
+"id": 250,
+"badge": 250,
+"prints": 50,
+"death": 0,
+"exam": 100
+}
+},
+"2024": {
+"30": {
+"union": 500,
+"pension": 750,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 750,
+"exam": 250
+},
+"31": {
+"union": 500,
+"pension": 1000,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 1000,
+"exam": 250
+},
+"32": {
+"union": 500,
+"pension": 1250,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 1250,
+"exam": 250
+},
+"33": {
+"union": 500,
+"pension": 1500,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 1500,
+"exam": 250
+},
+"34": {
+"union": 500,
+"pension": 1750,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 1750,
+"exam": 250
+},
+"35": {
+"union": 500,
+"pension": 2000,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 2000,
+"exam": 250
+},
+"36": {
+"union": 500,
+"pension": 2250,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 2250,
+"exam": 250
+},
+"37": {
+"union": 500,
+"pension": 2500,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 2500,
+"exam": 250
+},
+"38": {
+"union": 500,
+"pension": 2750,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 2750,
+"exam": 250
+},
+"39": {
+"union": 500,
+"pension": 3000,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 3000,
+"exam": 250
+},
+"40": {
+"union": 500,
+"pension": 3250,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 3250,
+"exam": 250
+},
+"41": {
+"union": 500,
+"pension": 3650,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 3650,
+"exam": 250
+},
+"42": {
+"union": 500,
+"pension": 4050,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 4050,
+"exam": 250
+},
+"43": {
+"union": 500,
+"pension": 4450,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 4450,
+"exam": 250
+},
+"44": {
+"union": 500,
+"pension": 4850,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 4850,
+"exam": 250
+},
+"45": {
+"union": 500,
+"pension": 5600,
+"annual": 750,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 5250,
+"exam": 250
+},
+"46": {
+"union": 500,
+"pension": 6350,
+"annual": 600,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 0,
+"exam": 250
+},
+"47": {
+"union": 500,
+"pension": 7100,
+"annual": 600,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 0,
+"exam": 250
+},
+"48": {
+"union": 500,
+"pension": 7850,
+"annual": 600,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 0,
+"exam": 250
+},
+"49": {
+"union": 500,
+"pension": 8600,
+"annual": 600,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 0,
+"exam": 250
+},
+"50": {
+"union": 500,
+"pension": 9350,
+"annual": 600,
+"practice": 250,
+"id": 250,
+"badge": 500,
+"prints": 250,
+"death": 0,
+"exam": 250
+}
+},
+"2026": {
+"30": {
+"union": 5000,
+"pension": 15000,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 4000,
+"exam": 2000
+},
+"31": {
+"union": 5000,
+"pension": 16500,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 4250,
+"exam": 2000
+},
+"32": {
+"union": 5000,
+"pension": 18000,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 4500,
+"exam": 2000
+},
+"33": {
+"union": 5000,
+"pension": 19500,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 4750,
+"exam": 2000
+},
+"34": {
+"union": 5000,
+"pension": 21000,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 5000,
+"exam": 2000
+},
+"35": {
+"union": 5000,
+"pension": 22500,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 5250,
+"exam": 2000
+},
+"36": {
+"union": 5000,
+"pension": 24000,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 5500,
+"exam": 2000
+},
+"37": {
+"union": 5000,
+"pension": 25500,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 5750,
+"exam": 2000
+},
+"38": {
+"union": 5000,
+"pension": 27000,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 6000,
+"exam": 2000
+},
+"39": {
+"union": 5000,
+"pension": 28500,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 6250,
+"exam": 2000
+},
+"40": {
+"union": 5000,
+"pension": 30000,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 6500,
+"exam": 2000
+},
+"41": {
+"union": 5000,
+"pension": 32000,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 6750,
+"exam": 2000
+},
+"42": {
+"union": 5000,
+"pension": 34000,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 7000,
+"exam": 2000
+},
+"43": {
+"union": 5000,
+"pension": 36000,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 7250,
+"exam": 2000
+},
+"44": {
+"union": 5000,
+"pension": 38000,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 7500,
+"exam": 2000
+},
+"45": {
+"union": 5000,
+"pension": 40500,
+"annual": 5000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 7750,
+"exam": 2000
+},
+"46": {
+"union": 5000,
+"pension": 43000,
+"annual": 4000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 0,
+"exam": 2000
+},
+"47": {
+"union": 5000,
+"pension": 45500,
+"annual": 4000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 0,
+"exam": 2000
+},
+"48": {
+"union": 5000,
+"pension": 48000,
+"annual": 4000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 0,
+"exam": 2000
+},
+"49": {
+"union": 5000,
+"pension": 50500,
+"annual": 4000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 0,
+"exam": 2000
+},
+"50": {
+"union": 5000,
+"pension": 53000,
+"annual": 4000,
+"practice": 1000,
+"id": 1000,
+"badge": 1000,
+"prints": 1000,
+"death": 0,
+"exam": 2000
+}
+}
+}
+}
