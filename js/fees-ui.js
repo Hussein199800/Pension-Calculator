@@ -11,6 +11,7 @@
     const F = window.FeesCalc;
     const fform = $("#feeForm");
     const fmt = F.fmt;
+    let legacyWaive = false;
     let fCurrentId = null, fLastInput = null, fLastResult = null, paidYears = [];
     /* إعدادات قسم الرسوم (pc.feeSettings.v1): الجهة والطباعة والجداول المعدّلة. الغائب = المعتمد */
     const FEES_SIGNS = [{ title: "منظم التقرير", src: "preparer" }, { title: "المدقق", src: "reviewer" }, { title: "الخازن / المحاسب", src: "fixed", name: "" }];
@@ -21,7 +22,28 @@
     function kinds() { return $$("#feeForm input[name=kinds]:checked").map(function (el) { return el.value; }); }
     function scope() { const el = fform.querySelector("input[name=scope]:checked"); return el ? el.value : "both"; }
     function toLatin(s) { return String(s || "").replace(/[٠-٩]/g, function (c) { return "٠١٢٣٤٥٦٧٨٩".indexOf(c); }); }
-    let excludeDup = [];
+    let excludeDup = [], exempt = {};
+    /* الإعفاءات: لكل عملية مختارة خانتان (مركزية / فرع) وسبب */
+    function renderExempt() {
+        const ks = kinds().filter(function (k) { return k !== "exempt"; }), sc = scope(), box = $("#exemptBox");
+        if (!ks.length) { box.innerHTML = ""; return; }
+        box.innerHTML = '<p class="fee-sub"><i class="ti ti-discount-check"></i> الإعفاءات <small class="muted">— إن كان المحامي معفى من رسوم عملية، علّم الطرف المعفى واكتب السبب (يظهر في التقرير)</small></p>' +
+            ks.map(function (k) {
+                const e = exempt[k] || {};
+                return '<div class="ex-row" data-ek="' + k + '"><b>' + esc(F.KINDS[k]) + "</b>" +
+                    (sc !== "branch" ? '<label class="check"><input type="checkbox" data-ef="central"' + (e.central ? " checked" : "") + "> معفى من المركزية</label>" : "") +
+                    (sc !== "central" ? '<label class="check"><input type="checkbox" data-ef="branch"' + (e.branch ? " checked" : "") + "> معفى من الفرع</label>" : "") +
+                    '<input data-ef="reason" placeholder="سبب الإعفاء" value="' + esc(e.reason || "") + '"' + (e.central || e.branch ? "" : " hidden") + "></div>";
+            }).join("");
+    }
+    function readExempt() {
+        $$("#exemptBox [data-ek]").forEach(function (row) {
+            const k = row.dataset.ek, c = row.querySelector("[data-ef=central]"), b = row.querySelector("[data-ef=branch]"), r = row.querySelector("[data-ef=reason]");
+            const e = { central: c ? c.checked : !!(exempt[k] || {}).central, branch: b ? b.checked : !!(exempt[k] || {}).branch, reason: r.value.trim() };
+            if (e.central || e.branch) exempt[k] = e; else delete exempt[k];
+            r.hidden = !(e.central || e.branch);
+        });
+    }
     function fcollect() {
         const ks = kinds();
         const c = {
@@ -31,10 +53,12 @@
             joinDate: fval("joinDate"), status: fval("status") || "active", statusYear: toLatin(fval("statusYear")),
             eventDate: fval("eventDate"), decisionDate: fval("decisionDate"), gapYears: toLatin(fval("gapYears")), lastPaidYear: toLatin(fval("lastPaidYear")),
             clearance: fval("clearance"), optional: { id: fval("opt_id"), license: fval("opt_license"), badge: fval("opt_badge") },
-            branchPrints: { on: fval("bp_on"), amount: toLatin(fval("bp_amount")) }, secBranchWaived: fval("secBranchWaived"),
+            branchPrints: { on: fval("bp_on"), amount: toLatin(fval("bp_amount")) },
             branchExtra: { admin: fval("bx_admin"), training: fval("bx_training") }, excludeDup: excludeDup.slice(),
+            exempt: (function () { const o = {}; ks.forEach(function (k) { if (exempt[k]) o[k] = Object.assign({}, exempt[k]); }); return o; })(),
             paidYears: paidYears.slice(), preparer: fval("preparer"), reviewer: fval("reviewer"), notes: fval("notes")
         };
+        if (legacyWaive) c.secBranchWaived = true;
         if (fCurrentId) c.id = fCurrentId;
         return c;
     }
@@ -58,7 +82,11 @@
         if (sc) sc.checked = true;
         paidYears = (c.paidYears || []).map(Number);
         excludeDup = (c.excludeDup || []).slice();
+        exempt = JSON.parse(JSON.stringify(c.exempt || {}));
+        /* الخيار القديم «إعفاء المشطوب الأمني من رسم الفرع» يبقى كما حُفظ */
+        legacyWaive = !!c.secBranchWaived;
         fCurrentId = c.id || null;
+        renderExempt();
         $("#feeBadge").textContent = fCurrentId ? "حساب محفوظ: " + (c.name || "") : "حساب جديد";
         frefresh();
     }
@@ -118,7 +146,8 @@
                 '<div class="table-wrap"><table class="fee-tbl"><thead><tr><th>الجهة</th><th>البند</th><th class="n">المبلغ</th></tr></thead><tbody>' +
                 op.items.map(function (i) {
                     const dup = i.dup ? '<label class="dup-chk" title="بند مكرر مع «' + esc(i.dupOf) + '»"><input type="checkbox" data-dup="' + esc(i.key) + '"' + (i.excluded ? "" : " checked") + "> مكرر: يُحتسب</label>" : "";
-                    return '<tr class="' + (i.excluded ? "is-excluded" : "") + '"><td>' + FUNDTAG(i.fund) + "</td><td>" + esc(i.label) + (i.note ? ' <small class="muted">(' + esc(i.note) + ")</small>" : "") + dup +
+                    const exm = i.exempt ? ' <span class="ex-tag">معفى</span>' : "";
+                    return '<tr class="' + (i.excluded ? "is-excluded" : "") + '"><td>' + FUNDTAG(i.fund) + "</td><td>" + esc(i.label) + exm + (i.note ? ' <small class="muted">(' + esc(i.note) + ")</small>" : "") + dup +
                         '</td><td class="n">' + (i.excluded ? "<s>" + fmt(i.amount) + "</s>" : fmt(i.amount)) + "</td></tr>";
                 }).join("") + '</tbody><tfoot><tr><td colspan="2">مجموع «' + esc(op.name) + '»</td><td class="n">' + fmt(op.total) + "</td></tr></tfoot></table></div>";
         });
@@ -128,7 +157,7 @@
                 '<div class="year-grid">' + R.years.map(function (y) {
                     const parts = (showC && showB) ? '<small class="yr-split">م ' + fmt(y.central) + (y.branch ? " + ف " + fmt(y.branch) : "") + "</small>" : "";
                     return '<label class="year-chip' + (y.paid ? " paid" : "") + '"><input type="checkbox" data-paid="' + y.year + '"' + (y.paid ? " checked" : "") + ">" +
-                        "<b>" + y.year + "</b><span>" + fmt(y.amount) + "</span>" + parts + "<small>" + (y.paid ? "مدفوع" : "مستحق") + "</small></label>";
+                        "<b>" + y.year + "</b><span>" + fmt(y.amount) + "</span>" + parts + "<small>" + (y.paid ? "مدفوع" : y.exempt ? "معفى" + (y.exempt === "both" ? "" : y.exempt === "central" ? " (مركزية)" : " (فرع)") : "مستحق") + "</small></label>";
                 }).join("") + "</div>" +
                 '<p class="muted" style="margin:8px 0 0">مجموع الرسوم السنوية المستحقة: <b>' + fmt(R.yearsTotal) + "</b>" + (R.paidCount ? " (طُرحت " + R.paidCount + " سنة مدفوعة)" : "") + "</p>";
         }
@@ -151,7 +180,9 @@
 
     fform.addEventListener("change", function (e) {
         if (e.target.closest("#feeLive")) return;
+        if (e.target.closest("#exemptBox")) { readExempt(); renderLive(); fsaveDraft(); return; }
         if (e.target.name === "scope") updateHints();
+        if (e.target.name === "scope" || e.target.name === "kinds") renderExempt();
         frefresh(); fsaveDraft();
     });
     fform.addEventListener("input", function (e) {
@@ -202,7 +233,13 @@
         if (R.gapYears !== undefined) op.push(["سنوات الانقطاع", R.gapYears + " سنة"]);
         if (c.lastPaidYear && (has("cancelSelf") || has("omitted"))) op.push(["آخر سنة مدفوعة", esc(c.lastPaidYear)]);
         if (has("transfer")) op.push(["براءة الذمة", c.clearance ? '<span class="yes">بريء الذمة</span>' : '<span class="no">لم يُؤكَّد</span>']);
-        if (has("secStruck") && R.scope !== "central") op.push(["رسم الفرع للمشطوب الأمني", c.secBranchWaived ? '<span class="yes">معفى</span>' : "مستحق"]);
+        const exl = [];
+        Object.keys(R.exempt || {}).filter(has).forEach(function (k) {
+            const e = R.exempt[k], parts = [e.central && R.scope !== "branch" ? "المركزية" : "", e.branch && R.scope !== "central" ? "الفرع" : ""].filter(Boolean);
+            if (parts.length) exl.push(esc(F.KINDS[k]) + ": معفى من " + parts.join(" و") + (e.reason ? " — السبب: " + esc(e.reason) : ""));
+        });
+        if (c.secBranchWaived && has("secStruck") && R.scope !== "central") exl.push("المشطوب الأمني: معفى من رسم إعادة القيد للفرع");
+        if (exl.length) op.push(["الإعفاءات", exl.join("<br>")]);
         h.push("<h2>الحالة</h2>" + kv(op));
         if (R.warnings.length) h.push(R.warnings.map(function (w) { return '<div class="warn">' + esc(w) + "</div>"; }).join(""));
         /* الرسوم لكل عملية، والجهة لكل بند، ولماذا */
@@ -212,7 +249,7 @@
             if (o.steps.length) h.push('<div class="formula"><b>لماذا وكيف:</b><ol class="steps">' + o.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol></div>");
             if (o.items.length) h.push('<table><thead><tr><th>الجهة</th><th>البند</th><th>ملاحظة</th><th class="n">المبلغ (ل.س)</th></tr></thead><tbody>' +
                 o.items.map(function (i) {
-                    const note = [i.note, i.dup ? (i.excluded ? "مكرر مع «" + i.dupOf + "» — أُلغي تكراره" : "مكرر مع «" + i.dupOf + "» — يُحتسب مرة ثانية بصفته في هذه العملية") : ""].filter(Boolean).join(" · ");
+                    const note = [i.exempt ? "معفى" : "", i.note, i.dup ? (i.excluded ? "مكرر مع «" + i.dupOf + "» — أُلغي تكراره" : "مكرر مع «" + i.dupOf + "» — يُحتسب مرة ثانية بصفته في هذه العملية") : ""].filter(Boolean).join(" · ");
                     return "<tr><td>" + fundTxt(i.fund) + "</td><td>" + esc(i.label) + "</td><td>" + esc(note) + '</td><td class="n">' + (i.excluded ? "<s>" + fmt(i.amount) + "</s>" : fmt(i.amount)) + "</td></tr>";
                 }).join("") + '<tr class="total"><td colspan="3">مجموع «' + esc(o.name) + '»</td><td class="n">' + fmt(o.total) + "</td></tr></tbody></table>");
         });
@@ -221,7 +258,7 @@
             h.push("<h2>الرسوم السنوية</h2><table><thead><tr><th>السنة</th><th>الحالة</th>" + (C ? '<th class="n">مركزية</th>' : "") + (B ? '<th class="n">فرع</th>' : "") + '<th class="n">المجموع (ل.س)</th></tr></thead><tbody>' +
                 R.years.map(function (y) {
                     const v = function (x) { return y.paid ? "<s>" + fmt(x) + "</s>" : fmt(x); };
-                    return "<tr><td>" + y.year + "</td><td>" + (y.paid ? '<span class="yes">مدفوع</span>' : "مستحق") + (y.over45 ? " · رسم من انتسب فوق 45" : "") + "</td>" +
+                    return "<tr><td>" + y.year + "</td><td>" + (y.paid ? '<span class="yes">مدفوع</span>' : y.exempt ? "معفى" + (y.exempt === "both" ? "" : y.exempt === "central" ? " من المركزية" : " من الفرع") : "مستحق") + (y.over45 ? " · رسم من انتسب فوق 45" : "") + "</td>" +
                         (C ? '<td class="n">' + v(y.central) + "</td>" : "") + (B ? '<td class="n">' + v(y.branch) + "</td>" : "") + '<td class="n">' + v(y.amount) + "</td></tr>";
                 }).join("") + '<tr class="total"><td colspan="' + (2 + (C ? 1 : 0) + (B ? 1 : 0)) + '">مجموع الرسوم السنوية المستحقة</td><td class="n">' + fmt(R.yearsTotal) + "</td></tr></tbody></table>");
         }

@@ -231,4 +231,17 @@ t('عمليتان بسنوات مشتركة: كل سنة مرة واحدة', () 
   assert.strictEqual(R.total, sum(F.ANNUAL) + 10000);
 });
 
+t('الإعفاء لكل عملية ولكل طرف (مع رسومها السنوية) ويظهر سببه', () => {
+  const base = { kinds: ['reCancel', 'traineeToMaster'], scope: 'both', birthDate: '1990-01-01', eventDate: '2023-06-01', decisionDate: '2026-06-01' };
+  const a = F.compute(base, TODAY);
+  const b = F.compute(Object.assign({ exempt: { reCancel: { branch: true, reason: 'قرار مجلس الفرع' } } }, base), TODAY);
+  assert.strictEqual(a.total - b.total, 10000);
+  assert.ok(b.steps.some(s => s.indexOf('قرار مجلس الفرع') >= 0));
+  const c = F.compute(Object.assign({ exempt: { traineeToMaster: { central: true, branch: true } } }, base), TODAY);
+  assert.strictEqual(a.total - c.total, 5050 + 5000);
+  const s1 = F.compute({ kinds: ['secStruck'], scope: 'both', decisionDate: '2026-05-01', exempt: { secStruck: { central: true } } }, TODAY);
+  assert.strictEqual(s1.total, 20000 + 3000); // معفى من الرسوم السنوية المركزية، ويبقى الفرع
+  assert.ok(s1.years.every(y => y.central === 0 && y.exempt === 'central'));
+});
+
 console.log('\n' + passed + ' اختباراً ناجحاً');

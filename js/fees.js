@@ -297,6 +297,11 @@
     var joinAge = inp.joinDate && inp.birthDate ? ageRow(inp.birthDate, inp.joinDate) : null;
     var over45 = !!(joinAge && joinAge.raw > 45);
     var ranges = [];
+    /* الإعفاءات: لكل عملية ولكل طرف (مركزية / فرع) مع سببها. secBranchWaived القديم = إعفاء المشطوب الأمني من الفرع */
+    var EX = {};
+    Object.keys(inp.exempt || {}).forEach(function (k) { var e = inp.exempt[k] || {}; if (e.central || e.branch) EX[k] = { central: !!e.central, branch: !!e.branch, reason: String(e.reason || '').trim() }; });
+    /* (الإعفاء يشمل كل رسوم ذلك الطرف في العملية، ومنها رسومها السنوية) */
+    function exempted(kind, fund) { return !!(EX[kind] && EX[kind][fund]); }
 
     R.steps.push('نطاق الحساب: ' + SCOPE[scope] + (scope === 'both' ? ' — رسوم النقابة المركزية ورسوم الفرع معاً.' : scope === 'central' ? ' — رسوم النقابة المركزية وحدها.' : ' — رسوم الفرع وحدها.'));
 
@@ -355,7 +360,7 @@
           }
           step('الفرع: بنود سطر العمر ' + ag.row + ' ما عدا الرسم السنوي للفرع، ثم الرسم السنوي للفرع لكل سنة من ' + Math.max(jd.y, D.BRANCH_FIRST) + ' حتى ' + end.year + ' (لا رسم سنوي للفرع قبل ' + D.BRANCH_FIRST + ').');
         }
-        ranges.push({ from: jd.y, to: end.year });
+        ranges.push({ from: jd.y, to: end.year, kind: kind });
       }
 
       else if (kind === 'secStruck') {
@@ -364,11 +369,13 @@
         step('المشطوب الأمني يدفع الرسم السنوي لكل سنة من ' + D.FIXED.securityFrom + ' حتى سنة القرار ' + dd.y + ' (السنتان محسوبتان).');
         if (over45) step('انتسب بعمر فوق 45، فيُعتمد الرسم السنوي المركزي المخفّض في السنوات التي لها جدول.');
         if (useB) {
-          if (inp.secBranchWaived) step('الفرع: أُعفي من رسم إعادة قيد المشطوب (المشطوب الأمني معفى أحياناً).');
-          else { item('branch', 'رسم إعادة قيد المشطوب', D.flat.brStruck, 'يمكن إعفاء المشطوب الأمني منه'); step('الفرع: رسم إعادة قيد المشطوب ' + fmt(D.flat.brStruck) + ' (ويمكن إلغاؤه، فالمشطوب الأمني معفى أحياناً).'); }
+          item('branch', 'رسم إعادة قيد المشطوب', D.flat.brStruck);
+          /* حسابات محفوظة بالخيار القديم: إعفاء من رسم إعادة القيد للفرع وحده (لا من الرسوم السنوية) */
+          if (inp.secBranchWaived) { var lw = op.items[op.items.length - 1]; lw.exempt = true; lw.excluded = true; lw.note = 'معفى (المشطوب الأمني معفى أحياناً)'; step('الفرع: أُعفي من رسم إعادة قيد المشطوب.'); }
+          else step('الفرع: رسم إعادة قيد المشطوب ' + fmt(D.flat.brStruck) + '.');
         }
         optional(item);
-        ranges.push({ from: D.FIXED.securityFrom, to: dd.y });
+        ranges.push({ from: D.FIXED.securityFrom, to: dd.y, kind: kind });
       }
 
       else if (kind === 'admStruck' || kind === 'reCancel') {
@@ -418,7 +425,7 @@
         }
         step(lp ? 'آخر سنة مدفوعة ' + lp + '، فتُحسب الرسوم من ' + from + ' حتى ' + refDate.y + '.' : 'لم تُحدد آخر سنة مدفوعة، فتُحسب من سنة الانتساب ' + from + ' حتى ' + refDate.y + '.');
         if (from > refDate.y) step('لا رسوم سنوية مترتبة.');
-        else ranges.push({ from: from, to: refDate.y });
+        else ranges.push({ from: from, to: refDate.y, kind: kind });
       }
 
       else if (kind === 'transfer') {
@@ -452,6 +459,17 @@
       if (extra.items.length) { extra.steps.push('أُضيفت بنود اختيارية من «رسوم الفروع» بطلب الموظف.'); R.ops.push(extra); }
     }
 
+    /* تطبيق الإعفاءات على بنود العمليات */
+    R.exempt = EX;
+    R.ops.forEach(function (op) {
+      var e = EX[op.kind]; if (!e) return;
+      var funds = ['central', 'branch'].filter(function (f) { return e[f] && (f === 'central' ? useC : useB); });
+      if (!funds.length) return;
+      op.items.forEach(function (it) { if (e[it.fund]) { it.exempt = true; it.excluded = true; } });
+      var txt = 'أُعفي من رسوم ' + funds.map(function (f) { return f === 'central' ? 'النقابة المركزية' : 'الفرع'; }).join(' و') + ' في هذه العملية' + (e.reason ? ' (السبب: ' + e.reason + ')' : '') + '.';
+      op.steps.push(txt);
+    });
+
     /* البنود المكررة بين العمليات: تُحسب في كل عملية، ويمكن إلغاء التكرار من inp.excludeDup */
     var seen = {}, excl = {};
     (inp.excludeDup || []).forEach(function (k) { excl[k] = true; });
@@ -459,6 +477,7 @@
       op.items.forEach(function (it) {
         var sig = it.fund + '|' + it.label;
         it.op = op.kind; it.key = op.kind + '|' + sig;
+        if (it.exempt) { R.items.push(it); return; }
         if (seen[sig]) {
           it.dup = true; it.dupOf = seen[sig];
           if (excl[it.key]) it.excluded = true;
@@ -474,17 +493,22 @@
     if (ranges.length) {
       var yset = {}, paidSet = {}, lo = Infinity, hi = -Infinity;
       paid.forEach(function (y) { paidSet[+y] = true; });
-      ranges.forEach(function (r) { for (var y = r.from; y <= r.to; y++) yset[y] = true; lo = Math.min(lo, r.from); hi = Math.max(hi, r.to); });
+      var payC = {}, payB = {};
+      ranges.forEach(function (r) {
+        for (var y = r.from; y <= r.to; y++) { yset[y] = true; if (!exempted(r.kind, 'central')) payC[y] = true; if (!exempted(r.kind, 'branch')) payB[y] = true; }
+        lo = Math.min(lo, r.from); hi = Math.max(hi, r.to);
+      });
       if (ranges.length > 1) R.steps.push('السنوات المشتركة بين العمليات يُحسب رسمها السنوي مرة واحدة.');
       var cYears = useC ? yearsList(lo, hi, over45, [], R.warnings) : [];
       var cBy = {}; cYears.forEach(function (x) { cBy[x.year] = x; });
       var warnedB = false;
       Object.keys(yset).map(Number).sort(function (a, b) { return a - b; }).forEach(function (y) {
-        var c = useC ? (cBy[y] ? cBy[y].amount : 0) : 0, b = useB ? branchAnnual(y) : 0;
+        var c = useC && payC[y] ? (cBy[y] ? cBy[y].amount : 0) : 0, b = useB && payB[y] ? branchAnnual(y) : 0;
+        var exC = useC && !payC[y], exB = useB && !payB[y] && branchAnnual(y) > 0;
         if (useC && !cBy[y]) return; /* قبل أول سنة معتمدة */
-        if (!useC && !b) return; /* فرع فقط: لا رسم سنوي للفرع في هذه السنة */
+        if (!useC && !b && !exB) return; /* فرع فقط: لا رسم سنوي للفرع في هذه السنة */
         if (useB && y > D.BRANCH_LAST && !warnedB) { R.warnings.push('لا رسم سنوي معتمد للفرع بعد ' + D.BRANCH_LAST + '؛ حُسبت السنوات اللاحقة برسم ' + D.BRANCH_LAST + '.'); warnedB = true; }
-        R.years.push({ year: y, central: c, branch: b, amount: c + b, paid: !!paidSet[y], over45: !!(useC && cBy[y] && cBy[y].over45) });
+        R.years.push({ year: y, central: c, branch: b, amount: c + b, paid: !!paidSet[y], over45: !!(useC && cBy[y] && cBy[y].over45), exempt: exC && exB ? 'both' : exC ? 'central' : exB ? 'branch' : '' });
       });
       if (useB && R.years.some(function (x) { return x.year < D.BRANCH_FIRST; })) R.steps.push('الرسم السنوي للفرع يبدأ من ' + D.BRANCH_FIRST + '، فلا رسم فرع على السنوات التي قبلها.');
     }
