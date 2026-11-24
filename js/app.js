@@ -1,5 +1,6 @@
 /* =========================================================
-   حاسبة الراتب التقاعدي — الواجهة والجلسة والحفظ
+   حاسبة المحامي — الواجهة والجلسة والحفظ والتنقل
+   - قسم الراتب التقاعدي هنا، وقسم الرسوم في fees.js و fees-ui.js (منفصل تماماً).
    ---------------------------------------------------------
    - الحسابات كلها في calc.js (PensionCalc)، والتقرير في report.js.
    - التخزين المحلي: localStorage بالمفاتيح نفسها منذ الإصدار الأول
@@ -9,8 +10,10 @@
 "use strict";
 
 const C = window.PensionCalc, Rp = window.PensionReport;
-const APP_VERSION = "2.0.0";
+const APP_VERSION = "3.0.0";
 const KEY_CASES = "pc.cases.v1", KEY_SET = "pc.settings.v1", KEY_DRAFT = "pc.draft.v1", KEY_USERS = "pc.users.v1", KEY_SESSION = "pc_session", KEY_THEME = "pc_theme";
+/* مفاتيح قسم الرسوم (جديدة، منفصلة عن حالات التقاعد) */
+const KEY_FEES = "pc.fees.v1", KEY_FDRAFT = "pc.feesDraft.v1";
 const BACKUP_FORMAT = "pension-calculator-backup", BACKUP_VERSION = 1;
 
 /* =========================================================
@@ -166,6 +169,7 @@ function logout() { lsSet(KEY_SESSION, null); me = null; showLogin(); }
 function enterApp() {
     $("#loginScreen").classList.add("hidden");
     $("#app").classList.remove("hidden");
+    renderSideUser();
     go(location.hash.replace("#", "") || "calc");
 }
 async function changePassword() {
@@ -195,86 +199,67 @@ async function changePassword() {
     me = list.find(function (u) { return u.id === me.id; });
     store(KEY_SESSION, { id: me.id, hash: me.hash, at: new Date().toISOString() });
     toast("حُفظت بيانات الدخول الجديدة", "ok");
-    if (current === "more") renderMore();
+    renderSideUser();
 }
 
 /* =========================================================
    التنقل
    ========================================================= */
 const PAGES = {
-    calc: { title: "الحاسبة", tab: "calc" }, report: { title: "التقرير", tab: "report" }, cases: { title: "الحالات المحفوظة", tab: "cases" },
-    more: { title: "المزيد", tab: "more" }, settings: { title: "الإعدادات والقيم", tab: "more", sub: true }, backup: { title: "النسخ الاحتياطي", tab: "more", sub: true }
+    calc: { title: "حاسبة الراتب التقاعدي", group: "الراتب التقاعدي" }, report: { title: "تقرير التقاعد", group: "الراتب التقاعدي" }, cases: { title: "حالات التقاعد", group: "الراتب التقاعدي" },
+    fcalc: { title: "حاسبة الرسوم", group: "الانتساب والرسوم" }, freport: { title: "تقرير الرسوم", group: "الانتساب والرسوم" }, fcases: { title: "حسابات الرسوم", group: "الانتساب والرسوم" },
+    help: { title: "الشرح", group: "عام" }, settings: { title: "الإعدادات والقيم", group: "عام" }, backup: { title: "النسخ الاحتياطي", group: "عام" }
 };
 let current = "calc";
 function go(sec) {
+    if (sec === "more") sec = "settings"; /* رابط قديم لصفحة «المزيد» */
     if (!PAGES[sec]) sec = "calc";
     current = sec;
     const p = PAGES[sec];
     $$("[data-page]").forEach(function (el) { el.hidden = el.getAttribute("data-page") !== sec; });
-    $$("#tabbar button").forEach(function (b) { b.classList.toggle("on", b.dataset.sec === p.tab); });
-    $("#backBtn").classList.toggle("hidden", !p.sub);
-    $("#topTitle").textContent = sec === "calc" ? "حاسبة الراتب التقاعدي" : p.title;
+    $$("#sideNav [data-sec]").forEach(function (b) {
+        const on = b.dataset.sec === sec;
+        b.classList.toggle("on", on);
+        if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+    });
+    $("#topTitle").textContent = p.title;
+    $("#topSub").textContent = "حاسبة المحامي · " + p.group;
+    document.title = p.title + " · حاسبة المحامي";
+    closeNav();
     if (sec === "cases") renderCases();
-    if (sec === "more") renderMore();
     if (sec === "settings") fillSettings();
     if (sec === "backup") renderBackupInfo();
+    if (window.FeesUI) window.FeesUI.onPage(sec);
     if (location.hash !== "#" + sec) history.replaceState(null, "", "#" + sec);
     window.scrollTo(0, 0);
 }
-$("#tabbar").addEventListener("click", function (e) { const b = e.target.closest("[data-sec]"); if (b) go(b.dataset.sec); });
-$("#backBtn").addEventListener("click", function () { go("more"); });
+/* القائمة الجانبية: ظاهرة على الشاشة الكبيرة، وتُفتح بزر ☰ على الهاتف والآيباد */
+function openNav() { document.body.classList.add("nav-open"); $("#menuBtn").setAttribute("aria-expanded", "true"); }
+function closeNav() { document.body.classList.remove("nav-open"); $("#menuBtn").setAttribute("aria-expanded", "false"); }
+$("#menuBtn").addEventListener("click", function () { if (document.body.classList.contains("nav-open")) closeNav(); else openNav(); });
+$("#sideClose").addEventListener("click", closeNav);
+$("#navOverlay").addEventListener("click", closeNav);
+document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && document.body.classList.contains("nav-open") && !$("#modalRoot").children.length) closeNav();
+});
+$("#sideNav").addEventListener("click", function (e) { const b = e.target.closest("[data-sec]"); if (b) go(b.dataset.sec); });
 $("#themeBtn").addEventListener("click", toggleTheme);
 document.addEventListener("click", function (e) { const g = e.target.closest("[data-go]"); if (g) go(g.dataset.go); });
 
-/* =========================================================
-   صفحة «المزيد»
-   ========================================================= */
-function listCards(items) {
-    return '<div class="lcards">' + items.map(function (it) {
-        return '<button type="button" class="lcard" ' + (it.sec ? 'data-sec="' + it.sec + '"' : 'data-act="' + it.act + '"') + ">" +
-            '<span class="l-ic ' + it.color + '"><i class="ti ti-' + it.icon + '"></i></span>' +
-            '<span class="l-txt"><b>' + esc(it.title) + "</b><small>" + esc(it.sub || "") + "</small></span>" +
-            (it.badge ? '<span class="l-badge' + (it.soon ? " soon-b" : "") + '">' + esc(it.badge) + "</span>" : "") +
-            '<span class="l-go"><i class="ti ti-chevron-left"></i></span></button>';
-    }).join("") + "</div>";
+/* بيانات المستخدم وأزراره أسفل القائمة الجانبية (كانت في «المزيد») */
+function renderSideUser() {
+    if (!me) return;
+    $("#sideUserName").textContent = me.name || me.username;
+    $("#sideUserLogin").textContent = me.username;
+    $("#sidePwWarn").classList.toggle("hidden", !me.isDefault);
+    $("#sideVer").textContent = "الإصدار " + APP_VERSION;
 }
-function renderMore() {
-    const main = $('[data-page="more"]');
-    const dark = document.documentElement.getAttribute("data-theme") === "dark";
-    const n = load(KEY_CASES, []).length;
-    const items = [
-        { sec: "cases", title: "الحالات المحفوظة", sub: n ? n + " حالة على هذا الجهاز" : "لا توجد حالات بعد", icon: "folders", color: "c-sky" },
-        { sec: "settings", title: "الإعدادات والقيم", sub: "قيمة الراتب الكامل والمعونة وقواعد الحساب", icon: "adjustments", color: "c-slate" },
-        { sec: "backup", title: "النسخ الاحتياطي", sub: "تحميل نسخة واستيرادها على أي جهاز", icon: "database-export", color: "c-green" },
-        { act: "telegram", title: "رفع النسخ إلى تيليجرام", sub: "إرسال نسخة احتياطية تلقائياً عبر بوت", icon: "brand-telegram", color: "c-tg", badge: "قريباً", soon: true },
-        { act: "firebase", title: "المزامنة عبر Firebase", sub: "حفظ سحابي ومزامنة بين الأجهزة ودخول Google", icon: "flame", color: "c-fb", badge: "قريباً", soon: true },
-        { act: "pw", title: "بيانات الدخول", sub: "تغيير اسم المستخدم وكلمة المرور", icon: "key", color: "c-violet" },
-        { act: "theme", title: dark ? "الوضع النهاري" : "الوضع الليلي", sub: dark ? "التبديل إلى الألوان الفاتحة" : "التبديل إلى الألوان الداكنة", icon: dark ? "sun" : "moon", color: "c-amber" }
-    ];
-    main.innerHTML = '<section class="dev-card">' +
-        '<div class="dev-av"><i class="ti ti-user-shield"></i></div>' +
-        '<div class="dev-txt"><small>مسجّل الدخول على هذا الجهاز</small><b>' + esc(me.name || me.username) + '</b><span class="ltr">' + esc(me.username) + "</span></div>" +
-        '<button type="button" class="dev-more" data-act="pw" aria-label="تغيير كلمة المرور" title="تغيير كلمة المرور"><i class="ti ti-key"></i></button></section>' +
-        (me.isDefault ? '<div class="alert warn"><b>تنبيه:</b> ما زلت تستخدم كلمة المرور الافتراضية (1234). غيّرها من «بيانات الدخول».</div>' : "") +
-        listCards(items) +
-        '<button type="button" class="btn danger big wide-btn" data-act="logout"><i class="ti ti-logout"></i>تسجيل الخروج</button>' +
-        '<p class="foot">حاسبة الراتب التقاعدي · الإصدار ' + APP_VERSION + " · وفق تعاميم خزانة التقاعد والقانون 30 لعام 2010</p>";
-    main.onclick = async function (e) {
-        const c = e.target.closest("[data-sec]");
-        if (c) { go(c.dataset.sec); return; }
-        const b = e.target.closest("[data-act]");
-        if (!b) return;
-        const a = b.dataset.act;
-        if (a === "theme") { toggleTheme(); renderMore(); }
-        if (a === "pw") changePassword();
-        if (a === "telegram" || a === "firebase") {
-            go("backup");
-            toast((a === "telegram" ? "الرفع إلى تيليجرام" : "المزامنة عبر Firebase") + " قيد التجهيز وستتوفر قريباً. يمكنك الآن تحميل نسخة احتياطية كملف.", "warn");
-            setTimeout(function () { const el = $$("#main .soon")[a === "telegram" ? 0 : 1]; if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); }, 60);
-        }
-        if (a === "logout") { if (await confirmBox("تسجيل الخروج", "هل تريد تسجيل الخروج من هذا الجهاز؟ تبقى الحالات محفوظة.", "خروج")) logout(); }
-    };
-}
+$(".side-foot").addEventListener("click", async function (e) {
+    const b = e.target.closest("[data-side]");
+    if (!b) return;
+    if (b.dataset.side === "pw") changePassword();
+    if (b.dataset.side === "logout" && await confirmBox("تسجيل الخروج", "هل تريد تسجيل الخروج من هذا الجهاز؟ تبقى الحالات محفوظة.", "خروج")) logout();
+});
 
 /* =========================================================
    الإعدادات والقيم
@@ -517,7 +502,7 @@ function saveCase() {
 }
 document.addEventListener("click", async function (e) {
     const b = e.target.closest("[data-act]");
-    if (!b || b.closest('[data-page="more"]')) return;
+    if (!b) return;
     const a = b.dataset.act;
     if (a === "save") saveCase();
     if (a === "print") printReport();
@@ -592,15 +577,15 @@ function downloadReport() {
    النسخ الاحتياطي والاستعادة (ملف) — الاستيراد يضيف ولا يحذف
    ========================================================= */
 function renderBackupInfo() {
-    const n = load(KEY_CASES, []).length, last = lsGet("pc.lastBackup");
-    $("#backupInfo").innerHTML = "على هذا الجهاز <b>" + n + "</b> حالة محفوظة." + (last ? " آخر نسخة احتياطية: " + new Date(last).toLocaleString("ar-SY", { dateStyle: "medium", timeStyle: "short" }) + "." : " لم تُحمَّل أي نسخة احتياطية بعد.");
+    const n = load(KEY_CASES, []).length, nf = load(KEY_FEES, []).length, last = lsGet("pc.lastBackup");
+    $("#backupInfo").innerHTML = "على هذا الجهاز <b>" + n + "</b> حالة تقاعد و<b>" + nf + "</b> حساب رسوم محفوظ." + (last ? " آخر نسخة احتياطية: " + new Date(last).toLocaleString("ar-SY", { dateStyle: "medium", timeStyle: "short" }) + "." : " لم تُحمَّل أي نسخة احتياطية بعد.");
 }
 function downloadBackup() {
-    const data = { format: BACKUP_FORMAT, version: BACKUP_VERSION, app: "pension-calculator", appVersion: APP_VERSION, exportedAt: new Date().toISOString(), cases: load(KEY_CASES, []), settings: getSettings() };
+    const data = { format: BACKUP_FORMAT, version: BACKUP_VERSION, app: "pension-calculator", appVersion: APP_VERSION, exportedAt: new Date().toISOString(), cases: load(KEY_CASES, []), settings: getSettings(), fees: load(KEY_FEES, []) };
     const d = new Date(), stamp = d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
-    download("نسخة احتياطية - حاسبة التقاعد - " + stamp + ".json", JSON.stringify(data, null, 2), "application/json");
+    download("نسخة احتياطية - حاسبة المحامي - " + stamp + ".json", JSON.stringify(data, null, 2), "application/json");
     lsSet("pc.lastBackup", d.toISOString()); renderBackupInfo();
-    toast("حُمّلت النسخة الاحتياطية (" + data.cases.length + " حالة)", "ok");
+    toast("حُمّلت النسخة الاحتياطية (" + data.cases.length + " حالة تقاعد، " + data.fees.length + " حساب رسوم)", "ok");
 }
 $("#restoreInput").addEventListener("change", function (e) {
     const file = e.target.files[0]; if (!file) return;
@@ -610,8 +595,8 @@ $("#restoreInput").addEventListener("change", function (e) {
         let data;
         try { data = JSON.parse(rd.result); } catch (err) { toast("الملف ليس نسخة احتياطية صالحة.", "bad"); return; }
         /* يقبل: نسخة احتياطية كاملة، أو ملف حالة واحدة صُدِّر من الإصدار الأول */
-        let incoming = [], settings = null;
-        if (data && data.format === BACKUP_FORMAT && Array.isArray(data.cases)) { incoming = data.cases; settings = data.settings || null; }
+        let incoming = [], settings = null, incomingFees = [];
+        if (data && data.format === BACKUP_FORMAT && Array.isArray(data.cases)) { incoming = data.cases; settings = data.settings || null; incomingFees = Array.isArray(data.fees) ? data.fees : []; }
         else if (data && data.case && data.case.type) incoming = [data.case];
         else if (data && data.type && data.service) incoming = [data];
         else { toast("الملف ليس نسخة احتياطية صالحة.", "bad"); return; }
@@ -629,10 +614,22 @@ $("#restoreInput").addEventListener("change", function (e) {
         let useSettings = false;
         if (settings && await confirmBox("استيراد الإعدادات؟", "تحتوي النسخة على إعدادات (جداول القيم وقواعد الحساب). هل تريد اعتمادها بدل الإعدادات الحالية؟", "اعتماد إعدادات النسخة")) useSettings = true;
         list.sort(function (a, b) { return (b.savedAt || "") > (a.savedAt || "") ? 1 : -1; });
-        if (!store(KEY_CASES, list)) { toast("تعذر الحفظ في هذا المتصفح.", "bad"); return; }
+        /* حسابات الرسوم: القاعدة نفسها (إضافة/تحديث بالمعرّف، والأحدث يفوز، ولا حذف) */
+        const flist = load(KEY_FEES, []), fById = {};
+        flist.forEach(function (c) { fById[c.id] = c; });
+        let fAdded = 0, fUpdated = 0;
+        incomingFees.filter(function (c) { return c && typeof c === "object" && c.kind; }).forEach(function (c) {
+            c.id = c.id || ("f" + Date.now() + Math.random().toString(36).slice(2, 6));
+            const old = fById[c.id];
+            if (!old) { fById[c.id] = c; flist.push(c); fAdded++; }
+            else if ((c.savedAt || "") > (old.savedAt || "")) { flist[flist.indexOf(old)] = c; fById[c.id] = c; fUpdated++; }
+        });
+        flist.sort(function (a, b) { return (b.savedAt || "") > (a.savedAt || "") ? 1 : -1; });
+        if (!store(KEY_CASES, list) || !store(KEY_FEES, flist)) { toast("تعذر الحفظ في هذا المتصفح.", "bad"); return; }
         if (useSettings) store(KEY_SET, settings);
         renderBackupInfo();
-        toast("اكتمل الاستيراد: أُضيفت " + added + "، حُدّثت " + updated + "، بقيت " + kept + " كما هي (الأحدث محفوظ).", "ok", 6000);
+        toast("اكتمل الاستيراد: أُضيفت " + added + "، حُدّثت " + updated + "، بقيت " + kept + " كما هي (الأحدث محفوظ)." +
+            (incomingFees.length ? " حسابات الرسوم: أُضيف " + fAdded + " وحُدّث " + fUpdated + "." : ""), "ok", 6000);
     };
     rd.readAsText(file);
 });
@@ -645,9 +642,9 @@ $("#loginForm").addEventListener("submit", function (e) {
     if (login($("#loginUser").value, $("#loginPass").value)) { $("#loginPass").value = ""; enterApp(); }
     else $("#loginError").textContent = "اسم المستخدم أو كلمة المرور غير صحيحة.";
 });
-(function init() {
+document.addEventListener("DOMContentLoaded", function init() {
     const draft = load(KEY_DRAFT, null);
     fill(draft && draft.type ? draft : { type: "ordinary", includeAid: true, untilMonth: thisMonth() });
     me = findSessionUser();
     if (me) enterApp(); else showLogin();
-})();
+});
