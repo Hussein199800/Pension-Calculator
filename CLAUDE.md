@@ -11,7 +11,7 @@ Arabic (RTL) single-page web app with two SEPARATE sections: (1) lawyers' pensio
 - `css/style.css` — «الزيتون والعاج» identity (tokens at top, light + dark), calculator section, «الطبقة الثانية», then «الطبقة الثالثة» (sidebar, fees section, help).
 - `js/calc.js` — pure pension engine (works in Node). `js/report.js` — pension report HTML + report CSS (`.rpt`, reused by the fees report). `js/app.js` — navigation, session, pension UI, saving, backup.
 - `js/fees.js` — pure fees engine + tables (`FeesCalc`, works in Node). `js/fees-ui.js` — fees form, live result, fees report, fee cases (uses `data-fact`, never the pension `data-act`). `js/fees-settings.js` — «إعدادات الرسوم» (editable central + branch annual fees, central / branch age tables incl. adding a new year, re-registration/transfer/أستذة fees central + branch, print). `js/help.js` — «الشرح» page (fee numbers read from the active data, so they follow the settings). `report.js` exports `signBlock` / `sizeClass`; with no print settings the pension report HTML is byte-identical to before.
-- `tests/calc.test.js` — every numeric example from the circulars. `tests/golden.test.js` + `golden.cases.js` + `golden.expected.json` — 30 pension cases whose results must stay identical (never regenerate without the owner's explicit request). `tests/fees.test.js` + `fees.source.json` (copied verbatim from fees_2026.xlsx).
+- `tests/calc.test.js` — every numeric example from the circulars. `tests/golden.test.js` + `golden.cases.js` + `golden.expected.json` — 30 pension cases whose results must stay identical (never regenerate without the owner's explicit request). `tests/fees.test.js` + `fees.source.json` (copied verbatim from fees_2026.xlsx). `tests/learn.test.js` (Excel import) + `tests/fixtures/fees_2026.xlsx`.
 
 ## Design — «الزيتون والعاج» (user decision 2026-11-17)
 - The user asked for an identity distinct from Sarrafa («الجواهر») and Work_1 («التيتانيوم والنحاس»), "as if another programmer made it", **CSS only** (HTML/JS untouched). Colors were left to Claude.
@@ -51,6 +51,12 @@ Override the circulars' examples where they differ; all are covered by `tests/ca
 - Any operations together (`kinds` array; old `kind` still read). An item repeated across operations (same fund + label) is counted in EACH operation (paid once as trainee, once as master) with a per-item toggle to drop the repeat (`excludeDup`). The annual fee of a year is counted once.
 - Report: «الحالة» (operations, scope, dates), then per operation «لماذا وكيف» + items with الجهة (مركزية/فرع), annual table split central/branch, summary boxes (central, branch, total).
 
+## Fees — learning tables from Excel (owner decision, 2026-11-25)
+- «إعدادات الرسوم» → «استيراد الجداول من ملف Excel»: «تنزيل القالب» writes the current tables ready for the next year (sheets: «مركزية YYYY», «فرع YYYY», «الرسم السنوي», «الرسوم الثابتة»); «رفع ملف Excel» reads it (or a similar file like `tests/fixtures/fees_2026.xlsx`), shows a preview (sheets understood, problems, notes, exact changes) and saves ONLY after «اعتماد». Never writes on its own.
+- Recognition (`js/fees-learn.js`, pure, Node-testable): a sheet with «العمر» = age table (branch if «فرع/فروع» in its name or title; year from name or first rows; ages 30–50 all required); a sheet with «السنة» = annual fees (columns «حتى 45 / مركزية / رسم سنوي», «فوق 45», «الفرع»); a sheet with «البند»/«المفتاح» + «المبلغ» = fixed fees (template keys or exact labels). Columns by NAME, not position; Arabic digits and separators accepted; «المجموع» only verifies.
+- `js/xlsx-io.js`: tiny xlsx reader (ZIP + browser `DecompressionStream('deflate-raw')`, regex XML) and writer (stored ZIP, RTL sheets). No external library, works offline.
+- Service fees (complaints, power-of-attorney certification, travel statement, prison visit, foreign company contracts, …) are OUT of scope by the owner's decision: do not add them.
+
 ## Owner principles (from the owner's CALCULATOR-CLAUDE.md, 2026-11-24)
 - Results are sacred: no change to any formula, rate, fee table or rounding rule without the owner's explicit request naming the new number and its source. Run the golden test after every change; if one number changes, stop and tell the owner.
 - Add, don't change: new things are optional or out of the way; saved data and workflows keep working.
@@ -60,4 +66,4 @@ Override the circulars' examples where they differ; all are covered by `tests/ca
 ## Conventions
 - The user writes in Arabic; answer in Arabic. Ask with the clickable question bar, recommended option first.
 - Develop on the session branch; the user merges.
-- Verify: `node --check js/app.js && node --check js/fees-ui.js && npm test` (calc + golden + fees).
+- Verify: `node --check js/app.js && node --check js/fees-ui.js && npm test` (calc + golden + fees + learn).

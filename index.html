@@ -493,6 +493,14 @@
                         <div class="sign-editor" id="fsSigns"></div>
                     </div>
                     <div class="card">
+                        <h3><i class="ti ti-file-spreadsheet"></i>استيراد الجداول من ملف Excel</h3>
+                        <p class="hint-line" style="margin:0 0 10px">نزّل القالب (فيه الجداول الحالية جاهزة لسنة جديدة)، عدّل القيم، ثم ارفعه. ويفهم البرنامج أيضاً ملفات مشابهة مثل fees_2026.xlsx: الورقة التي فيها «العمر» جدول انتساب (وإن كان في اسمها أو عنوانها «فرع» فهي للفروع، والسنة من اسمها)، والتي فيها «السنة» للرسم السنوي، والتي فيها «البند» و«المبلغ» للرسوم الثابتة. تعرض لك ما فهمه قبل الاعتماد، ولا يُحفظ شيء إلا بموافقتك.</p>
+                        <div class="row" style="gap:8px;flex-wrap:wrap">
+                            <button type="button" class="btn" id="fsTpl"><i class="ti ti-download"></i>تنزيل القالب</button>
+                            <label class="btn primary"><i class="ti ti-upload"></i>رفع ملف Excel<input type="file" id="fsXlsx" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label>
+                        </div>
+                    </div>
+                    <div class="card">
                         <h3><i class="ti ti-calendar-dollar"></i>الرسم السنوي لكل سنة</h3>
                         <p class="hint-line" style="margin:0 0 10px">«فوق 45» لمن انتسب بعمر فوق 45 (لا يدفع حصة الوفاة)، فارغ = مثل «حتى 45». «الفرع» = الرسم السنوي للفرع، فارغ = لا رسم فرع لتلك السنة.</p>
                         <div class="table-wrap"><table class="edit" id="fsAnnual"><thead><tr><th>السنة</th><th>مركزية: حتى 45</th><th>مركزية: فوق 45</th><th>الفرع</th><th></th></tr></thead><tbody></tbody></table></div>
@@ -619,6 +627,8 @@
     <script src="js/calc.js"></script>
     <script src="js/report.js"></script>
     <script src="js/fees.js"></script>
+    <script src="js/xlsx-io.js"></script>
+    <script src="js/fees-learn.js"></script>
     <script src="js/app.js"></script>
     <script src="js/fees-ui.js"></script>
     <script src="js/fees-settings.js"></script>

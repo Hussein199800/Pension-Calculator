@@ -1051,3 +1051,6 @@ input.bad { border-color: var(--danger) !important; background: var(--danger-bg)
 .branch-opts { display: grid; gap: 6px; }
 .branch-opts .field { max-width: 280px; }
 .ftypes .type input[type=checkbox] { margin-top: 3px; }
+/* معاينة استيراد Excel */
+.imp-list { margin: 4px 0 10px; padding-inline-start: 20px; line-height: 1.8; font-size: var(--fs-sm); }
+.modal:has(.imp-list) { max-height: 86vh; overflow-y: auto; }

@@ -209,5 +209,39 @@
         store(KEY_FSET, fs); fill(); window.FeesUI.refresh(); toast("استُعيدت الجداول المعتمدة", "ok");
     };
 
+    /* ---------- استيراد من Excel: قالب + تعلّم + معاينة قبل الاعتماد ---------- */
+    $("#fsTpl").onclick = function () {
+        const T = window.FeesLearn.template({ data: window.FeesUI.settings().data });
+        const blob = new Blob(window.XLSXIO.build(T.sheets), { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "قالب رسوم " + T.year + ".xlsx";
+        document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+        toast("نُزّل القالب لسنة " + T.year + ": عدّل القيم ثم ارفعه من هنا.", "ok");
+    };
+    $("#fsXlsx").addEventListener("change", async function (e) {
+        const file = e.target.files[0]; e.target.value = "";
+        if (!file) return;
+        let P;
+        try {
+            const wb = await window.XLSXIO.read(await file.arrayBuffer());
+            P = window.FeesLearn.learn(wb, { data: window.FeesUI.settings().data });
+        } catch (err) { toast("تعذرت قراءة الملف: " + esc(err.message || "ليس ملف Excel صالحاً"), "bad", 7000); return; }
+        const li = function (arr) { return "<ul class=\"imp-list\">" + arr.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>"; };
+        const KIND = { central: "جدول مركزي", branch: "جدول فروع", annual: "رسم سنوي", fixed: "رسوم ثابتة", ignored: "تُجوهلت" };
+        const sheets = P.sheets.map(function (s) { return "«" + s.name + "» ← " + KIND[s.kind] + (s.year ? " " + s.year : "") + (s.count ? " (" + s.count + " سنة)" : "") + (s.note ? " — " + s.note : ""); });
+        const real = P.changes.filter(function (x) { return x.indexOf("لا تغيير") < 0; });
+        let body = "<p><b>الملف:</b> " + esc(file.name) + "</p><p class=\"fee-sub\">ما فهمته من الأوراق</p>" + li(sheets);
+        if (P.problems.length) body += '<p class="fee-sub" style="color:var(--danger)">انتبه</p>' + li(P.problems);
+        if (P.notes.length) body += '<p class="fee-sub">ملاحظات</p>' + li(P.notes);
+        body += '<p class="fee-sub">ما سيتغير</p>' + (real.length ? li(P.changes) : "<p class=\"muted\">لا شيء: القيم في الملف مطابقة لما في البرنامج.</p>");
+        if (P.empty || !real.length) { await modal("<h3>معاينة ملف Excel</h3>" + body + '<div class="actions"><button class="btn" data-modal="cancel">إغلاق</button></div>'); return; }
+        body += '<p class="hint-line">الحسابات المحفوظة لا تتغير، وإن اختلف مجموعها بالجداول الجديدة يظهر تنبيه عند فتحها. وتعديلات هذه الصفحة غير المحفوظة تُستبدل.</p>';
+        const ok = await modal("<h3>معاينة ملف Excel</h3>" + body + '<div class="actions"><button class="btn primary" data-modal="ok">اعتماد الجداول</button><button class="btn" data-modal="cancel">إلغاء</button></div>');
+        if (ok !== "ok") return;
+        const fs = window.FeesUI.settings(), data = window.FeesLearn.apply(P, fs.data);
+        if (data) fs.data = data; else delete fs.data;
+        if (store(KEY_FSET, fs)) { fill(); window.FeesUI.refresh(); toast("اعتُمدت الجداول من «" + esc(file.name) + "» (" + real.length + " تغيير)", "ok", 6000); }
+        else toast("تعذر الحفظ في هذا المتصفح.", "bad");
+    });
+
     window.FeeSettingsUI = { fill: fill };
 })();
