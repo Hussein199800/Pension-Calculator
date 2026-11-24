@@ -95,8 +95,7 @@
   var BRANCH_FIELDS = [
     ['brMaster', 'الفرع: رسم الأستذة', 5000], ['brTransfer', 'الفرع: رسم النقل من فرع إلى آخر', 5000],
     ['brOmitted', 'الفرع: رسم إعادة قيد المُغفَل', 5000], ['brReCancel', 'الفرع: رسم إعادة قيد المرقّن', 10000],
-    ['brStruck', 'الفرع: رسم إعادة قيد المشطوب', 20000],
-    ['brAdmin', 'الفرع: رسم نفقات إدارية (اختياري)', 5000], ['brTraining', 'الفرع: متطلبات تمرين (اختياري)', 5000]
+    ['brStruck', 'الفرع: رسم إعادة قيد المشطوب', 20000]
   ];
   FIXED_FIELDS = FIXED_FIELDS.concat(BRANCH_FIELDS);
 
@@ -451,13 +450,8 @@
     }
     if (R.errors.length) return R;
 
-    /* إضافات الفرع الاختيارية (ليست من حالات الانتساب والأستذة أصلاً، فلا تُضاف إلا بطلب) */
-    if (useB) {
-      var bx = inp.branchExtra || {}, extra = { kind: 'branchExtra', name: 'إضافات الفرع الاختيارية', items: [], steps: [] };
-      if (bx.admin) extra.items.push({ fund: 'branch', label: 'رسم نفقات إدارية', amount: D.flat.brAdmin, note: 'اختياري' });
-      if (bx.training) extra.items.push({ fund: 'branch', label: 'متطلبات تمرين', amount: D.flat.brTraining, note: 'اختياري' });
-      if (extra.items.length) { extra.steps.push('أُضيفت بنود اختيارية من «رسوم الفروع» بطلب الموظف.'); R.ops.push(extra); }
-    }
+    /* «نفقات إدارية» و«متطلبات تمرين» من «رسوم الفروع» ليست من هذه العمليات (قرار المالك): لا تُحسب هنا.
+       الحسابات المحفوظة التي فيها branchExtra تُتجاهل فيها هذه البنود. */
 
     /* تطبيق الإعفاءات على بنود العمليات */
     R.exempt = EX;

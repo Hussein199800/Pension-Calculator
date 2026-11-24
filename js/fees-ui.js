@@ -54,7 +54,7 @@
             eventDate: fval("eventDate"), decisionDate: fval("decisionDate"), gapYears: toLatin(fval("gapYears")), lastPaidYear: toLatin(fval("lastPaidYear")),
             clearance: fval("clearance"), optional: { id: fval("opt_id"), license: fval("opt_license"), badge: fval("opt_badge") },
             branchPrints: { on: fval("bp_on"), amount: toLatin(fval("bp_amount")) },
-            branchExtra: { admin: fval("bx_admin"), training: fval("bx_training") }, excludeDup: excludeDup.slice(),
+            excludeDup: excludeDup.slice(),
             exempt: (function () { const o = {}; ks.forEach(function (k) { if (exempt[k]) o[k] = Object.assign({}, exempt[k]); }); return o; })(),
             paidYears: paidYears.slice(), preparer: fval("preparer"), reviewer: fval("reviewer"), notes: fval("notes")
         };
@@ -66,8 +66,7 @@
         fform.reset();
         const map = {
             opt_id: (c.optional || {}).id, opt_license: (c.optional || {}).license, opt_badge: (c.optional || {}).badge,
-            bp_on: (c.branchPrints || {}).on, bp_amount: (c.branchPrints || {}).amount,
-            bx_admin: (c.branchExtra || {}).admin, bx_training: (c.branchExtra || {}).training
+            bp_on: (c.branchPrints || {}).on, bp_amount: (c.branchPrints || {}).amount
         };
         Array.prototype.forEach.call(fform.elements, function (el) {
             if (!el.name || el.type === "radio" || el.name === "kinds") return;
@@ -96,7 +95,7 @@
         const ks = kinds(), st = fval("status"), sc = scope();
         $$("#feeForm [data-fk]").forEach(function (el) { el.hidden = !el.getAttribute("data-fk").split(" ").some(function (k) { return ks.indexOf(k) >= 0; }); });
         $$("#feeForm [data-fstatus]").forEach(function (el) { if (el.hidden) return; el.hidden = el.getAttribute("data-fstatus").split(" ").indexOf(st) < 0; });
-        $("#branchBox").hidden = sc === "central";
+        $("#branchBox").hidden = sc === "central" || ks.indexOf("new") < 0;
         $$("#feeForm .opt-row").forEach(function (el) { if (sc === "branch") el.hidden = true; });
         $$("#feeForm .bp-amount").forEach(function (el) { if (!el.hidden) el.hidden = !fval("bp_on"); });
         $$("#feeForm .ftypes .type").forEach(function (l) { const i = l.querySelector("input"); l.classList.toggle("on", i.checked); });
@@ -125,8 +124,6 @@
             const nm = l.querySelector("input").name, v = { opt_id: X.optId, opt_license: X.optLicense, opt_badge: X.optBadge }[nm];
             l.lastChild.textContent = " " + { opt_id: "الهوية", opt_license: "إجازة المحاماة", opt_badge: "شارة الصدر" }[nm] + " (" + n(v) + ")";
         });
-        const bx = { bx_admin: ["رسم نفقات إدارية", X.brAdmin], bx_training: ["متطلبات تمرين", X.brTraining] };
-        Object.keys(bx).forEach(function (k) { const i = fform.elements[k]; if (i) i.parentNode.lastChild.textContent = " " + bx[k][0] + " (" + n(bx[k][1]) + "، اختياري)"; });
         const w = fform.elements.secBranchWaived; if (w) w.parentNode.lastChild.textContent = " إعفاء المشطوب الأمني من رسم إعادة القيد للفرع (" + n(X.brStruck) + ")";
     }
     const FUNDTAG = function (f) { return '<span class="fund-tag ' + f + '">' + F.FUND[f] + "</span>"; };
@@ -221,7 +218,7 @@
             ["الرقم الوطني", esc(c.nationalId)], ["الفرع", esc(c.branch)], ["رقم الهاتف", esc(c.phone)]
         ]));
         /* الحالة: ما العمليات، وعلى أي نطاق، وبأي تواريخ */
-        const op = [["العمليات", R.ops.filter(function (o) { return o.kind !== "branchExtra"; }).map(function (o, i) { return (i + 1) + ". " + esc(o.name); }).join("<br>")],
+        const op = [["العمليات", R.ops.map(function (o, i) { return (i + 1) + ". " + esc(o.name); }).join("<br>")],
             ["نطاق الحساب", esc(R.scopeName) + (R.scope === "both" ? " (رسوم النقابة المركزية + رسوم الفرع)" : "")]];
         if (c.joinDate) op.push([has("new") ? "تاريخ الانتساب" : "تاريخ الانتساب الأصلي", d(c.joinDate)]);
         if (R.age) op.push(["العمر المعتمد", R.age.raw + " سنة (" + esc(F.fmtYMD(R.age.ymd)) + ")" + (R.age.row !== R.age.raw ? " ← سطر " + R.age.row : "")]);
@@ -245,7 +242,7 @@
         /* الرسوم لكل عملية، والجهة لكل بند، ولماذا */
         R.ops.forEach(function (o, idx) {
             if (!o.items.length && !o.steps.length) return;
-            h.push("<h2>" + (o.kind === "branchExtra" ? "" : (idx + 1) + ". ") + esc(o.name) + "</h2>");
+            h.push("<h2>" + (idx + 1) + ". " + esc(o.name) + "</h2>");
             if (o.steps.length) h.push('<div class="formula"><b>لماذا وكيف:</b><ol class="steps">' + o.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol></div>");
             if (o.items.length) h.push('<table><thead><tr><th>الجهة</th><th>البند</th><th>ملاحظة</th><th class="n">المبلغ (ل.س)</th></tr></thead><tbody>' +
                 o.items.map(function (i) {

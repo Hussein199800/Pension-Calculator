@@ -220,10 +220,9 @@ t('المشطوب الأمني: رسم الفرع 20,000 ويمكن الإعفا
   assert.strictEqual(a.total - b.total, 20000);
   assert.strictEqual(b.total, sum(F.ANNUAL) + 3000);
 });
-t('إضافات الفرع الاختيارية لا تُضاف إلا بطلب', () => {
-  const a = F.compute({ kinds: ['transfer'], scope: 'both', clearance: true, branchExtra: { admin: true, training: true } }, TODAY);
-  assert.strictEqual(a.total, 25000);
-  assert.strictEqual(F.compute({ kinds: ['transfer'], scope: 'central', clearance: true, branchExtra: { admin: true } }, TODAY).total, 10000);
+t('نفقات إدارية ومتطلبات تمرين لا تُحسب هنا (حتى في حساب قديم فيه branchExtra)', () => {
+  assert.strictEqual(F.compute({ kinds: ['transfer'], scope: 'both', clearance: true, branchExtra: { admin: true, training: true } }, TODAY).total, 15000);
+  assert.ok(!F.FIXED_FIELDS.some(f => f[0] === 'brAdmin' || f[0] === 'brTraining'));
 });
 t('عمليتان بسنوات مشتركة: كل سنة مرة واحدة', () => {
   const R = F.compute({ kinds: ['secStruck', 'omitted'], scope: 'central', decisionDate: '2026-05-01', lastPaidYear: '2023' }, TODAY);
