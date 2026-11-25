@@ -13,11 +13,8 @@
     const TKEY = { central: "tables", branch: "branchTables" };
     function cols() { return curFund === "central" ? F.COLS : F.BCOLS; }
 
-    function toNum(v) {
-        const t = String(v === undefined || v === null ? "" : v).replace(/[٠-٩]/g, function (c) { return "٠١٢٣٤٥٦٧٨٩".indexOf(c); }).replace(/[,\s،]/g, "");
-        if (t === "") return null;
-        return /^\d+(\.\d+)?$/.test(t) ? +t : NaN;
-    }
+    /* القراءة نفسها التي يستعملها المحرك والاستيراد: عدد صحيح ≥ 0، الفارغ = null، غير الصالح = NaN */
+    function toNum(v) { return F.amountOf(v); }
     function inp(val, attrs) { return '<input class="num-in" inputmode="numeric" ' + (attrs || "") + ' value="' + (val === null || val === undefined ? "" : val) + '">'; }
 
     /* نسخة عمل من البيانات النافذة (المعتمد + تعديلات المستخدم) */
@@ -147,7 +144,7 @@
             '<div class="actions"><button class="btn primary" data-modal="ok">إضافة</button><button class="btn" data-modal="cancel">إلغاء</button></div>', {
             collect: function (box) {
                 const y = toNum(box.querySelector("#newTY").value);
-                if (!y || isNaN(y) || y < 2000 || y > 2100 || y % 1) { box.querySelector("#newTYErr").textContent = "اكتب سنة صحيحة."; return false; }
+                if (!y || isNaN(y) || y < F.YEAR_MIN || y > F.YEAR_MAX) { box.querySelector("#newTYErr").textContent = "اكتب سنة صحيحة بين " + F.YEAR_MIN + " و" + F.YEAR_MAX + "."; return false; }
                 if (work[TKEY[curFund]][y]) { box.querySelector("#newTYErr").textContent = "يوجد جدول لهذه السنة."; return false; }
                 return y;
             }
@@ -233,6 +230,7 @@
         if (P.problems.length) body += '<p class="fee-sub" style="color:var(--danger)">انتبه</p>' + li(P.problems);
         if (P.notes.length) body += '<p class="fee-sub">ملاحظات</p>' + li(P.notes);
         body += '<p class="fee-sub">ما سيتغير</p>' + (real.length ? li(P.changes) : "<p class=\"muted\">لا شيء: القيم في الملف مطابقة لما في البرنامج.</p>");
+        if (P.cells && P.cells.length) body += '<details class="how"><summary>الخانات المتغيرة (' + P.cells.length + ')</summary>' + li(P.cells.slice(0, 80).concat(P.cells.length > 80 ? ["… و" + (P.cells.length - 80) + " خانة أخرى"] : [])) + "</details>";
         if (P.empty || !real.length) { await modal("<h3>معاينة ملف Excel</h3>" + body + '<div class="actions"><button class="btn" data-modal="cancel">إغلاق</button></div>'); return; }
         body += '<p class="hint-line">الحسابات المحفوظة لا تتغير، وإن اختلف مجموعها بالجداول الجديدة يظهر تنبيه عند فتحها. وتعديلات هذه الصفحة غير المحفوظة تُستبدل.</p>';
         const ok = await modal("<h3>معاينة ملف Excel</h3>" + body + '<div class="actions"><button class="btn primary" data-modal="ok">اعتماد الجداول</button><button class="btn" data-modal="cancel">إلغاء</button></div>');

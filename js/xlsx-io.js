@@ -21,8 +21,12 @@
     const stream = new Blob([data]).stream().pipeThrough(ds);
     return new Uint8Array(await new Response(stream).arrayBuffer());
   }
+  /* حدود للحماية من الملفات الضخمة أو التالفة */
+  const LIMITS = { file: 10 * 1024 * 1024, entry: 40 * 1024 * 1024, total: 80 * 1024 * 1024, rows: 5000 };
   async function unzip(buf) {
     const b = new Uint8Array(buf), out = {};
+    if (b.length > LIMITS.file) throw new Error('حجم الملف أكبر من 10 ميغابايت.');
+    let total = 0;
     let eocd = -1;
     for (let i = b.length - 22; i >= Math.max(0, b.length - 65557); i--) if (u32(b, i) === 0x06054b50) { eocd = i; break; }
     if (eocd < 0) throw new Error('الملف ليس ملف Excel (xlsx) صالحاً.');
@@ -31,11 +35,17 @@
     const dec = new TextDecoder();
     for (let n = 0; n < count; n++) {
       if (u32(b, p) !== 0x02014b50) break;
-      const method = u16(b, p + 10), csize = u32(b, p + 20), nlen = u16(b, p + 28), xlen = u16(b, p + 30), clen = u16(b, p + 32), loff = u32(b, p + 42);
+      const method = u16(b, p + 10), csize = u32(b, p + 20), usize = u32(b, p + 24), nlen = u16(b, p + 28), xlen = u16(b, p + 30), clen = u16(b, p + 32), loff = u32(b, p + 42);
       const name = dec.decode(b.subarray(p + 46, p + 46 + nlen));
       const start = loff + 30 + u16(b, loff + 26) + u16(b, loff + 28);
+      if (start + csize > b.length) throw new Error('الملف تالف (محتوى ناقص).');
       const raw = b.subarray(start, start + csize);
-      if (/\.xml$|\.rels$/i.test(name)) out[name] = method === 0 ? raw : method === 8 ? await inflateRaw(raw) : null;
+      if (/\.xml$|\.rels$/i.test(name)) {
+        if (usize > LIMITS.entry || (total += usize) > LIMITS.total) throw new Error('محتوى الملف بعد فك الضغط كبير جداً.');
+        const data = method === 0 ? raw : method === 8 ? await inflateRaw(raw) : null;
+        if (data && data.length > LIMITS.entry) throw new Error('محتوى الملف بعد فك الضغط كبير جداً.');
+        out[name] = data;
+      }
       p += 46 + nlen + xlen + clen;
     }
     return out;
@@ -53,6 +63,7 @@
   /* يُرجع { sheets: [{ name, rows: [[قيمة الخلية...]] }] } — القيمة رقم أو نص أو null */
   async function read(buf) {
     const files = await unzip(buf), dec = new TextDecoder();
+    if (!files['xl/workbook.xml']) throw new Error('الملف ليس ملف Excel (xlsx) صالحاً: لا يحتوي مصنفاً.');
     const get = function (n) { return files[n] ? dec.decode(files[n]) : ''; };
     const shared = [];
     get('xl/sharedStrings.xml').replace(/<si>([\s\S]*?)<\/si>/g, function (m, si) { shared.push(textOf(si)); });
@@ -86,7 +97,7 @@
             }
             row[ci] = v;
           });
-          rows[r] = row;
+          if (r < LIMITS.rows) rows[r] = row;
         });
         for (let i = 0; i < rows.length; i++) if (!rows[i]) rows[i] = [];
         return { name: sh.name, rows: rows };
