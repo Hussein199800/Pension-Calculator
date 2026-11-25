@@ -180,11 +180,14 @@
   function fmtDate(d) { d = typeof d === 'string' ? parseDate(d) : d; return d ? d.d + '/' + d.m + '/' + d.y : '—'; }
   function dim(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
   /* الفرق بالسنوات والأشهر والأيام من a إلى b */
+  function addMonthsD(a, n) { var t = a.y * 12 + (a.m - 1) + n, y = Math.floor(t / 12), m = t % 12 + 1; return { y: y, m: m, d: Math.min(a.d, dim(y, m)) }; }
+  function dayNum(d) { return Date.UTC(d.y, d.m - 1, d.d) / 86400000; }
+  /* الأشهر المكتملة من a (يُقصّ اليوم إلى آخر الشهر: 29/2 + 12 شهراً = 28/2)، ثم الأيام التقويمية الباقية */
   function diffYMD(a, b) {
-    var y = b.y - a.y, m = b.m - a.m, d = b.d - a.d;
-    if (d < 0) { m--; var pm = b.m - 1 < 1 ? 12 : b.m - 1, py = b.m - 1 < 1 ? b.y - 1 : b.y; d += dim(py, pm); }
-    if (m < 0) { y--; m += 12; }
-    return { y: y, m: m, d: d };
+    var months = (b.y - a.y) * 12 + (b.m - a.m), c = addMonthsD(a, months);
+    if (cmpD(c, b) > 0) { months--; c = addMonthsD(a, months); }
+    if (months < 0) return { y: 0, m: 0, d: 0 };
+    return { y: Math.floor(months / 12), m: months % 12, d: Math.round(dayNum(b) - dayNum(c)) };
   }
   /* أي كسر يرفع للسنة التالية */
   function ceilYears(p) { return p.y + (p.m || p.d ? 1 : 0); }
@@ -194,7 +197,13 @@
     if (p.y) parts.push(p.y + ' سنة'); if (p.m) parts.push(p.m + ' شهر'); if (p.d) parts.push(p.d + ' يوم');
     return parts.length ? parts.join(' و') : 'صفر';
   }
-  function num(v) { var n = parseInt(String(v === undefined || v === null ? '' : v).replace(/[٠-٩]/g, function (c) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(c); }), 10); return isFinite(n) ? n : null; }
+  /* الأرقام: تُقبل العربية والفارسية، والمبلغ يقبل فواصل الآلاف. الفارغ = null، وغير الصالح = NaN */
+  function digits(v) { return String(v === undefined || v === null ? '' : v).trim().replace(/[٠-٩]/g, function (c) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(c); }).replace(/[۰-۹]/g, function (c) { return '۰۱۲۳۴۵۶۷۸۹'.indexOf(c); }); }
+  function intOf(v) { var t = digits(v); if (t === '') return null; return /^\d+$/.test(t) ? +t : NaN; }
+  function amountOf(v) { if (typeof v === 'number') return isFinite(v) && v >= 0 && v % 1 === 0 ? v : NaN; var t = digits(v).replace(/[,،٬\s]/g, ''); if (t === '') return null; return /^\d+$/.test(t) ? +t : NaN; }
+  var YEAR_MIN = 1990, YEAR_MAX = 2099;
+  function yearOf(v) { var n = intOf(v); return n === null ? null : (n >= YEAR_MIN && n <= YEAR_MAX ? n : NaN); }
+  function num(v) { return intOf(v); }
 
   /* الجدول: جدول السنة نفسها، وإلا الجدول الذي بعدها (لا الذي قبلها) */
   function pickTable(year) {
@@ -220,6 +229,18 @@
     if (!(y in D.ANNUAL)) return null;
     return over45 && (y in D.ANNUAL_OVER45) ? D.ANNUAL_OVER45[y] : D.ANNUAL[y];
   }
+  /* رسم سنة لطرف واحد: { amount, status } — status: '' معتمد، 'estimate' بعد آخر سنة (برسم آخر سنة)، 'missing' غير محدد، 'none' لا رسم */
+  function centralYear(y, over45) {
+    if (!D.LAST || y < D.FIRST) return { amount: 0, status: 'missing' };
+    if (y > D.LAST) return { amount: annualFee(D.LAST, over45) || 0, status: 'estimate', base: D.LAST };
+    var a = annualFee(y, over45);
+    return a === null ? { amount: 0, status: 'missing' } : { amount: a, status: '' };
+  }
+  function branchYear(y) {
+    if (!D.BRANCH_FIRST || y < D.BRANCH_FIRST) return { amount: 0, status: 'none' };
+    if (y > D.BRANCH_LAST) return { amount: D.BRANCH_ANNUAL[D.BRANCH_LAST] || 0, status: 'estimate', base: D.BRANCH_LAST };
+    return y in D.BRANCH_ANNUAL ? { amount: D.BRANCH_ANNUAL[y], status: '' } : { amount: 0, status: 'missing' };
+  }
 
   /* قائمة سنوات الرسم السنوي من..إلى، مع خانة «مدفوع» */
   function yearsList(from, to, over45, paid, warnings) {
@@ -239,8 +260,9 @@
   function endYearOf(inp, today) {
     var st = inp.status || 'active';
     if (st === 'active') return { year: today.y, why: 'قيده سارٍ: حتى السنة الحالية ' + today.y };
-    var y = num(inp.statusYear);
-    if (!y) return { error: st === 'cancelled' ? 'أدخل سنة الترقين.' : st === 'deceased' ? 'أدخل سنة الوفاة.' : 'أدخل سنة نهاية الحساب.' };
+    var y = yearOf(inp.statusYear);
+    if (y === null) return { error: st === 'cancelled' ? 'أدخل سنة الترقين.' : st === 'deceased' ? 'أدخل سنة الوفاة.' : 'أدخل سنة نهاية الحساب.' };
+    if (isNaN(y)) return { error: 'سنة النهاية «' + inp.statusYear + '» غير صالحة: اكتب سنة من 4 أرقام بين ' + YEAR_MIN + ' و' + YEAR_MAX + '.' };
     return { year: y, why: STATUS[st] + ': حتى سنة ' + y + ' (محسوبة)' };
   }
 
@@ -303,6 +325,13 @@
     Object.keys(inp.exempt || {}).forEach(function (k) { var e = inp.exempt[k] || {}; if (e.central || e.branch) EX[k] = { central: !!e.central, branch: !!e.branch, reason: String(e.reason || '').trim() }; });
     /* (الإعفاء يشمل كل رسوم ذلك الطرف في العملية، ومنها رسومها السنوية) */
     function exempted(kind, fund) { return !!(EX[kind] && EX[kind][fund]); }
+    /* رسم الفرع لعملية: مبلغ مكتوب لهذا الحساب (inp.brFee[kind]) أو القيمة الافتراضية من الإعدادات */
+    function brFee(kind, def, legacy) {
+      var raw = inp.brFee && inp.brFee[kind] !== undefined && inp.brFee[kind] !== '' ? inp.brFee[kind] : legacy;
+      var v = amountOf(raw);
+      if (isNaN(v)) { R.errors.push('رسم الفرع لـ«' + KINDS[kind] + '» غير صالح: اكتب مبلغاً صحيحاً (مثل 5,500).'); return null; }
+      return v === null ? { v: def, manual: false, note: '' } : { v: v, manual: true, note: 'مبلغ معدّل في هذا الحساب' };
+    }
 
     R.steps.push('نطاق الحساب: ' + SCOPE[scope] + (scope === 'both' ? ' — رسوم النقابة المركزية ورسوم الفرع معاً.' : scope === 'central' ? ' — رسوم النقابة المركزية وحدها.' : ' — رسوم الفرع وحدها.'));
 
@@ -355,11 +384,14 @@
           });
           var bp = inp.branchPrints || {};
           if (bp.on) {
-            var pa = num(bp.amount) || 0;
+            var pa = amountOf(bp.amount);
+            if (isNaN(pa)) { R.errors.push('مبلغ «مطبوعات + مفكرة» غير صالح: اكتب رقماً صحيحاً (مثل 1,500).'); return; }
+            pa = pa || 0;
             item('branch', 'مطبوعات + مفكرة', pa, 'حسب المطبوعات الموجودة');
             if (!pa) R.warnings.push('فُعّلت «مطبوعات + مفكرة» للفرع دون مبلغ.');
           }
-          step('الفرع: بنود سطر العمر ' + ag.row + ' ما عدا الرسم السنوي للفرع، ثم الرسم السنوي للفرع لكل سنة من ' + Math.max(jd.y, D.BRANCH_FIRST) + ' حتى ' + end.year + ' (لا رسم سنوي للفرع قبل ' + D.BRANCH_FIRST + ').');
+          step(D.BRANCH_FIRST ? 'الفرع: بنود سطر العمر ' + ag.row + ' ما عدا الرسم السنوي للفرع، ثم الرسم السنوي للفرع لكل سنة من ' + Math.max(jd.y, D.BRANCH_FIRST) + ' حتى ' + end.year + ' (لا رسم سنوي للفرع قبل ' + D.BRANCH_FIRST + ').'
+            : 'الفرع: بنود سطر العمر ' + ag.row + ' ما عدا الرسم السنوي للفرع. لا يوجد رسم سنوي للفرع في الإعدادات.');
         }
         ranges.push({ from: jd.y, to: end.year, kind: kind });
       }
@@ -370,10 +402,11 @@
         step('المشطوب الأمني يدفع الرسم السنوي لكل سنة من ' + D.FIXED.securityFrom + ' حتى سنة القرار ' + dd.y + ' (السنتان محسوبتان).');
         if (over45) step('انتسب بعمر فوق 45، فيُعتمد الرسم السنوي المركزي المخفّض في السنوات التي لها جدول.');
         if (useB) {
-          item('branch', 'رسم إعادة قيد المشطوب', D.flat.brStruck);
+          var bs = brFee(kind, D.flat.brStruck); if (bs === null) return;
+          item('branch', 'رسم إعادة قيد المشطوب', bs.v, bs.note);
           /* حسابات محفوظة بالخيار القديم: إعفاء من رسم إعادة القيد للفرع وحده (لا من الرسوم السنوية) */
           if (inp.secBranchWaived) { var lw = op.items[op.items.length - 1]; lw.exempt = true; lw.excluded = true; lw.note = 'معفى (المشطوب الأمني معفى أحياناً)'; step('الفرع: أُعفي من رسم إعادة قيد المشطوب.'); }
-          else step('الفرع: رسم إعادة قيد المشطوب ' + fmt(D.flat.brStruck) + '.');
+          else step('الفرع: رسم إعادة قيد المشطوب ' + fmt(bs.v) + (bs.manual ? ' (عُدّل في هذا الحساب)' : '') + '.');
         }
         optional(item);
         ranges.push({ from: D.FIXED.securityFrom, to: dd.y, kind: kind });
@@ -382,31 +415,32 @@
       else if (kind === 'admStruck' || kind === 'reCancel') {
         var d2 = parseDate(inp.decisionDate), ev = parseDate(inp.eventDate);
         if (!d2) R.errors.push('أدخل تاريخ قرار إعادة القيد.');
-        if (!parseDate(inp.birthDate)) R.errors.push('أدخل تاريخ الميلاد (لشرط العمر في معونة الوفاة).');
+        if (useC && !parseDate(inp.birthDate)) R.errors.push('أدخل تاريخ الميلاد (لشرط العمر في معونة الوفاة المركزية).');
         if (R.errors.length) return;
         var FX = D.FIXED[kind], word = kind === 'admStruck' ? 'الشطب' : 'الترقين';
-        var ad = ageRow(inp.birthDate, inp.decisionDate);
-        if (!R.age) R.age = ad;
-        step('العمر بتاريخ قرار إعادة القيد = ' + fmtYMD(ad.ymd) + ' ← ' + ad.raw + ' سنة.');
-        var gap = null, manual = num(inp.gapYears);
+        var ad = parseDate(inp.birthDate) ? ageRow(inp.birthDate, inp.decisionDate) : null;
+        if (ad && !R.age) R.age = ad;
+        if (ad) step('العمر بتاريخ قرار إعادة القيد = ' + fmtYMD(ad.ymd) + ' ← ' + ad.raw + ' سنة.');
+        var gap = null, manual = intOf(inp.gapYears);
+        if (isNaN(manual)) { R.errors.push('عدد سنوات الانقطاع «' + inp.gapYears + '» غير صالح: اكتب عدداً صحيحاً (0 أو أكثر).'); return; }
         if (ev && cmpD(ev, d2) < 0) {
           var gp = diffYMD(ev, d2); gap = ceilYears(gp);
           step('مدة الانقطاع من تاريخ ' + word + ' ' + fmtDate(ev) + ' حتى القرار ' + fmtDate(d2) + ' = ' + fmtYMD(gp) + '، وأي جزء من سنة = سنة، فهي ' + gap + ' سنة.');
-        } else if (ev) R.warnings.push('تاريخ ' + word + ' ليس قبل تاريخ القرار؛ أدخل عدد سنوات الانقطاع يدوياً.');
-        if (manual !== null && manual >= 0 && manual !== gap) { step('عُدّل عدد سنوات الانقطاع يدوياً إلى ' + manual + '.'); gap = manual; }
-        if (gap === null) { gap = 0; R.warnings.push('لم تُحسب سنوات الانقطاع: أدخل تاريخ ' + word + ' أو العدد يدوياً.'); }
+        } else if (ev && manual === null) { R.errors.push('تاريخ ' + word + ' (' + fmtDate(ev) + ') ليس قبل تاريخ القرار (' + fmtDate(d2) + '): صحّح التاريخين أو اكتب عدد سنوات الانقطاع.'); return; }
+        if (manual !== null && manual !== gap) { step('عدد سنوات الانقطاع مكتوب يدوياً: ' + manual + '.'); gap = manual; }
+        if (gap === null) { R.errors.push('أدخل تاريخ ' + word + ' أو عدد سنوات الانقطاع (الصفر مقبول).'); return; }
         R.gapYears = gap;
         if (useC) {
           item('central', 'رسم النقابة', FX.union); item('central', 'رسم التقاعد', FX.pension);
-          if (ad.raw <= 45) { item('central', 'رسم معونة الوفاة', D.FIXED.deathAid, 'عمره 45 فما دون'); step('عمره 45 فما دون، فيدفع رسم معونة الوفاة ويستفيد منها.'); }
+          if (ad && ad.raw <= 45) { item('central', 'رسم معونة الوفاة', D.FIXED.deathAid, 'عمره 45 فما دون'); step('عمره 45 فما دون، فيدفع رسم معونة الوفاة ويستفيد منها.'); }
           else step('عمره فوق 45، فلا يدفع رسم معونة الوفاة ولا يستفيد منها.');
           if (gap) item('central', 'سنوات الانقطاع', gap * D.FIXED.gapYear, gap + ' × ' + fmt(D.FIXED.gapYear));
           item('central', 'المطبوعات', D.FIXED.prints); item('central', 'تثبيت ممارسة', D.FIXED.practice);
         }
         if (useB) {
-          var bf = kind === 'admStruck' ? D.flat.brStruck : D.flat.brReCancel;
-          item('branch', kind === 'admStruck' ? 'رسم إعادة قيد المشطوب' : 'رسم إعادة قيد المرقّن', bf);
-          step('الفرع: ' + (kind === 'admStruck' ? 'رسم إعادة قيد المشطوب ' : 'رسم إعادة قيد المرقّن ') + fmt(bf) + '.');
+          var bf = brFee(kind, kind === 'admStruck' ? D.flat.brStruck : D.flat.brReCancel); if (bf === null) return;
+          item('branch', kind === 'admStruck' ? 'رسم إعادة قيد المشطوب' : 'رسم إعادة قيد المرقّن', bf.v, bf.note);
+          step('الفرع: ' + (kind === 'admStruck' ? 'رسم إعادة قيد المشطوب ' : 'رسم إعادة قيد المرقّن ') + fmt(bf.v) + (bf.manual ? ' (عُدّل في هذا الحساب)' : '') + '.');
         }
         optional(item);
       }
@@ -414,13 +448,15 @@
       else if (kind === 'cancelSelf' || kind === 'omitted') {
         var refDate = kind === 'cancelSelf' ? parseDate(inp.eventDate) : parseDate(inp.decisionDate);
         if (!refDate) { R.errors.push(kind === 'cancelSelf' ? 'أدخل تاريخ الترقين.' : 'أدخل تاريخ قرار إعادة القيد.'); return; }
-        var lp = num(inp.lastPaidYear), jy = parseDate(inp.joinDate);
+        var lp = yearOf(inp.lastPaidYear), jy = parseDate(inp.joinDate);
+        if (isNaN(lp)) { R.errors.push('«آخر سنة دفع رسمها» غير صالحة: اكتب سنة من 4 أرقام.'); return; }
         var from = lp ? lp + 1 : (jy ? jy.y : null);
         if (!from) { R.errors.push('أدخل آخر سنة دفع رسمها، أو تاريخ الانتساب.'); return; }
         if (kind === 'omitted') {
           if (useC) { item('central', 'رسم النقابة', D.FIXED.omitted.union); item('central', 'رسم التقاعد', D.FIXED.omitted.pension); }
-          if (useB) item('branch', 'رسم إعادة قيد المُغفَل', D.flat.brOmitted);
-          step('المُغفَل يدفع رسوم استعادة القيد' + (useC ? ' (مركزية: نقابة ' + fmt(D.FIXED.omitted.union) + ' + تقاعد ' + fmt(D.FIXED.omitted.pension) + ')' : '') + (useB ? ' (فرع: ' + fmt(D.flat.brOmitted) + ')' : '') + '، إضافة إلى كل الرسوم السنوية المترتبة عليه.');
+          var bo = useB ? brFee(kind, D.flat.brOmitted) : { v: 0 }; if (bo === null) return;
+          if (useB) item('branch', 'رسم إعادة قيد المُغفَل', bo.v, bo.note);
+          step('المُغفَل يدفع رسوم استعادة القيد' + (useC ? ' (مركزية: نقابة ' + fmt(D.FIXED.omitted.union) + ' + تقاعد ' + fmt(D.FIXED.omitted.pension) + ')' : '') + (useB ? ' (فرع: ' + fmt(bo.v) + ')' : '') + '، إضافة إلى كل الرسوم السنوية المترتبة عليه.');
         } else {
           step('الترقين بطلب المحامي: يدفع رسم سنة الترقين ' + refDate.y + '، وكل رسم سابق غير مدفوع، لأنه يجب أن يكون بريء الذمة وقت الترقين.');
         }
@@ -431,8 +467,9 @@
 
       else if (kind === 'transfer') {
         if (useC) { item('central', 'رسم النقابة', D.FIXED.transfer.union); item('central', 'رسم التقاعد', D.FIXED.transfer.pension); }
-        if (useB) item('branch', 'رسم النقل من فرع إلى آخر', D.flat.brTransfer);
-        step('رسم النقل من فرع إلى آخر ثابت' + (useC ? ': مركزية (نقابة ' + fmt(D.FIXED.transfer.union) + ' + تقاعد ' + fmt(D.FIXED.transfer.pension) + ')' : '') + (useB ? (useC ? ' + ' : ': ') + 'فرع ' + fmt(D.flat.brTransfer) : '') + '.');
+        var bt2 = useB ? brFee(kind, D.flat.brTransfer) : { v: 0 }; if (bt2 === null) return;
+        if (useB) item('branch', 'رسم النقل من فرع إلى آخر', bt2.v, bt2.note);
+        step('رسم النقل من فرع إلى آخر ثابت' + (useC ? ': مركزية (نقابة ' + fmt(D.FIXED.transfer.union) + ' + تقاعد ' + fmt(D.FIXED.transfer.pension) + ')' : '') + (useB ? (useC ? ' + ' : ': ') + 'فرع ' + fmt(bt2.v) : '') + '.');
         if (!inp.clearance) R.warnings.push('النقل مشروط بأن يكون المحامي بريء الذمة. تأكد من ذلك قبل القبض.');
       }
 
@@ -448,10 +485,9 @@
           else { D.FIXED.trainee.forEach(function (t) { item('central', t[0], t[1]); }); step('المركزية: الرسم من 1/3/2026 = ' + fmt(D.FIXED.trainee.reduce(function (s, t) { return s + t[1]; }, 0)) + ' (مفصّلاً).'); }
         }
         if (useB) {
-          var bm = num(inp.brMasterAmount), manualB = bm !== null && bm >= 0;
-          var bmv = manualB ? bm : D.flat.brMaster;
-          item('branch', 'رسم الأستذة', bmv, manualB ? 'مبلغ معدّل في هذا الحساب' : (before ? 'غير محدد قبل 1/3/2026، القيمة الافتراضية' : ''));
-          step('الفرع: رسم الأستذة ' + fmt(bmv) + (manualB ? ' (عُدّل في هذا الحساب)' : before ? ' (رسم الفرع قبل 1/3/2026 غير محدد، فاعتُمدت القيمة الافتراضية)' : '') + '.');
+          var bmf = brFee(kind, D.flat.brMaster, inp.brMasterAmount); if (bmf === null) return;
+          item('branch', 'رسم الأستذة', bmf.v, bmf.manual ? bmf.note : (before ? 'غير محدد قبل 1/3/2026، القيمة الافتراضية' : ''));
+          step('الفرع: رسم الأستذة ' + fmt(bmf.v) + (bmf.manual ? ' (عُدّل في هذا الحساب)' : before ? ' (رسم الفرع قبل 1/3/2026 غير محدد، فاعتُمدت القيمة الافتراضية)' : '') + '.');
         }
       }
     });
@@ -508,32 +544,56 @@
         lo = Math.min(lo, r.from); hi = Math.max(hi, r.to);
       });
       if (ranges.length > 1) R.steps.push('السنوات المشتركة بين العمليات يُحسب رسمها السنوي مرة واحدة.');
-      var cYears = useC ? yearsList(lo, hi, over45, [], R.warnings) : [];
-      var cBy = {}; cYears.forEach(function (x) { cBy[x.year] = x; });
-      var warnedB = false;
+      /* كل طرف يُحسب وحده: السنة مستحقة لطرف إذا غطّتها عملية واحدة على الأقل غير معفاة من ذلك الطرف */
+      var paidC = {}, paidB = {}, dates = inp.paidDates || {};
+      (inp.paidC || []).forEach(function (y) { paidC[+y] = true; });
+      (inp.paidB || []).forEach(function (y) { paidB[+y] = true; });
+      var est = { central: null, branch: null }, missing = { central: [], branch: [] };
       Object.keys(yset).map(Number).sort(function (a, b) { return a - b; }).forEach(function (y) {
-        var c = useC && payC[y] ? (cBy[y] ? cBy[y].amount : 0) : 0, b = useB && payB[y] ? branchAnnual(y) : 0;
-        var exC = useC && !payC[y], exB = useB && !payB[y] && branchAnnual(y) > 0;
-        if (useC && !cBy[y]) return; /* قبل أول سنة معتمدة */
-        if (!useC && !b && !exB) return; /* فرع فقط: لا رسم سنوي للفرع في هذه السنة */
-        if (useB && y > D.BRANCH_LAST && !warnedB) { R.warnings.push('لا رسم سنوي معتمد للفرع بعد ' + D.BRANCH_LAST + '؛ حُسبت السنوات اللاحقة برسم ' + D.BRANCH_LAST + '.'); warnedB = true; }
-        R.years.push({ year: y, central: c, branch: b, amount: c + b, paid: !!paidSet[y], over45: !!(useC && cBy[y] && cBy[y].over45), exempt: exC && exB ? 'both' : exC ? 'central' : exB ? 'branch' : '' });
+        var cy = useC ? centralYear(y, over45) : { amount: 0, status: 'none' };
+        var by = useB ? branchYear(y) : { amount: 0, status: 'none' };
+        if (useC && y < D.FIRST) { if (!est.before) { R.warnings.push('لا يوجد رسم سنوي مركزي قبل ' + D.FIRST + '؛ لم تُحسب السنوات التي قبلها.'); est.before = true; } cy = { amount: 0, status: 'none' }; }
+        var c = useC && payC[y] ? cy.amount : 0, b = useB && payB[y] ? by.amount : 0;
+        var exC = useC && !payC[y] && cy.status !== 'none', exB = useB && !payB[y] && by.status !== 'none';
+        if (!c && !b && !exC && !exB && cy.status !== 'missing' && by.status !== 'missing') return;
+        if (cy.status === 'estimate' && payC[y]) est.central = cy.base;
+        if (by.status === 'estimate' && payB[y]) est.branch = by.base;
+        if (cy.status === 'missing' && payC[y] && useC) missing.central.push(y);
+        if (by.status === 'missing' && payB[y] && useB) missing.branch.push(y);
+        var legacy = !!paidSet[y];
+        var pc = legacy || !!paidC[y] || !c, pb = legacy || !!paidB[y] || !b;
+        R.years.push({
+          year: y, central: c, branch: b, amount: c + b,
+          paidC: !!(legacy || paidC[y]) && c > 0, paidB: !!(legacy || paidB[y]) && b > 0,
+          paidDateC: dates['c' + y] || '', paidDateB: dates['b' + y] || '',
+          paid: pc && pb && (c + b) > 0, due: (pc ? 0 : c) + (pb ? 0 : b),
+          cStatus: useC && payC[y] ? cy.status : '', bStatus: useB && payB[y] ? by.status : '',
+          over45: !!(useC && over45 && ((y > D.LAST ? D.LAST : y) in D.ANNUAL_OVER45)),
+          exempt: exC && exB ? 'both' : exC ? 'central' : exB ? 'branch' : ''
+        });
       });
-      if (useB && R.years.some(function (x) { return x.year < D.BRANCH_FIRST; })) R.steps.push('الرسم السنوي للفرع يبدأ من ' + D.BRANCH_FIRST + '، فلا رسم فرع على السنوات التي قبلها.');
+      if (est.central) R.warnings.push('لا يوجد رسم سنوي مركزي معتمد بعد ' + est.central + '؛ حُسبت السنوات اللاحقة تقديرياً برسم ' + est.central + '. أضف رسم السنة الجديدة من «إعدادات الرسوم».');
+      if (est.branch) R.warnings.push('لا يوجد رسم سنوي معتمد للفرع بعد ' + est.branch + '؛ حُسبت السنوات اللاحقة تقديرياً برسم ' + est.branch + '.');
+      if (missing.central.length) R.warnings.push('الرسم السنوي المركزي غير محدد في الإعدادات لسنة: ' + missing.central.join('، ') + '؛ حُسب صفراً.');
+      if (missing.branch.length) R.warnings.push('الرسم السنوي للفرع غير محدد في الإعدادات لسنة: ' + missing.branch.join('، ') + '؛ حُسب صفراً.');
+      if (useB && !D.BRANCH_FIRST) R.steps.push('لا يوجد رسم سنوي للفرع في الإعدادات، فلم يُحسب للفرع رسم سنوي.');
+      else if (useB && R.years.some(function (x) { return x.year < D.BRANCH_FIRST; })) R.steps.push('الرسم السنوي للفرع يبدأ من ' + D.BRANCH_FIRST + '، فلا رسم فرع على السنوات التي قبلها.');
     }
     if (over45 && R.years.length) R.over45 = true;
 
     /* المجاميع */
     function sumItems(f) { return R.items.reduce(function (s, x) { return s + (x.excluded || (f && x.fund !== f) ? 0 : x.amount); }, 0); }
-    function sumYears(f) { return R.years.reduce(function (s, x) { return s + (x.paid ? 0 : (f ? x[f] : x.amount)); }, 0); }
+    function sumYears(f) { return R.years.reduce(function (s, x) { return s + (f === 'central' ? (x.paidC ? 0 : x.central) : f === 'branch' ? (x.paidB ? 0 : x.branch) : x.due); }, 0); }
     R.itemsTotal = sumItems();
     R.yearsTotal = sumYears();
     R.paidCount = R.years.filter(function (x) { return x.paid; }).length;
+    R.paidPartCount = R.years.filter(function (x) { return !x.paid && (x.paidC || x.paidB); }).length;
     R.centralTotal = sumItems('central') + sumYears('central');
     R.branchTotal = sumItems('branch') + sumYears('branch');
     R.total = R.itemsTotal + R.yearsTotal;
     R.ops.forEach(function (op) { op.total = op.items.reduce(function (s, x) { return s + (x.excluded ? 0 : x.amount); }, 0); });
-    if (R.paidCount) R.steps.push('طُرحت ' + R.paidCount + ' سنة مدفوعة من المجموع.');
+    if (R.paidCount) R.steps.push('طُرحت ' + R.paidCount + ' سنة مدفوعة كاملة من المجموع.');
+    if (R.paidPartCount) R.steps.push('وطُرح رسم أحد الطرفين لـ' + R.paidPartCount + ' سنة دُفع فيها طرف دون الآخر.');
     /* «كيف حُسب» مجمّعة: خطوات عامة ثم خطوات كل عملية */
     var all = R.steps.slice(0, 1);
     R.ops.forEach(function (op) { op.steps.forEach(function (s) { all.push((R.ops.length > 1 ? op.name + ': ' : '') + s); }); });
@@ -549,6 +609,6 @@
     annualFee: function (year, over45, data) { return using(data, function () { return annualFee(year, over45); }); },
     DEFAULTS: DEF, TABLE_YEARS: DEF.TABLE_YEARS, ANNUAL: DEF_ANNUAL, ANNUAL_OVER45: DEF_OVER45, COLS: COLS, AGES: AGES, FIXED_FIELDS: FIXED_FIELDS,
     BCOLS: BCOLS, BRANCH_FIELDS: BRANCH_FIELDS, FUND: FUND, SCOPE: SCOPE, KIND_ORDER: KIND_ORDER,
-    KINDS: KINDS, STATUS: STATUS, fmt: fmt, fmtDate: fmtDate, fmtYMD: fmtYMD, parseDate: parseDate, diffYMD: diffYMD
+    KINDS: KINDS, STATUS: STATUS, amountOf: amountOf, yearOf: yearOf, intOf: intOf, YEAR_MIN: YEAR_MIN, YEAR_MAX: YEAR_MAX, fmt: fmt, fmtDate: fmtDate, fmtYMD: fmtYMD, parseDate: parseDate, diffYMD: diffYMD
   };
 });

@@ -253,4 +253,62 @@ t('الإعفاء لكل عملية ولكل طرف (مع رسومها السن�
   assert.ok(s1.years.every(y => y.central === 0 && y.exempt === 'central'));
 });
 
+// ---------- إصلاحات مراجعة الدمج 6
+t('العمر: 29 شباط 1980 حتى 1 آذار 2025 = 45 سنة ويوم ← سطر 46، و28 شباط = 45 بالضبط', () => {
+  const a = F.ageRow('1980-02-29', '2025-03-01');
+  assert.deepStrictEqual(a.ymd, { y: 45, m: 0, d: 1 }); assert.strictEqual(a.row, 46);
+  const b = F.ageRow('1980-02-29', '2025-02-28');
+  assert.deepStrictEqual(b.ymd, { y: 45, m: 0, d: 0 }); assert.strictEqual(b.row, 45);
+  assert.strictEqual(F.ageRow('1994-01-31', '2024-02-29').row, 31); // 30 سنة وشهر تقريباً
+  assert.deepStrictEqual(F.diffYMD({ y: 2022, m: 1, d: 1 }, { y: 2025, m: 2, d: 1 }), { y: 3, m: 1, d: 0 });
+});
+t('قراءة المبالغ والسنوات: 5,500 = 5500، و2026abc مرفوضة، والأرقام العربية والفارسية مقبولة', () => {
+  assert.strictEqual(F.amountOf('5,500'), 5500); assert.strictEqual(F.amountOf('٥٬٥٠٠'), 5500); assert.strictEqual(F.amountOf('۵۵۰۰'), 5500);
+  assert.ok(isNaN(F.amountOf('5.5'))); assert.ok(isNaN(F.amountOf('-100'))); assert.strictEqual(F.amountOf(''), null);
+  assert.ok(isNaN(F.yearOf('2026abc'))); assert.ok(isNaN(F.yearOf('2026.5'))); assert.strictEqual(F.yearOf('٢٠٢٥'), 2025);
+  const R = F.compute({ kinds: ['traineeToMaster'], scope: 'both', masterDate: '2026-05-01', brMasterAmount: '5,500' }, TODAY);
+  assert.strictEqual(R.branchTotal, 5500);
+  assert.ok(F.compute({ kinds: ['new'], scope: 'central', status: 'other', statusYear: '2026abc', birthDate: '1996-03-01', joinDate: '2026-03-01' }, TODAY).errors.length);
+  assert.ok(F.compute({ kinds: ['omitted'], scope: 'central', decisionDate: '2026-03-01', lastPaidYear: '20x3' }, TODAY).errors.length);
+});
+t('مدة الانقطاع مطلوبة (الصفر الصريح مقبول)، والتاريخان بالترتيب', () => {
+  const base = { kinds: ['reCancel'], scope: 'central', birthDate: '1990-01-01', decisionDate: '2026-06-01' };
+  assert.ok(F.compute(base, TODAY).errors.length);
+  assert.strictEqual(F.compute(Object.assign({ gapYears: '0' }, base), TODAY).total, 10000 + 10000 + 2500 + 1000 + 1000);
+  assert.ok(F.compute(Object.assign({ eventDate: '2026-07-01' }, base), TODAY).errors.length);
+  assert.ok(F.compute(Object.assign({ gapYears: 'ثلاث' }, base), TODAY).errors.length);
+});
+t('فرع فقط مع الشطب الإداري لا يحتاج تاريخ الميلاد', () => {
+  const R = F.compute({ kinds: ['admStruck'], scope: 'branch', decisionDate: '2026-06-01', gapYears: '2' }, TODAY);
+  assert.deepStrictEqual(R.errors, []); assert.strictEqual(R.total, 20000);
+});
+t('السنوي لكل طرف وحده: غياب المركزي لا يُسقط رسم الفرع', () => {
+  const noC = {}; for (let y = 2011; y <= 2026; y++) noC[y] = null; noC[2027] = 5000;
+  const R = F.compute({ kinds: ['new'], scope: 'both', status: 'active', birthDate: '1996-01-01', joinDate: '2026-01-01' }, { today: '2026-11-24', data: { annual: noC } });
+  assert.strictEqual(R.branchTotal, 26000);
+  assert.ok(R.warnings.some(w => w.indexOf('غير محدد') >= 0 || w.indexOf('قبل 2027') >= 0));
+});
+t('السنوي التقديري بعد آخر سنة يُذكر، ولا NaN عند غياب سنوي الفرع كله', () => {
+  const R = F.compute({ kinds: ['new'], scope: 'branch', status: 'other', statusYear: '2028', birthDate: '1996-01-01', joinDate: '2026-01-01' }, { today: '2026-11-24', data: { branchAnnual: { 2027: 3500 } } });
+  assert.deepStrictEqual(R.years.map(y => y.year + ':' + y.branch + ':' + y.bStatus), ['2026:3000:', '2027:3500:', '2028:3500:estimate']);
+  assert.ok(R.warnings.some(w => w.indexOf('تقديري') >= 0));
+  const R2 = F.compute({ kinds: ['new'], scope: 'both', status: 'active', birthDate: '1996-01-01', joinDate: '2026-01-01' }, { today: '2026-11-24', data: { branchAnnual: { 2026: null } } });
+  assert.ok(!R2.steps.join(' ').includes('NaN')); assert.strictEqual(R2.branchTotal, 23000);
+});
+t('«مدفوع» لكل طرف: المركزية وحدها أو الفرع وحده، والقديم (paidYears) = الطرفان', () => {
+  const b = { kinds: ['new'], scope: 'both', status: 'active', birthDate: '1996-03-01', joinDate: '2026-03-01' };
+  const a = F.compute(b, TODAY);
+  assert.strictEqual(a.total - F.compute(Object.assign({ paidC: [2026] }, b), TODAY).total, 5000);
+  assert.strictEqual(a.total - F.compute(Object.assign({ paidB: [2026], paidDates: { b2026: '2026-10-01' } }, b), TODAY).total, 3000);
+  const both = F.compute(Object.assign({ paidYears: [2026] }, b), TODAY);
+  assert.strictEqual(a.total - both.total, 8000); assert.strictEqual(both.paidCount, 1);
+  const y = F.compute(Object.assign({ paidB: [2026], paidDates: { b2026: '2026-10-01' } }, b), TODAY).years[0];
+  assert.ok(y.paidB && !y.paidC && y.paidDateB === '2026-10-01');
+});
+t('رسم الفرع لكل عملية قابل للتعديل في الحساب', () => {
+  const R = F.compute({ kinds: ['transfer', 'omitted'], scope: 'branch', clearance: true, decisionDate: '2026-03-01', lastPaidYear: '2026', brFee: { transfer: '7,000', omitted: '4000' } }, TODAY);
+  assert.strictEqual(R.total, 11000);
+  assert.ok(F.compute({ kinds: ['transfer'], scope: 'branch', clearance: true, brFee: { transfer: 'abc' } }, TODAY).errors.length);
+});
+
 console.log('\n' + passed + ' اختباراً ناجحاً');

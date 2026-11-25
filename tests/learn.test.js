@@ -52,5 +52,51 @@ const TODAY = { today: '2027-05-01' };
     const P = L.learn(await X.read(bufOf([{ name: 'مركزية 2029', rows: [['العمر', 'قيد النقابة'], [30, 1]] }])));
     assert.ok(!P.central[2029]); assert.ok(P.problems.length);
   });
+  // ---------- إصلاحات مراجعة الدمج 6
+  await t('خلية فارغة في جدول موجود تُبقي القيمة السابقة (لا تصبح صفراً)، وتُذكر في المعاينة', async () => {
+    const T = L.template({ data: null, year: 2026 });
+    T.sheets[0].rows[4][1] = ''; // مركزية 2026 عمر 30 قيد النقابة
+    const P = L.learn(await X.read(bufOf(T.sheets)));
+    assert.strictEqual(P.central[2026].rows[30].union, 5000);
+    assert.ok(P.notes.some((n) => n.indexOf('فارغة') >= 0));
+    assert.strictEqual(L.apply(P), null);
+  });
+  await t('الصفر الصريح يُعتمد ويظهر في المعاينة خانةً خانة', async () => {
+    const T = L.template({ data: null, year: 2026 });
+    T.sheets[0].rows[4][1] = 0;
+    const P = L.learn(await X.read(bufOf(T.sheets)));
+    assert.strictEqual(P.central[2026].rows[30].union, 0);
+    assert.ok(P.cells.some((c) => c.indexOf('عمر 30') >= 0 && c.indexOf('5,000 ← 0') >= 0));
+  });
+  await t('السالب والكسر مرفوضان، والقيمة الحالية (المخصصة) تبقى', async () => {
+    const data = { fixed: { brTransfer: 6000 } };
+    const rows = [['المفتاح', 'البند', 'المبلغ'], ['brTransfer', 'x', -100], ['brMaster', 'y', '٣٬٠٠٠٫٥'], ['brOmitted', 'z', '']];
+    const P = L.learn(await X.read(bufOf([{ name: 'ثابتة', rows }])), { data });
+    assert.ok(!('brTransfer' in P.fixed) && !('brMaster' in P.fixed) && !('brOmitted' in P.fixed));
+    assert.strictEqual(P.problems.length, 2);
+    assert.deepStrictEqual(L.apply(P, data), data);
+  });
+  await t('سنة كسرية أو خارج النطاق في ورقة السنوي مرفوضة، و2100 خارج النطاق', async () => {
+    const rows = [['السنة', 'مركزية حتى 45'], [2027.5, 6000], [2100, 6000], [2028, 6500]];
+    const P = L.learn(await X.read(bufOf([{ name: 'سنوي', rows }])));
+    assert.deepStrictEqual(P.annual, { 2028: 6500 });
+    assert.strictEqual(P.problems.length, 2);
+    const T = L.template({ data: { annual: { 2099: 5000 } } });
+    assert.ok(T.year <= 2099);
+  });
+  await t('المعاينة تطابق الحفظ: بعد الاعتماد لا يبقى فرق عند رفع الملف نفسه', async () => {
+    const T = L.template({ data: null });
+    T.sheets[1].rows[4][1] = 12345;
+    const buf = bufOf(T.sheets);
+    const ov = L.apply(L.learn(await X.read(buf)));
+    const again = L.learn(await X.read(buf), { data: ov });
+    assert.strictEqual(again.changes.filter((c) => c.indexOf('لا تغيير') < 0).length, 0);
+  });
+
+  await t('ملف تالف أو ليس Excel يُرفض برسالة واضحة', async () => {
+    await assert.rejects(() => X.read(Buffer.from('ليس ملفاً مضغوطاً')), /Excel|تالف/);
+    const parts = X.build([{ name: 'a', rows: [[1]] }]); const buf = Buffer.concat(parts.map((b) => Buffer.from(b)));
+    await assert.rejects(() => X.read(buf.subarray(0, buf.length - 30)), /Excel|تالف/);
+  });
   console.log('\n' + passed + ' اختبارات ناجحة');
 })();

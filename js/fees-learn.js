@@ -22,13 +22,19 @@
       .replace(/\s+/g, ' ');
   }
   /* رقم من خلية: يقبل الأرقام العربية والفواصل، و«—» أو الفارغ = صفر، والنص الآخر = null */
-  function cellNum(v) {
-    if (typeof v === 'number') return isFinite(v) ? v : null;
-    const t = norm(v).replace(/[,،٬\s]/g, '');
-    if (t === '' || /^[-—–]+$/.test(t)) return 0;
-    return /^\d+(\.\d+)?$/.test(t) ? +t : null;
+  /* قيمة خلية: blank فارغة، dash «—» (صفر صريح)، num رقم صحيح ≥ 0، neg سالب، bad غير صالح (نص أو كسر) */
+  function cellVal(v) {
+    if (v === null || v === undefined) return { k: 'blank' };
+    if (typeof v === 'number') return !isFinite(v) ? { k: 'bad' } : v < 0 ? { k: 'neg', v: v } : v % 1 ? { k: 'bad', v: v } : { k: 'num', v: v };
+    const t = norm(v).replace(/[۰-۹]/g, function (c) { return '۰۱۲۳۴۵۶۷۸۹'.indexOf(c); }).replace(/[,،٬\s]/g, '');
+    if (t === '') return { k: 'blank' };
+    if (/^[-—–]+$/.test(t)) return { k: 'dash', v: 0 };
+    if (/^[-−]\d/.test(t)) return { k: 'neg' };
+    return /^\d+$/.test(t) ? { k: 'num', v: +t } : { k: 'bad' };
   }
-  function yearIn(s) { const m = /(20\d{2})/.exec(norm(s)); return m ? +m[1] : null; }
+  function cellNum(v) { const c = cellVal(v); return c.k === 'num' || c.k === 'dash' ? c.v : null; }
+  /* السنة: 4 أرقام في النطاق نفسه الذي يقبله المحرك والمحرر والقالب */
+  function yearIn(s) { const m = /((?:19|20)\d{2})/.exec(norm(s)); if (!m) return null; const y = +m[1]; return y >= F.YEAR_MIN && y <= F.YEAR_MAX ? y : null; }
 
   /* قواعد التعرف على الأعمدة (بالترتيب: الأدق أولاً) */
   const CENTRAL_RULES = [['total', /مجموع/], ['exam', /امتحان/], ['death', /وفاه/], ['annual', /سنوي/], ['practice', /دفتر|ممارسه/],
@@ -75,21 +81,28 @@
       const base = (isBranch ? D.BRANCH_TABLES : D.TABLES)[year] || (isBranch ? D.BRANCH_TABLES : D.TABLES)[latestY[latestY.length - 1]];
       const missing = cols.filter(function (c) { return !(c[0] in m) && !(c[0] === 'exam' || c[0] === 'death'); });
       const t = { from: (base && base.from && (isBranch ? D.BRANCH_TABLES : D.TABLES)[year] ? base.from : year + '-01-01'), rows: {} };
-      const seen = {}, bad = [], sumBad = [];
+      const seen = {}, bad = [], sumBad = [], blanks = [], same = !!(isBranch ? D.BRANCH_TABLES : D.TABLES)[year];
+      const srcYear = same ? year : latestY[latestY.length - 1];
       for (let r = h.row + 1; r < rows.length; r++) {
-        const row = rows[r] || [], age = cellNum(row[h.col]);
-        if (age === null || age < 30 || age > 50 || age % 1) continue;
+        const row = rows[r] || [], ac = cellVal(row[h.col]), age = ac.k === 'num' ? ac.v : null;
+        if (age === null || age < 30 || age > 50) continue;
         const o = {};
         let s = 0;
         cols.forEach(function (c) {
           let v;
-          if (c[0] in m) { v = cellNum(row[m[c[0]]]); if (v === null) { bad.push(age + ': ' + c[1]); v = base ? base.rows[age][c[0]] : 0; } }
-          else v = c[0] === 'exam' || (c[0] === 'death' && age > 45) ? 0 : (base ? base.rows[age][c[0]] : 0);
+          const prev = base ? base.rows[age][c[0]] : 0;
+          if (c[0] in m) {
+            const cv = cellVal(row[m[c[0]]]);
+            if (cv.k === 'num' || cv.k === 'dash') v = cv.v;
+            else if (cv.k === 'blank') { v = (!isBranch && c[0] === 'death' && age > 45) ? 0 : prev; if (!(c[0] === 'death' && age > 45) && !(c[0] === 'exam' && !prev)) blanks.push('عمر ' + age + ' «' + c[1] + '»'); }
+            else { bad.push('عمر ' + age + ' «' + c[1] + '»' + (cv.k === 'neg' ? ' (سالب)' : ' (ليس رقماً صحيحاً)')); v = prev; }
+          }
+          else v = c[0] === 'exam' || (c[0] === 'death' && age > 45) ? 0 : prev;
           if (!isBranch && c[0] === 'death' && age > 45) v = 0;
           o[c[0]] = v; s += v;
         });
         if ('total' in m) {
-          const tv = cellNum(row[m.total]);
+          const tv = cellVal(row[m.total]).k === 'num' ? cellVal(row[m.total]).v : null;
           /* المجموع في جدول الفرع لا يشمل «مطبوعات + مفكرة» (متغيرة) */
           if (tv !== null && tv !== 0 && tv !== s) sumBad.push('عمر ' + age + ': المجموع في الملف ' + F.fmt(tv) + ' والمحسوب ' + F.fmt(s));
         }
@@ -98,7 +111,8 @@
       const lack = F.AGES.filter(function (a) { return !seen[a]; });
       if (lack.length) { P.problems.push(label + ': تنقصه أعمار: ' + lack.join('، ') + '. لم يُعتمد.'); P.sheets.push({ name: sh.name, kind: 'ignored', note: 'أعمار ناقصة' }); return; }
       if (missing.length) P.notes.push(label + ': لم أجد عمود ' + missing.map(function (c) { return '«' + c[1] + '»'; }).join(' و') + '، فأخذت قيمه من ' + (base ? 'الجدول الحالي' : 'صفر') + '.');
-      if (bad.length) P.problems.push(label + ': خانات غير رقمية أُخذت من الجدول الحالي: ' + bad.slice(0, 6).join('، ') + (bad.length > 6 ? '…' : ''));
+      if (bad.length) P.problems.push(label + ': قيم مرفوضة، وأُبقيت بدلها القيمة ' + (same ? 'السابقة' : 'المنسوخة من جدول ' + srcYear) + ': ' + bad.slice(0, 6).join('، ') + (bad.length > 6 ? '… (' + bad.length + ' خانة)' : ''));
+      if (blanks.length) P.notes.push(label + ': ' + blanks.length + ' خانة فارغة ' + (same ? 'أُبقيت فيها القيمة السابقة' : 'نُسخت قيمتها من جدول ' + srcYear) + ': ' + blanks.slice(0, 5).join('، ') + (blanks.length > 5 ? '…' : '') + '.');
       if (sumBad.length) P.problems.push(label + ': المجموع لا يطابق البنود في ' + sumBad.length + ' سطراً (' + sumBad.slice(0, 3).join('؛ ') + (sumBad.length > 3 ? '…' : '') + ').');
       else if ('total' in m) P.notes.push(label + ': كل المجاميع مطابقة للبنود ✓');
       P[fund][year] = t;
@@ -116,9 +130,16 @@
       });
       let n = 0;
       for (let r = h.row + 1; r < rows.length; r++) {
-        const row = rows[r] || [], y = cellNum(row[h.col]);
-        if (!y || y < 1990 || y > 2100) continue;
-        const put = function (key, col) { if (col < 0) return; const v = cellNum(row[col]); if (v !== null && !(v === 0 && (row[col] === null || row[col] === undefined || row[col] === ''))) P[key][y] = v; };
+        const row = rows[r] || [], yc = cellVal(row[h.col]);
+        if (yc.k === 'blank') continue;
+        if (yc.k !== 'num' || yc.v < F.YEAR_MIN || yc.v > F.YEAR_MAX) { if (yc.k !== 'dash') P.problems.push('ورقة «' + sh.name + '»: سنة غير صالحة «' + row[h.col] + '» (يجب أن تكون عدداً صحيحاً بين ' + F.YEAR_MIN + ' و' + F.YEAR_MAX + ')، فتُجوهل سطرها.'); continue; }
+        const y = yc.v;
+        const put = function (key, col) {
+          if (col < 0) return;
+          const cv = cellVal(row[col]);
+          if (cv.k === 'num') P[key][y] = cv.v;
+          else if (cv.k === 'neg' || cv.k === 'bad') P.problems.push('ورقة «' + sh.name + '» سنة ' + y + ': قيمة مرفوضة «' + row[col] + '» (' + (cv.k === 'neg' ? 'سالبة' : 'ليست رقماً صحيحاً') + ')، فبقيت القيمة الحالية.');
+        };
         put('annual', cC); put('over45', cO); put('branchAnnual', cB); n++;
       }
       P.sheets.push({ name: sh.name, kind: 'annual', count: n });
@@ -134,11 +155,12 @@
       for (let r = h.row + 1; r < rows.length; r++) {
         const row = rows[r] || [];
         const key = cKey >= 0 && row[cKey] ? String(row[cKey]).trim() : (cLabel >= 0 ? byLabel[norm(row[cLabel])] : null);
-        const v = cellNum(row[cVal]);
+        const cv = cellVal(row[cVal]);
         if (!key && !(cLabel >= 0 && row[cLabel])) continue;
         if (!key || !F.FIXED_FIELDS.some(function (f) { return f[0] === key; })) { unknown.push(String(row[cLabel] || row[cKey])); continue; }
-        if (v === null) { P.problems.push('«' + row[cLabel] + '»: المبلغ ليس رقماً.'); continue; }
-        P.fixed[key] = v;
+        if (cv.k === 'blank') continue; /* فارغ = تبقى القيمة الحالية */
+        if (cv.k !== 'num') { P.problems.push('«' + (row[cLabel] || key) + '»: قيمة مرفوضة «' + row[cVal] + '» (' + (cv.k === 'neg' ? 'سالبة' : 'ليست رقماً صحيحاً') + ')، فبقيت القيمة الحالية.'); continue; }
+        P.fixed[key] = cv.v;
       }
       if (unknown.length) P.problems.push('بنود لم أتعرف عليها في «' + sh.name + '» وتجاهلتها: ' + unknown.slice(0, 5).join('، ') + (unknown.length > 5 ? '…' : '') + '. استعمل أسماء القالب.');
       P.sheets.push({ name: sh.name, kind: 'fixed' });
@@ -147,8 +169,18 @@
     /* الفرق عن البيانات الحالية (للمعاينة) */
     P.changes = [];
     const fmtv = function (v) { return v === undefined ? '—' : F.fmt(v); };
-    Object.keys(P.central).forEach(function (y) { P.changes.push((D.TABLES[y] ? 'تحديث' : 'إضافة') + ' الجدول المركزي ' + y + (D.TABLES[y] && JSON.stringify(D.TABLES[y].rows) === JSON.stringify(P.central[y].rows) ? ' (مطابق للحالي، لا تغيير)' : '')); });
-    Object.keys(P.branch).forEach(function (y) { P.changes.push((D.BRANCH_TABLES[y] ? 'تحديث' : 'إضافة') + ' جدول الفروع ' + y + (D.BRANCH_TABLES[y] && JSON.stringify(D.BRANCH_TABLES[y].rows) === JSON.stringify(P.branch[y].rows) ? ' (مطابق للحالي، لا تغيير)' : '')); });
+    P.cells = [];
+    [['central', 'TABLES', F.COLS, 'الجدول المركزي'], ['branch', 'BRANCH_TABLES', F.BCOLS, 'جدول الفروع']].forEach(function (k) {
+      Object.keys(P[k[0]]).forEach(function (y) {
+        const cur = D[k[1]][y], nw = P[k[0]][y];
+        if (!cur) { P.changes.push('إضافة ' + k[3] + ' ' + y + ' (21 عمراً)'); return; }
+        let n = 0;
+        F.AGES.forEach(function (a) { k[2].forEach(function (c) {
+          if (cur.rows[a][c[0]] !== nw.rows[a][c[0]]) { n++; P.cells.push(k[3] + ' ' + y + ' · عمر ' + a + ' · ' + c[1] + ': ' + F.fmt(cur.rows[a][c[0]]) + ' ← ' + F.fmt(nw.rows[a][c[0]])); }
+        }); });
+        P.changes.push('تحديث ' + k[3] + ' ' + y + (n ? ': ' + n + ' خانة تتغير' : ' (مطابق للحالي، لا تغيير)'));
+      });
+    });
     [['annual', 'ANNUAL', 'الرسم السنوي المركزي'], ['over45', 'ANNUAL_OVER45', 'رسم فوق 45'], ['branchAnnual', 'BRANCH_ANNUAL', 'رسم الفرع السنوي']].forEach(function (k) {
       Object.keys(P[k[0]]).forEach(function (y) { if (D[k[1]][y] !== P[k[0]][y]) P.changes.push(k[2] + ' ' + y + ': ' + fmtv(D[k[1]][y]) + ' ← ' + F.fmt(P[k[0]][y])); });
     });
@@ -162,7 +194,7 @@
     opts = opts || {};
     const D = F.dataWith(opts.data || null);
     const lastC = D.TABLE_YEARS[D.TABLE_YEARS.length - 1], lastB = D.BRANCH_YEARS[D.BRANCH_YEARS.length - 1];
-    const year = opts.year || Math.max(lastC, lastB, D.LAST) + 1;
+    const year = opts.year || Math.min(F.YEAR_MAX, Math.max(lastC, lastB, D.LAST) + 1);
     function ageSheet(name, title, cols, T) {
       const rows = [[title], ['انسخ قيم السنة الجديدة فوق هذه القيم (منسوخة من آخر جدول). لا تغيّر أسماء الأعمدة ولا عمود العمر.'], [],
         ['العمر'].concat(cols.map(function (c) { return c[1]; })).concat(['المجموع'])];

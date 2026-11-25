@@ -12,7 +12,9 @@
     const fform = $("#feeForm");
     const fmt = F.fmt;
     let legacyWaive = false;
-    let fCurrentId = null, fLastInput = null, fLastResult = null, paidYears = [];
+    let fCurrentId = null, fLastInput = null, fLastResult = null;
+    /* «مدفوع» لكل طرف مع تاريخ اختياري. الحسابات القديمة (paidYears) = الطرفان مدفوعان */
+    let paidC = [], paidB = [], paidDates = {}, brFee = {};
     /* إعدادات قسم الرسوم (pc.feeSettings.v1): الجهة والطباعة والجداول المعدّلة. الغائب = المعتمد */
     const FEES_SIGNS = [{ title: "منظم التقرير", src: "preparer" }, { title: "المدقق", src: "reviewer" }, { title: "الخازن / المحاسب", src: "fixed", name: "" }];
     function feeSettings() { return load(KEY_FSET, null) || {}; }
@@ -27,10 +29,13 @@
     function renderExempt() {
         const ks = kinds().filter(function (k) { return k !== "exempt"; }), sc = scope(), box = $("#exemptBox");
         if (!ks.length) { box.innerHTML = ""; return; }
-        box.innerHTML = '<p class="fee-sub"><i class="ti ti-discount-check"></i> الإعفاءات <small class="muted">— إن كان المحامي معفى من رسوم عملية، علّم الطرف المعفى واكتب السبب (يظهر في التقرير)</small></p>' +
+        const X = F.dataWith(feeSettings().data).flat;
+        const BR = { secStruck: X.brStruck, admStruck: X.brStruck, reCancel: X.brReCancel, omitted: X.brOmitted, transfer: X.brTransfer, traineeToMaster: X.brMaster };
+        box.innerHTML = '<p class="fee-sub"><i class="ti ti-discount-check"></i> لكل عملية: رسم الفرع والإعفاء <small class="muted">— رسم الفرع يختلف من فرع لفرع: اكتبه إن اختلف (فارغ = الافتراضي من الإعدادات). وإن كان المحامي معفى علّم الطرف واكتب السبب</small></p>' +
             ks.map(function (k) {
                 const e = exempt[k] || {};
-                return '<div class="ex-row" data-ek="' + k + '"><b>' + esc(F.KINDS[k]) + "</b>" +
+                const fee = sc !== "central" && (k in BR) ? '<label class="ex-fee"><span>رسم الفرع</span><input data-ef="brfee" inputmode="numeric" class="num-in" placeholder="' + fmt(BR[k]) + '" value="' + esc(brFee[k] || "") + '"></label>' : "";
+                return '<div class="ex-row" data-ek="' + k + '"><b>' + esc(F.KINDS[k]) + "</b>" + fee +
                     (sc !== "branch" ? '<label class="check"><input type="checkbox" data-ef="central"' + (e.central ? " checked" : "") + "> معفى من المركزية</label>" : "") +
                     (sc !== "central" ? '<label class="check"><input type="checkbox" data-ef="branch"' + (e.branch ? " checked" : "") + "> معفى من الفرع</label>" : "") +
                     '<input data-ef="reason" placeholder="سبب الإعفاء" value="' + esc(e.reason || "") + '"' + (e.central || e.branch ? "" : " hidden") + "></div>";
@@ -38,7 +43,8 @@
     }
     function readExempt() {
         $$("#exemptBox [data-ek]").forEach(function (row) {
-            const k = row.dataset.ek, c = row.querySelector("[data-ef=central]"), b = row.querySelector("[data-ef=branch]"), r = row.querySelector("[data-ef=reason]");
+            const k = row.dataset.ek, c = row.querySelector("[data-ef=central]"), b = row.querySelector("[data-ef=branch]"), r = row.querySelector("[data-ef=reason]"), bf = row.querySelector("[data-ef=brfee]");
+            if (bf) { const v = toLatin(bf.value.trim()); if (v) brFee[k] = v; else delete brFee[k]; }
             const e = { central: c ? c.checked : !!(exempt[k] || {}).central, branch: b ? b.checked : !!(exempt[k] || {}).branch, reason: r.value.trim() };
             if (e.central || e.branch) exempt[k] = e; else delete exempt[k];
             r.hidden = !(e.central || e.branch);
@@ -51,13 +57,13 @@
             nationalId: fval("nationalId"), memberNo: fval("memberNo"), branch: fval("branch"), fileNo: fval("fileNo"), phone: fval("phone"),
             kinds: ks, kind: ks[0] || "", scope: scope(),
             joinDate: fval("joinDate"), status: fval("status") || "active", statusYear: toLatin(fval("statusYear")),
-            masterDate: fval("masterDate"), brMasterAmount: toLatin(fval("brMasterAmount")),
+            masterDate: fval("masterDate"), brFee: (function () { const o = {}; ks.forEach(function (k) { if (brFee[k]) o[k] = toLatin(brFee[k]); }); return o; })(),
             eventDate: fval("eventDate"), decisionDate: fval("decisionDate"), gapYears: toLatin(fval("gapYears")), lastPaidYear: toLatin(fval("lastPaidYear")),
             clearance: fval("clearance"), optional: { id: fval("opt_id"), license: fval("opt_license"), badge: fval("opt_badge") },
             branchPrints: { on: fval("bp_on"), amount: toLatin(fval("bp_amount")) },
             excludeDup: excludeDup.slice(),
             exempt: (function () { const o = {}; ks.forEach(function (k) { if (exempt[k]) o[k] = Object.assign({}, exempt[k]); }); return o; })(),
-            paidYears: paidYears.slice(), preparer: fval("preparer"), reviewer: fval("reviewer"), notes: fval("notes")
+            paidC: paidC.slice(), paidB: paidB.slice(), paidDates: Object.assign({}, paidDates), preparer: fval("preparer"), reviewer: fval("reviewer"), notes: fval("notes")
         };
         if (legacyWaive) c.secBranchWaived = true;
         if (fCurrentId) c.id = fCurrentId;
@@ -78,15 +84,23 @@
         /* الحساب المحفوظ قبل العمليات المتعددة فيه kind واحد، وقبل الفرع ليس فيه scope (= مركزية فقط) */
         const ks = Array.isArray(c.kinds) && c.kinds.length ? c.kinds : [c.kind || "new"];
         $$("#feeForm input[name=kinds]").forEach(function (el) { el.checked = !el.disabled && ks.indexOf(el.value) >= 0; });
-        const sc = fform.querySelector('input[name=scope][value="' + (c.scope || (c.id ? "central" : "both")) + '"]');
+        const sc = fform.querySelector('input[name=scope][value="' + (c.scope || "central") + '"]');
         if (sc) sc.checked = true;
-        paidYears = (c.paidYears || []).map(Number);
+        const legacyPaid = (c.paidYears || []).map(Number);
+        paidC = uniq((c.paidC || []).map(Number).concat(legacyPaid));
+        paidB = uniq((c.paidB || []).map(Number).concat(legacyPaid));
+        paidDates = Object.assign({}, c.paidDates || {});
+        brFee = Object.assign({}, c.brFee || {});
+        if (c.brMasterAmount && !brFee.traineeToMaster) brFee.traineeToMaster = c.brMasterAmount; /* حقل قديم */
+        /* التقرير المعروض يخص الحساب السابق: يُفرَّغ عند فتح حساب آخر أو بدء حساب جديد */
+        clearReport();
         excludeDup = (c.excludeDup || []).slice();
         exempt = JSON.parse(JSON.stringify(c.exempt || {}));
         /* الخيار القديم «إعفاء المشطوب الأمني من رسم الفرع» يبقى كما حُفظ */
         legacyWaive = !!c.secBranchWaived;
         fCurrentId = c.id || null;
         renderExempt();
+        if (typeof checkSame === "function") setTimeout(checkSame, 0);
         $("#feeBadge").textContent = fCurrentId ? "حساب محفوظ: " + (c.name || "") : "حساب جديد";
         frefresh();
     }
@@ -95,10 +109,12 @@
     function frefresh() {
         const ks = kinds(), st = fval("status"), sc = scope();
         $$("#feeForm [data-fk]").forEach(function (el) { el.hidden = !el.getAttribute("data-fk").split(" ").some(function (k) { return ks.indexOf(k) >= 0; }); });
-        $$("#feeForm [data-fstatus]").forEach(function (el) { if (el.hidden) return; el.hidden = el.getAttribute("data-fstatus").split(" ").indexOf(st) < 0; });
+        $$("#feeForm [data-fstatus]").forEach(function (el) {
+            const byFk = el.hasAttribute("data-fk") && el.hidden;
+            el.hidden = byFk || el.getAttribute("data-fstatus").split(" ").indexOf(st) < 0;
+        });
         $("#branchBox").hidden = sc === "central" || ks.indexOf("new") < 0;
         $$("#feeForm .opt-row").forEach(function (el) { if (sc === "branch") el.hidden = true; });
-        $$("#feeForm .fee-brm").forEach(function (el) { if (!el.hidden) el.hidden = sc === "central"; });
         $$("#feeForm .bp-amount").forEach(function (el) { if (!el.hidden) el.hidden = !fval("bp_on"); });
         $$("#feeForm .ftypes .type").forEach(function (l) { const i = l.querySelector("input"); l.classList.toggle("on", i.checked); });
         renderLive();
@@ -152,23 +168,32 @@
         });
         if (R.years.length) {
             const showB = R.scope !== "central", showC = R.scope !== "branch";
-            h += '<p class="fee-sub">الرسوم السنوية <small class="muted">— علّم السنة التي دفعها المحامي فتُطرح من المجموع</small></p>' +
-                '<div class="year-grid">' + R.years.map(function (y) {
-                    const parts = (showC && showB) ? '<small class="yr-split">م ' + fmt(y.central) + (y.branch ? " + ف " + fmt(y.branch) : "") + "</small>" : "";
-                    return '<label class="year-chip' + (y.paid ? " paid" : "") + '"><input type="checkbox" data-paid="' + y.year + '"' + (y.paid ? " checked" : "") + ">" +
-                        "<b>" + y.year + "</b><span>" + fmt(y.amount) + "</span>" + parts + "<small>" + (y.paid ? "مدفوع" : y.exempt ? "معفى" + (y.exempt === "both" ? "" : y.exempt === "central" ? " (مركزية)" : " (فرع)") : "مستحق") + "</small></label>";
-                }).join("") + "</div>" +
-                '<p class="muted" style="margin:8px 0 0">مجموع الرسوم السنوية المستحقة: <b>' + fmt(R.yearsTotal) + "</b>" + (R.paidCount ? " (طُرحت " + R.paidCount + " سنة مدفوعة)" : "") + "</p>";
+            const cell = function (y, f) {
+                const amt = y[f], st = y[f === "central" ? "cStatus" : "bStatus"], paid = y[f === "central" ? "paidC" : "paidB"], k = (f === "central" ? "c" : "b") + y.year;
+                if (!amt) return '<td class="n muted">' + (st === "missing" ? "غير محدد" : y.exempt === f || y.exempt === "both" ? "معفى" : "—") + "</td>";
+                return '<td><div class="yr-cell' + (paid ? " paid" : "") + '"><span class="n">' + fmt(amt) + (st === "estimate" ? ' <small class="muted">تقديري</small>' : "") + "</span>" +
+                    '<label class="yr-paid"><input type="checkbox" data-pf="' + k + '"' + (paid ? " checked" : "") + "> مدفوع</label>" +
+                    (paid ? '<input type="date" class="yr-date" data-pd="' + k + '" value="' + esc(paidDates[k] || "") + '" title="تاريخ الدفع (اختياري)">' : "") + "</div></td>";
+            };
+            h += '<p class="fee-sub">الرسوم السنوية <small class="muted">— علّم ما دفعه المحامي لكل طرف، ويمكن كتابة تاريخ الدفع</small></p>' +
+                '<div class="table-wrap"><table class="fee-tbl yr-tbl"><thead><tr><th>السنة</th>' + (showC ? "<th>مركزية</th>" : "") + (showB ? "<th>فرع</th>" : "") + '<th class="n">المستحق</th></tr></thead><tbody>' +
+                R.years.map(function (y) {
+                    return "<tr><td><b>" + y.year + "</b>" + (y.over45 ? ' <small class="muted">فوق 45</small>' : "") + "</td>" + (showC ? cell(y, "central") : "") + (showB ? cell(y, "branch") : "") + '<td class="n"><b>' + fmt(y.due) + "</b></td></tr>";
+                }).join("") + '</tbody><tfoot><tr><td colspan="' + (1 + (showC ? 1 : 0) + (showB ? 1 : 0)) + '">مجموع الرسوم السنوية المستحقة</td><td class="n">' + fmt(R.yearsTotal) + "</td></tr></tfoot></table></div>";
         }
-        h += '<details class="how"><summary><i class="ti ti-info-circle"></i>كيف حُسب؟</summary><ol>' + R.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol></details>";
+        h += '<details class="how"' + (box.querySelector("details.how[open]") ? " open" : "") + '><summary><i class="ti ti-info-circle"></i>كيف حُسب؟</summary><ol>' + R.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol></details>";
+        const ae = document.activeElement, keep = ae && box.contains(ae) ? ["data-pf", "data-pd", "data-dup"].filter(function (a) { return ae.hasAttribute(a); }).map(function (a) { return "[" + a + '="' + ae.getAttribute(a) + '"]'; })[0] : null;
         box.innerHTML = h;
+        if (keep) { const el = box.querySelector(keep); if (el) el.focus(); }
     }
     $("#feeLive").addEventListener("change", function (e) {
-        const cb = e.target.closest("[data-paid]"), dp = e.target.closest("[data-dup]");
+        const cb = e.target.closest("[data-pf]"), dp = e.target.closest("[data-dup]"), pd = e.target.closest("[data-pd]");
+        if (pd) { if (pd.value) paidDates[pd.dataset.pd] = pd.value; else delete paidDates[pd.dataset.pd]; fsaveDraft(); return; }
         if (cb) {
-            const y = +cb.dataset.paid;
-            paidYears = paidYears.filter(function (x) { return x !== y; });
-            if (cb.checked) paidYears.push(y);
+            const k = cb.dataset.pf, y = +k.slice(1), isC = k[0] === "c";
+            if (isC) { paidC = paidC.filter(function (x) { return x !== y; }); if (cb.checked) paidC.push(y); }
+            else { paidB = paidB.filter(function (x) { return x !== y; }); if (cb.checked) paidB.push(y); }
+            if (!cb.checked) delete paidDates[k];
         }
         if (dp) {
             excludeDup = excludeDup.filter(function (k) { return k !== dp.dataset.dup; });
@@ -186,6 +211,7 @@
     });
     fform.addEventListener("input", function (e) {
         if (e.target.classList.contains("num-in")) { const v = toLatin(e.target.value); if (v !== e.target.value) e.target.value = v; }
+        if (e.target.closest("#exemptBox")) readExempt();
         clearTimeout(fform._t); fform._t = setTimeout(function () { renderLive(); fsaveDraft(); }, 300);
     });
 
@@ -255,12 +281,15 @@
         });
         if (R.years.length) {
             const C = R.scope !== "branch", B = R.scope !== "central";
-            h.push("<h2>الرسوم السنوية</h2><table><thead><tr><th>السنة</th><th>الحالة</th>" + (C ? '<th class="n">مركزية</th>' : "") + (B ? '<th class="n">فرع</th>' : "") + '<th class="n">المجموع (ل.س)</th></tr></thead><tbody>' +
+            const fc = function (y, f) {
+                const amt = y[f], paid = y[f === "central" ? "paidC" : "paidB"], st = y[f === "central" ? "cStatus" : "bStatus"], dt = y[f === "central" ? "paidDateC" : "paidDateB"];
+                if (!amt) return '<td class="n">' + (st === "missing" ? "غير محدد" : (y.exempt === f || y.exempt === "both") ? "معفى" : "—") + "</td>";
+                return '<td class="n">' + (paid ? "<s>" + fmt(amt) + '</s><br><span class="yes">مدفوع' + (dt ? " " + F.fmtDate(dt) : "") + "</span>" : fmt(amt) + (st === "estimate" ? "<br>تقديري" : "")) + "</td>";
+            };
+            h.push("<h2>الرسوم السنوية</h2><table><thead><tr><th>السنة</th>" + (C ? '<th class="n">مركزية</th>' : "") + (B ? '<th class="n">فرع</th>' : "") + '<th class="n">المستحق (ل.س)</th></tr></thead><tbody>' +
                 R.years.map(function (y) {
-                    const v = function (x) { return y.paid ? "<s>" + fmt(x) + "</s>" : fmt(x); };
-                    return "<tr><td>" + y.year + "</td><td>" + (y.paid ? '<span class="yes">مدفوع</span>' : y.exempt ? "معفى" + (y.exempt === "both" ? "" : y.exempt === "central" ? " من المركزية" : " من الفرع") : "مستحق") + (y.over45 ? " · رسم من انتسب فوق 45" : "") + "</td>" +
-                        (C ? '<td class="n">' + v(y.central) + "</td>" : "") + (B ? '<td class="n">' + v(y.branch) + "</td>" : "") + '<td class="n">' + v(y.amount) + "</td></tr>";
-                }).join("") + '<tr class="total"><td colspan="' + (2 + (C ? 1 : 0) + (B ? 1 : 0)) + '">مجموع الرسوم السنوية المستحقة</td><td class="n">' + fmt(R.yearsTotal) + "</td></tr></tbody></table>");
+                    return "<tr><td>" + y.year + (y.over45 ? "<br><small>رسم من انتسب فوق 45</small>" : "") + "</td>" + (C ? fc(y, "central") : "") + (B ? fc(y, "branch") : "") + '<td class="n">' + fmt(y.due) + "</td></tr>";
+                }).join("") + '<tr class="total"><td colspan="' + (1 + (C ? 1 : 0) + (B ? 1 : 0)) + '">مجموع الرسوم السنوية المستحقة</td><td class="n">' + fmt(R.yearsTotal) + "</td></tr></tbody></table>");
         }
         h.push('<h2>الخلاصة</h2><div class="sum">' +
             (R.scope !== "branch" ? '<div class="box"><div class="l">رسوم النقابة المركزية</div><div class="v">' + fmt(R.centralTotal) + " ل.س</div></div>" : "") +
@@ -300,8 +329,10 @@
         c.savedTotal = R.errors.length ? null : R.total; /* النتيجة كما كانت وقت الحفظ */
         const next = list.filter(function (x) { return x.id !== c.id; }); next.unshift(c);
         if (store(KEY_FEES, next)) {
-            fCurrentId = c.id; if (fLastInput) fLastInput.id = c.id;
+            /* التقرير يُفرَّغ عند فتح أي حساب آخر، فهو والنموذج للسجل نفسه دائماً */
+            fCurrentId = c.id;
             $("#feeBadge").textContent = "حساب محفوظ: " + c.name;
+            fsaveDraft(); checkSame();
             toast("حُفظ حساب الرسوم: " + esc(c.name), "ok");
         } else toast("تعذر الحفظ في هذا المتصفح؛ حمّل نسخة احتياطية.", "bad");
     }
@@ -315,7 +346,7 @@
         if (a === "new") {
             if (!await confirmBox("حساب رسوم جديد", "ستُفرَّغ حاسبة الرسوم. الحسابات المحفوظة لا تتأثر.", "بدء حساب جديد")) return;
             ffill({ kinds: ["new"], scope: "both", status: "active" });
-            fLastInput = null; fLastResult = null; $("#feeReportEmpty").hidden = false; $("#feeReportBox").hidden = true; fsaveDraft();
+            fsaveDraft();
             go("fcalc");
         }
     });
@@ -356,11 +387,57 @@
         if (d) {
             const c = find(d.dataset.fdel);
             if (!await confirmBox("حذف حساب", "هل تريد حذف حساب الرسوم لـ <b>" + esc(c.name) + "</b> نهائياً من هذا الجهاز؟ يُنصح بتحميل نسخة احتياطية أولاً.", "حذف", true)) return;
-            store(KEY_FEES, load(KEY_FEES, []).filter(function (x) { return x.id !== c.id; }));
-            if (fCurrentId === c.id) { fCurrentId = null; $("#feeBadge").textContent = "حساب جديد"; }
-            renderList(); toast("حُذف الحساب", "ok");
+            if (!store(KEY_FEES, load(KEY_FEES, []).filter(function (x) { return x.id !== c.id; }))) { toast("تعذر الحذف في هذا المتصفح.", "bad"); return; }
+            if (fCurrentId === c.id) { fCurrentId = null; $("#feeBadge").textContent = "حساب جديد"; fsaveDraft(); }
+            if (fLastInput && fLastInput.id === c.id) clearReport();
+            renderList(); checkSame(); toast("حُذف الحساب", "ok");
         }
     });
+
+    function uniq(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+    function clearReport() {
+        fLastInput = null; fLastResult = null;
+        $("#feeReport").innerHTML = ""; $("#feeReportEmpty").hidden = false; $("#feeReportBox").hidden = true;
+    }
+
+    /* ---------- الشخص نفسه في حسابات محفوظة: تنبيه بما دفعه سابقاً ---------- */
+    function key(s) { return norm(String(s || "").trim()).replace(/[\u064B-\u0652\u0640]/g, "").replace(/\s+/g, " "); }
+    function samePerson(a, b) {
+        if (key(a.fileNo) && key(a.fileNo) === key(b.fileNo)) return true;
+        return !!(key(a.name) && key(a.fatherName) && key(a.motherName) && key(a.name) === key(b.name) && key(a.fatherName) === key(b.fatherName) && key(a.motherName) === key(b.motherName));
+    }
+    function paidOf(c) {
+        const legacy = (c.paidYears || []).map(Number), d = c.paidDates || {};
+        const list = function (arr, p) { return uniq(arr.map(Number).concat(legacy)).sort().map(function (y) { return y + (d[p + y] ? " (" + F.fmtDate(d[p + y]) + ")" : ""); }); };
+        return { c: list(c.paidC || [], "c"), b: list(c.paidB || [], "b") };
+    }
+    let sameMatches = [];
+    function checkSame() {
+        const cur = { name: fval("name"), fatherName: fval("fatherName"), motherName: fval("motherName"), fileNo: fval("fileNo") }, box = $("#samePerson");
+        sameMatches = load(KEY_FEES, []).filter(function (x) { return x.id !== fCurrentId && samePerson(cur, x); });
+        if (!sameMatches.length) { box.classList.add("hidden"); box.innerHTML = ""; return; }
+        box.classList.remove("hidden");
+        box.innerHTML = '<div class="alert warn"><b><i class="ti ti-user-search"></i> يوجد حساب محفوظ للشخص نفسه (' + sameMatches.length + ')</b><ul class="imp-list">' +
+            sameMatches.map(function (x) {
+                const p = paidOf(x);
+                return "<li><b>" + esc(x.name) + "</b> · " + esc((x.kinds && x.kinds.length ? x.kinds : [x.kind]).map(function (k) { return F.KINDS[k] || ""; }).join(" + ")) +
+                    (x.savedAt ? " · حُفظ " + new Date(x.savedAt).toLocaleDateString("ar-SY") : "") +
+                    "<br>دفع مركزية: " + (p.c.length ? esc(p.c.join("، ")) : "لا شيء مسجل") + " — دفع فرع: " + (p.b.length ? esc(p.b.join("، ")) : "لا شيء مسجل") + "</li>";
+            }).join("") + "</ul>" +
+            '<button type="button" class="btn sm" data-same-apply><i class="ti ti-checks"></i>اعتبر ما دفعه هناك مدفوعاً هنا</button></div>';
+    }
+    $("#samePerson").addEventListener("click", function (e) {
+        if (!e.target.closest("[data-same-apply]")) return;
+        let n = 0;
+        sameMatches.forEach(function (x) {
+            const legacy = (x.paidYears || []).map(Number), d = x.paidDates || {};
+            (x.paidC || []).map(Number).concat(legacy).forEach(function (y) { if (paidC.indexOf(y) < 0) { paidC.push(y); n++; } if (d["c" + y] && !paidDates["c" + y]) paidDates["c" + y] = d["c" + y]; });
+            (x.paidB || []).map(Number).concat(legacy).forEach(function (y) { if (paidB.indexOf(y) < 0) { paidB.push(y); n++; } if (d["b" + y] && !paidDates["b" + y]) paidDates["b" + y] = d["b" + y]; });
+        });
+        renderLive(); fsaveDraft();
+        toast(n ? "عُلّمت " + n + " دفعة سابقة مدفوعةً في هذا الحساب." : "لا دفعات جديدة لتعليمها.", n ? "ok" : "warn");
+    });
+    ["name", "fatherName", "motherName", "fileNo"].forEach(function (n) { fform.elements[n].addEventListener("input", function () { clearTimeout(checkSame._t); checkSame._t = setTimeout(checkSame, 350); }); });
 
     /* ---------- الربط مع التنقل ---------- */
     window.FeesUI = {

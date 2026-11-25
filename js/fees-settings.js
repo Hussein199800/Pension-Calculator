@@ -13,11 +13,8 @@
     const TKEY = { central: "tables", branch: "branchTables" };
     function cols() { return curFund === "central" ? F.COLS : F.BCOLS; }
 
-    function toNum(v) {
-        const t = String(v === undefined || v === null ? "" : v).replace(/[٠-٩]/g, function (c) { return "٠١٢٣٤٥٦٧٨٩".indexOf(c); }).replace(/[,\s،]/g, "");
-        if (t === "") return null;
-        return /^\d+(\.\d+)?$/.test(t) ? +t : NaN;
-    }
+    /* القراءة نفسها التي يستعملها المحرك والاستيراد: عدد صحيح ≥ 0، الفارغ = null، غير الصالح = NaN */
+    function toNum(v) { return F.amountOf(v); }
     function inp(val, attrs) { return '<input class="num-in" inputmode="numeric" ' + (attrs || "") + ' value="' + (val === null || val === undefined ? "" : val) + '">'; }
 
     /* نسخة عمل من البيانات النافذة (المعتمد + تعديلات المستخدم) */
@@ -70,14 +67,27 @@
         const tr = b.closest("tr");
         if (await confirmBox("حذف سنة", "حذف الرسم السنوي لسنة <b>" + tr.dataset.y + "</b> (المركزي والفرع)؟ لن يُحسب لها رسم حتى تُضاف من جديد.", "حذف", true)) { readAnnual(); delete work.annual[tr.dataset.y]; delete work.over45[tr.dataset.y]; delete work.branchAnnual[tr.dataset.y]; renderAnnual(); }
     });
-    $("#fsAddYear").onclick = function () {
-        readAnnual();
-        const ys = Object.keys(work.annual).concat(Object.keys(work.branchAnnual)).map(Number), last = Math.max.apply(null, ys), next = last + 1;
-        if (last in work.annual) work.annual[next] = work.annual[last];
-        if (last in work.over45) work.over45[next] = work.over45[last];
-        if (last in work.branchAnnual) work.branchAnnual[next] = work.branchAnnual[last];
+    /* إضافة سنة (جديدة أو سبق حذفها): تُنسخ قيم أقرب سنة قبلها، ثم تُعدَّل */
+    $("#fsAddYear").onclick = async function () {
+        if (readAnnual().length) { toast("صحّح قيم الجدول أولاً (أرقام صحيحة فقط).", "bad"); return; }
+        const ys = Object.keys(work.annual).concat(Object.keys(work.branchAnnual)).map(Number), def = Math.min(F.YEAR_MAX, Math.max.apply(null, ys) + 1);
+        const y = await modal('<h3>إضافة سنة</h3><label class="field"><span>السنة</span><input id="newAY" class="num-in" inputmode="numeric" value="' + def + '"></label><p class="hint-line">يمكن إعادة سنة حذفتها سابقاً. تُنسخ قيم أقرب سنة قبلها.</p><p class="error-text" id="newAYErr"></p>' +
+            '<div class="actions"><button class="btn primary" data-modal="ok">إضافة</button><button class="btn" data-modal="cancel">إلغاء</button></div>', {
+            collect: function (box) {
+                const v = F.yearOf(box.querySelector("#newAY").value);
+                if (!v || isNaN(v)) { box.querySelector("#newAYErr").textContent = "اكتب سنة صحيحة بين " + F.YEAR_MIN + " و" + F.YEAR_MAX + "."; return false; }
+                if (v in work.annual && v in work.branchAnnual) { box.querySelector("#newAYErr").textContent = "السنة موجودة في الجدول."; return false; }
+                return v;
+            }
+        });
+        if (!y) return;
+        const prevOf = function (o) { const k = Object.keys(o).map(Number).filter(function (x) { return x < y; }); return k.length ? Math.max.apply(null, k) : null; };
+        const pc = prevOf(work.annual), po = prevOf(work.over45), pb = prevOf(work.branchAnnual);
+        if (!(y in work.annual) && pc !== null) work.annual[y] = work.annual[pc];
+        if (!(y in work.over45) && po !== null && po === pc) work.over45[y] = work.over45[po];
+        if (!(y in work.branchAnnual) && pb !== null) work.branchAnnual[y] = work.branchAnnual[pb];
         renderAnnual();
-        toast("أُضيفت سنة " + next + " بقيم سنة " + last + "؛ عدّلها ثم احفظ.", "ok");
+        toast("أُضيفت سنة " + y + (pc !== null ? " بقيم سنة " + pc : "") + "؛ عدّلها ثم احفظ.", "ok");
     };
 
     /* ---------- جداول الانتساب ---------- */
@@ -147,7 +157,7 @@
             '<div class="actions"><button class="btn primary" data-modal="ok">إضافة</button><button class="btn" data-modal="cancel">إلغاء</button></div>', {
             collect: function (box) {
                 const y = toNum(box.querySelector("#newTY").value);
-                if (!y || isNaN(y) || y < 2000 || y > 2100 || y % 1) { box.querySelector("#newTYErr").textContent = "اكتب سنة صحيحة."; return false; }
+                if (!y || isNaN(y) || y < F.YEAR_MIN || y > F.YEAR_MAX) { box.querySelector("#newTYErr").textContent = "اكتب سنة صحيحة بين " + F.YEAR_MIN + " و" + F.YEAR_MAX + "."; return false; }
                 if (work[TKEY[curFund]][y]) { box.querySelector("#newTYErr").textContent = "يوجد جدول لهذه السنة."; return false; }
                 return y;
             }
@@ -206,7 +216,8 @@
     $("#fsReset").onclick = async function () {
         if (!await confirmBox("استعادة الجداول المعتمدة", "تعود كل جداول الرسوم إلى القيم المعتمدة في النقابة، وتُلغى تعديلاتك عليها. اسم الجهة وإعدادات الطباعة تبقى كما هي.", "استعادة")) return;
         const fs = window.FeesUI.settings(); delete fs.data;
-        store(KEY_FSET, fs); fill(); window.FeesUI.refresh(); toast("استُعيدت الجداول المعتمدة", "ok");
+        if (!store(KEY_FSET, fs)) { toast("تعذر الحفظ في هذا المتصفح.", "bad"); return; }
+        fill(); window.FeesUI.refresh(); toast("استُعيدت الجداول المعتمدة", "ok");
     };
 
     /* ---------- استيراد من Excel: قالب + تعلّم + معاينة قبل الاعتماد ---------- */
@@ -233,6 +244,7 @@
         if (P.problems.length) body += '<p class="fee-sub" style="color:var(--danger)">انتبه</p>' + li(P.problems);
         if (P.notes.length) body += '<p class="fee-sub">ملاحظات</p>' + li(P.notes);
         body += '<p class="fee-sub">ما سيتغير</p>' + (real.length ? li(P.changes) : "<p class=\"muted\">لا شيء: القيم في الملف مطابقة لما في البرنامج.</p>");
+        if (P.cells && P.cells.length) body += '<details class="how"><summary>الخانات المتغيرة (' + P.cells.length + ')</summary>' + li(P.cells.slice(0, 80).concat(P.cells.length > 80 ? ["… و" + (P.cells.length - 80) + " خانة أخرى"] : [])) + "</details>";
         if (P.empty || !real.length) { await modal("<h3>معاينة ملف Excel</h3>" + body + '<div class="actions"><button class="btn" data-modal="cancel">إغلاق</button></div>'); return; }
         body += '<p class="hint-line">الحسابات المحفوظة لا تتغير، وإن اختلف مجموعها بالجداول الجديدة يظهر تنبيه عند فتحها. وتعديلات هذه الصفحة غير المحفوظة تُستبدل.</p>';
         const ok = await modal("<h3>معاينة ملف Excel</h3>" + body + '<div class="actions"><button class="btn primary" data-modal="ok">اعتماد الجداول</button><button class="btn" data-modal="cancel">إلغاء</button></div>');
