@@ -342,6 +342,9 @@ $("#saveSettings").onclick = function () {
     if (!(Number.isInteger(s.trainingMaxYears) && s.trainingMaxYears >= 0)) { toast("أقصى مدة تمرين يجب أن تكون عدداً صحيحاً من السنوات (0 أو أكثر).", "bad"); $("#setTraining").focus(); return; }
     const pp = { fontSize: $("#pFont").value, footer: $("#pFooter").value.trim(), signs: readSigns($("#pSigns")) };
     if (store(KEY_SET, s) && store(KEY_PPRINT, pp)) toast("حُفظت إعدادات التقاعد", "ok"); else toast("تعذر الحفظ في هذا المتصفح.", "bad");
+    /* الزيادات تُطبَّق من أول الشهر (قرار المالك): تنبيه إن كُتب تاريخ نفاذ في منتصف الشهر */
+    const mid = s.pensionTable.concat(s.aidTable).filter(function (r) { return r.from && !/-01$/.test(r.from) && r.from > "1900-01-01"; });
+    if (mid.length) toast("تنبيه: الزيادات تُطبَّق من أول الشهر، وهذه التواريخ ليست أول شهر: " + mid.map(function (r) { return r.from.split("-").reverse().join("/"); }).join("، ") + ". صحّحها إلى اليوم الأول من الشهر حتى تطابق الخلاصة جدول الأشهر.", "warn", 9000);
     if (lastCase) rerender();
 };
 $("#resetSettings").onclick = async function () {
@@ -399,6 +402,8 @@ function collect() {
         }) : []
     };
     if (type === "health" && !c.retirementDate) c.retirementDate = c.medicalDate;
+    /* ما كتبه المستخدم يُحفظ وحده (endInput)؛ الفارغ يبقى فارغاً ويتبع تاريخ الإحالة/الوفاة في كل مرة */
+    c.service.endInput = c.service.end || "";
     if (!c.service.end) c.service.end = c.type === "heirs" ? (c.status === "inService" ? c.deathDate : c.retirementDate) : (c.retirementDate || c.medicalDate);
     if (currentId) c.id = currentId;
     /* حقل من الإصدار السابق: يظهر ويُعدَّل فقط في الحالات التي تحمله، ويُحفظ ولا يضيع */
@@ -509,7 +514,7 @@ function fill(c) {
     const sv = c.service || {};
     const map = {
         occupationalHeirs: c.type === "heirs" ? c.occupational : false, occupational: c.type !== "heirs" ? c.occupational : false,
-        serviceStart: sv.start, masterDate: sv.masterDate, stillTrainee: sv.stillTrainee, serviceEnd: sv.end, serviceMode: sv.mode || "dates",
+        serviceStart: sv.start, masterDate: sv.masterDate, stillTrainee: sv.stillTrainee, serviceEnd: sv.endInput !== undefined ? sv.endInput : sv.end, serviceMode: sv.mode || "dates",
         manY: sv.manual && sv.manual.y, manM: sv.manual && sv.manual.m, manD: sv.manual && sv.manual.d
     };
     Array.prototype.forEach.call(form.elements, function (el) {
@@ -523,6 +528,8 @@ function fill(c) {
     (c.heirs || []).forEach(addHeir);
     if (!form.elements.untilMonth.value) form.elements.untilMonth.value = thisMonth();
     currentId = c.id || null;
+    lastCase = null; lastResult = null;
+    $("#report").innerHTML = ""; $("#reportEmpty").hidden = false; $("#reportBox").hidden = true;
     $("#caseBadge").textContent = currentId ? "حالة محفوظة: " + (c.name || "") : "حالة جديدة";
     refresh();
 }
@@ -542,6 +549,7 @@ function saveCase() {
     if (store(KEY_CASES, next)) {
         currentId = c.id; if (lastCase) lastCase.id = c.id;
         $("#caseBadge").textContent = "حالة محفوظة: " + c.name;
+        saveDraft();
         toast("حُفظت حالة: " + esc(c.name), "ok");
     } else toast("تعذر الحفظ في هذا المتصفح؛ حمّل نسخة احتياطية من «المزيد».", "bad");
 }
@@ -592,8 +600,9 @@ $("#casesList").addEventListener("click", async function (e) {
     if (d) {
         const c = find(d.dataset.del);
         if (!await confirmBox("حذف حالة", "هل تريد حذف حالة <b>" + esc(c.name) + "</b> نهائياً من هذا الجهاز؟ يُنصح بتحميل نسخة احتياطية أولاً.", "حذف", true)) return;
-        store(KEY_CASES, load(KEY_CASES, []).filter(function (x) { return x.id !== c.id; }));
-        if (currentId === c.id) { currentId = null; $("#caseBadge").textContent = "حالة جديدة"; }
+        if (!store(KEY_CASES, load(KEY_CASES, []).filter(function (x) { return x.id !== c.id; }))) { toast("تعذر الحذف في هذا المتصفح.", "bad"); return; }
+        if (currentId === c.id) { currentId = null; $("#caseBadge").textContent = "حالة جديدة"; saveDraft(); }
+        if (lastCase && lastCase.id === c.id) { lastCase = null; lastResult = null; $("#report").innerHTML = ""; $("#reportEmpty").hidden = false; $("#reportBox").hidden = true; }
         renderCases(); toast("حُذفت الحالة", "ok");
     }
 });
@@ -639,49 +648,61 @@ $("#restoreInput").addEventListener("change", function (e) {
         e.target.value = "";
         let data;
         try { data = JSON.parse(rd.result); } catch (err) { toast("الملف ليس نسخة احتياطية صالحة.", "bad"); return; }
-        /* يقبل: نسخة احتياطية كاملة، أو ملف حالة واحدة صُدِّر من الإصدار الأول */
+        const isObj = function (x) { return !!x && typeof x === "object" && !Array.isArray(x); };
+        /* يقبل: نسخة احتياطية كاملة (الإصدار 1)، أو ملف حالة واحدة صُدِّر من الإصدار الأول */
         let incoming = [], settings = null, incomingFees = [], pPrint = null, fSet = null;
-        if (data && data.format === BACKUP_FORMAT && Array.isArray(data.cases)) {
-            incoming = data.cases; settings = data.settings || null; incomingFees = Array.isArray(data.fees) ? data.fees : [];
-            pPrint = data.pensionPrint && typeof data.pensionPrint === "object" ? data.pensionPrint : null;
-            fSet = data.feeSettings && typeof data.feeSettings === "object" ? data.feeSettings : null;
+        if (isObj(data) && data.format === BACKUP_FORMAT) {
+            if (data.version !== undefined && data.version !== BACKUP_VERSION) { toast("إصدار النسخة الاحتياطية (" + esc(String(data.version)) + ") غير مدعوم في هذا الإصدار من البرنامج.", "bad", 7000); return; }
+            if (!Array.isArray(data.cases)) { toast("النسخة الاحتياطية تالفة: لا تحتوي قائمة الحالات.", "bad"); return; }
+            if (data.fees !== undefined && !Array.isArray(data.fees)) { toast("النسخة الاحتياطية تالفة: قائمة حسابات الرسوم غير صالحة.", "bad"); return; }
+            incoming = data.cases; settings = isObj(data.settings) ? data.settings : null; incomingFees = data.fees || [];
+            pPrint = isObj(data.pensionPrint) ? data.pensionPrint : null;
+            fSet = isObj(data.feeSettings) ? data.feeSettings : null;
         }
-        else if (data && data.case && data.case.type) incoming = [data.case];
-        else if (data && data.type && data.service) incoming = [data];
+        else if (isObj(data) && isObj(data.case) && data.case.type) incoming = [data.case];
+        else if (isObj(data) && data.type && data.service) incoming = [data];
         else { toast("الملف ليس نسخة احتياطية صالحة.", "bad"); return; }
-        incoming = incoming.filter(function (c) { return c && typeof c === "object" && c.type; });
-        const list = load(KEY_CASES, []);
-        const byId = {}; list.forEach(function (c) { byId[c.id] = c; });
-        let added = 0, updated = 0, kept = 0;
-        incoming.forEach(function (c) {
-            c.id = c.id || ("c" + Date.now() + Math.random().toString(36).slice(2, 6));
-            const old = byId[c.id];
-            if (!old) { byId[c.id] = c; list.push(c); added++; }
-            else if ((c.savedAt || "") > (old.savedAt || "")) { list[list.indexOf(old)] = c; byId[c.id] = c; updated++; }
-            else kept++;
-        });
+        incoming = incoming.filter(function (c) { return isObj(c) && typeof c.type === "string"; });
+        incomingFees = incomingFees.filter(function (c) { return isObj(c) && (typeof c.kind === "string" || (Array.isArray(c.kinds) && c.kinds.length)); });
+
         let useSettings = false, useFeeSet = false;
         if ((settings || pPrint) && await confirmBox("استيراد إعدادات التقاعد؟", "تحتوي النسخة على إعدادات قسم الراتب التقاعدي (جداول القيم وقواعد الحساب والطباعة). هل تريد اعتمادها بدل الحالية؟", "اعتماد إعدادات التقاعد")) useSettings = true;
         if (fSet && await confirmBox("استيراد إعدادات الرسوم؟", "تحتوي النسخة على إعدادات قسم الرسوم (الجداول والطباعة). هل تريد اعتمادها بدل الحالية؟", "اعتماد إعدادات الرسوم")) useFeeSet = true;
-        list.sort(function (a, b) { return (b.savedAt || "") > (a.savedAt || "") ? 1 : -1; });
-        /* حسابات الرسوم: القاعدة نفسها (إضافة/تحديث بالمعرّف، والأحدث يفوز، ولا حذف) */
-        const flist = load(KEY_FEES, []), fById = {};
-        flist.forEach(function (c) { fById[c.id] = c; });
-        let fAdded = 0, fUpdated = 0;
-        incomingFees.filter(function (c) { return c && typeof c === "object" && c.kind; }).forEach(function (c) {
-            c.id = c.id || ("f" + Date.now() + Math.random().toString(36).slice(2, 6));
-            const old = fById[c.id];
-            if (!old) { fById[c.id] = c; flist.push(c); fAdded++; }
-            else if ((c.savedAt || "") > (old.savedAt || "")) { flist[flist.indexOf(old)] = c; fById[c.id] = c; fUpdated++; }
-        });
-        flist.sort(function (a, b) { return (b.savedAt || "") > (a.savedAt || "") ? 1 : -1; });
-        if (!store(KEY_CASES, list) || !store(KEY_FEES, flist)) { toast("تعذر الحفظ في هذا المتصفح.", "bad"); return; }
-        if (useSettings && settings) store(KEY_SET, settings);
-        if (useSettings && pPrint) store(KEY_PPRINT, pPrint);
-        if (useFeeSet) store(KEY_FSET, fSet);
+
+        /* الدمج بعد التأكيدات وعلى أحدث ما في المتصفح: بالمعرّف، والأحدث حفظاً يفوز، ولا حذف */
+        function merge(current, inc, prefix) {
+            const map = new Map(); current.forEach(function (c) { if (c && c.id) map.set(c.id, c); });
+            let added = 0, updated = 0, kept = 0;
+            inc.forEach(function (c) {
+                const item = Object.assign({}, c);
+                item.id = item.id || (prefix + Date.now() + Math.random().toString(36).slice(2, 6));
+                const old = map.get(item.id);
+                if (!old) { map.set(item.id, item); added++; }
+                else if ((item.savedAt || "") > (old.savedAt || "")) { map.set(item.id, item); updated++; }
+                else kept++;
+            });
+            const list = Array.from(map.values()).sort(function (a, b) { return (b.savedAt || "") > (a.savedAt || "") ? 1 : -1; });
+            return { list: list, added: added, updated: updated, kept: kept };
+        }
+        const mc = merge(load(KEY_CASES, []), incoming, "c"), mf = merge(load(KEY_FEES, []), incomingFees, "f");
+
+        /* الكتابة كلها أو لا شيء: نسخة مؤقتة من القيم السابقة تُعاد إذا فشلت أي كتابة */
+        const writes = [[KEY_CASES, mc.list], [KEY_FEES, mf.list]];
+        if (useSettings && settings) writes.push([KEY_SET, settings]);
+        if (useSettings && pPrint) writes.push([KEY_PPRINT, pPrint]);
+        if (useFeeSet) writes.push([KEY_FSET, fSet]);
+        const before = writes.map(function (w) { return [w[0], lsGet(w[0])]; });
+        const ok = writes.every(function (w) { return store(w[0], w[1]); });
+        if (!ok) {
+            before.forEach(function (b) { lsSet(b[0], b[1]); });
+            toast("تعذر حفظ النسخة في هذا المتصفح (قد تكون مساحة التخزين ممتلئة). لم يتغير شيء.", "bad", 8000);
+            return;
+        }
         renderBackupInfo();
-        toast("اكتمل الاستيراد: أُضيفت " + added + "، حُدّثت " + updated + "، بقيت " + kept + " كما هي (الأحدث محفوظ)." +
-            (incomingFees.length ? " حسابات الرسوم: أُضيف " + fAdded + " وحُدّث " + fUpdated + "." : ""), "ok", 6000);
+        if (current === "cases") renderCases();
+        if (window.FeesUI) window.FeesUI.onPage(current);
+        toast("اكتمل الاستيراد: أُضيفت " + mc.added + "، حُدّثت " + mc.updated + "، بقيت " + mc.kept + " كما هي (الأحدث محفوظ)." +
+            (incomingFees.length ? " حسابات الرسوم: أُضيف " + mf.added + " وحُدّث " + mf.updated + "." : ""), "ok", 6000);
     };
     rd.readAsText(file);
 });

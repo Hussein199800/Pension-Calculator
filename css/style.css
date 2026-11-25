@@ -1073,3 +1073,6 @@ input.bad { border-color: var(--danger) !important; background: var(--danger-bg)
 .ex-fee { display: inline-flex; align-items: center; gap: 6px; }
 .ex-fee span { font-size: var(--fs-sm); color: var(--text-2); }
 .ex-fee input { width: 120px; height: 36px; }
+
+/* الهاتف: الحقول التي تمتد عمودين (مثل العنوان) تأخذ السطر كاملاً بدل أن تفرض عموداً إضافياً */
+@media (max-width: 640px) { .form-g > [style*="span 2"] { grid-column: 1 / -1 !important; } }
