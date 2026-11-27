@@ -581,8 +581,24 @@
     }
     if (over45 && R.years.length) R.over45 = true;
 
+    /* حالة كل بند: مستحق / مدفوع (مع تاريخ) / مُلغى (مع سبب) — inp.itemState[key] = {s, date, reason}.
+       inp.opPaid[kind] = {central, branch, date}: «المركزية مدفوعة» / «الفرع مدفوع» لكل بنود ذلك الطرف في العملية،
+       والحالة المكتوبة لبند بعينه تتقدم عليه. المدفوع والملغى لا يدخلان المطلوب الآن، ويبقيان ظاهرين في التقرير. */
+    var IS = inp.itemState || {}, OPP = inp.opPaid || {};
+    R.items.forEach(function (it) {
+      it.state = 'due';
+      if (it.excluded) return; /* معفى أو تكرار ملغى: كما هو */
+      var st = IS[it.key], op = OPP[it.op] || {};
+      if (st && st.s === 'cancel') { it.state = 'cancel'; it.cancelReason = String(st.reason || '').trim(); }
+      else if (st && st.s === 'paid') { it.state = 'paid'; it.paidDate = st.date || ''; }
+      else if (!(st && st.s === 'due') && op[it.fund]) { it.state = 'paid'; it.paidDate = op.date || ''; it.byOp = true; }
+    });
+    var paidItems = R.items.filter(function (x) { return x.state === 'paid'; }), cancelItems = R.items.filter(function (x) { return x.state === 'cancel'; });
+    if (paidItems.length) R.steps.push('بنود مدفوعة سابقاً لا تُطلب مرة ثانية: ' + paidItems.map(function (x) { return x.label + ' (' + FUND[x.fund] + ')'; }).join('، ') + '.');
+    if (cancelItems.length) R.steps.push('بنود مُلغاة: ' + cancelItems.map(function (x) { return x.label + ' (' + FUND[x.fund] + ')' + (x.cancelReason ? ' — ' + x.cancelReason : ''); }).join('، ') + '.');
+
     /* المجاميع */
-    function sumItems(f) { return R.items.reduce(function (s, x) { return s + (x.excluded || (f && x.fund !== f) ? 0 : x.amount); }, 0); }
+    function sumItems(f) { return R.items.reduce(function (s, x) { return s + (x.excluded || x.state !== 'due' || (f && x.fund !== f) ? 0 : x.amount); }, 0); }
     function sumYears(f) { return R.years.reduce(function (s, x) { return s + (f === 'central' ? (x.paidC ? 0 : x.central) : f === 'branch' ? (x.paidB ? 0 : x.branch) : x.due); }, 0); }
     R.itemsTotal = sumItems();
     R.yearsTotal = sumYears();
@@ -591,7 +607,25 @@
     R.centralTotal = sumItems('central') + sumYears('central');
     R.branchTotal = sumItems('branch') + sumYears('branch');
     R.total = R.itemsTotal + R.yearsTotal;
-    R.ops.forEach(function (op) { op.total = op.items.reduce(function (s, x) { return s + (x.excluded ? 0 : x.amount); }, 0); });
+    R.ops.forEach(function (op) {
+      op.total = op.items.reduce(function (s, x) { return s + (x.excluded || x.state !== 'due' ? 0 : x.amount); }, 0);
+      op.original = op.items.reduce(function (s, x) { return s + (x.excluded ? 0 : x.amount); }, 0);
+    });
+    /* الخلاصة لكل طرف: الأصل، المدفوع سابقاً، المُلغى، المعفى، المطلوب الآن (البنود + الرسوم السنوية) */
+    R.summary = {};
+    ['central', 'branch'].forEach(function (f) {
+      var o = { original: 0, paid: 0, cancelled: 0, exempt: 0, due: 0 };
+      R.items.forEach(function (x) {
+        if (x.fund !== f || (x.excluded && !x.exempt)) return;
+        o.original += x.amount;
+        if (x.exempt) o.exempt += x.amount; else if (x.state === 'paid') o.paid += x.amount; else if (x.state === 'cancel') o.cancelled += x.amount; else o.due += x.amount;
+      });
+      R.years.forEach(function (y) {
+        var a = y[f], p = f === 'central' ? y.paidC : y.paidB;
+        o.original += a; if (p) o.paid += a; else o.due += a;
+      });
+      R.summary[f] = o;
+    });
     if (R.paidCount) R.steps.push('طُرحت ' + R.paidCount + ' سنة مدفوعة كاملة من المجموع.');
     if (R.paidPartCount) R.steps.push('وطُرح رسم أحد الطرفين لـ' + R.paidPartCount + ' سنة دُفع فيها طرف دون الآخر.');
     /* «كيف حُسب» مجمّعة: خطوات عامة ثم خطوات كل عملية */
