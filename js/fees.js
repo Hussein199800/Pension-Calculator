@@ -317,7 +317,15 @@
     if (regKinds.length > 1) R.warnings.push('اخترت أكثر من عملية قيد معاً (' + regKinds.map(function (k) { return KINDS[k]; }).join(' و') + '). تأكد أن هذا مقصود.');
 
     /* هل انتسب بعمر فوق 45؟ (يحدد الرسم السنوي المخفّض وعدم الاستفادة من معونة الوفاة) */
-    var joinAge = inp.joinDate && inp.birthDate ? ageRow(inp.birthDate, inp.joinDate) : null;
+    /* العمر مُدخل مباشرة للانتساب الجديد (قرار المالك 2026-11-27): الرقم هو سطر الجدول نفسه بلا تقريب */
+    var directAge = null;
+    if (inp.ageMode === 'direct' && kinds.indexOf('new') >= 0) {
+      var da = intOf(inp.ageDirect);
+      if (da === null) { R.errors.push('أدخل العمر بتاريخ الانتساب (بالسنوات).'); return R; }
+      if (isNaN(da) || da < 1 || da > 120) { R.errors.push('العمر «' + inp.ageDirect + '» غير صالح: اكتب عدداً صحيحاً من السنوات.'); return R; }
+      directAge = { ymd: { y: da, m: 0, d: 0 }, raw: da, row: Math.min(50, Math.max(30, da)), over50: da > 50, under30: da < 30, direct: true };
+    }
+    var joinAge = directAge || (inp.joinDate && inp.birthDate ? ageRow(inp.birthDate, inp.joinDate) : null);
     var over45 = !!(joinAge && joinAge.raw > 45);
     var ranges = [];
     /* الإعفاءات: لكل عملية ولكل طرف (مركزية / فرع) مع سببها. secBranchWaived القديم = إعفاء المشطوب الأمني من الفرع */
@@ -342,18 +350,21 @@
       function step(s) { op.steps.push(s); }
 
       if (kind === 'new') {
-        if (!parseDate(inp.birthDate)) R.errors.push('أدخل تاريخ الميلاد.');
+        if (!directAge && !parseDate(inp.birthDate)) R.errors.push('أدخل تاريخ الميلاد، أو اختر «إدخال العمر مباشرة».');
         if (!parseDate(inp.joinDate)) R.errors.push('أدخل تاريخ الانتساب.');
         var end = endYearOf(inp, today);
         if (end.error) R.errors.push(end.error);
         if (R.errors.length) return;
         var jd = parseDate(inp.joinDate);
-        if (cmpD(parseDate(inp.birthDate), jd) >= 0) { R.errors.push('تاريخ الميلاد بعد تاريخ الانتساب.'); return; }
+        if (!directAge && cmpD(parseDate(inp.birthDate), jd) >= 0) { R.errors.push('تاريخ الميلاد بعد تاريخ الانتساب.'); return; }
         if (end.year < jd.y) { R.errors.push('سنة النهاية (' + end.year + ') قبل سنة الانتساب (' + jd.y + ').'); return; }
         var ag = joinAge, pt = pickTable(jd.y);
         R.age = ag; R.table = pt.year; R.joinYear = jd.y; R.endYear = end.year; R.over45 = over45;
-        step('العمر بتاريخ الانتساب = ' + fmtDate(jd) + ' − ' + fmtDate(inp.birthDate) + ' = ' + fmtYMD(ag.ymd) + '.');
-        step(ag.ymd.m || ag.ymd.d ? 'أي كسر من سنة يُحسب سنة كاملة، فالعمر المعتمد ' + ag.raw + ' سنة.' : 'العمر سنوات كاملة: ' + ag.raw + ' سنة.');
+        if (ag.direct) step('العمر بتاريخ الانتساب مُدخل مباشرة: ' + ag.raw + ' سنة، وهو سطر الجدول نفسه.');
+        else {
+          step('العمر بتاريخ الانتساب = ' + fmtDate(jd) + ' − ' + fmtDate(inp.birthDate) + ' = ' + fmtYMD(ag.ymd) + '.');
+          step(ag.ymd.m || ag.ymd.d ? 'أي كسر من سنة يُحسب سنة كاملة، فالعمر المعتمد ' + ag.raw + ' سنة.' : 'العمر سنوات كاملة: ' + ag.raw + ' سنة.');
+        }
         if (ag.under30) step('العمر دون 30 سنة، فيُعتمد سطر 30 (أول سطر في الجدول).');
         if (ag.over50) { step('العمر فوق 50 سنة، فيُعتمد سطر 50.'); R.warnings.push('تجاوز سن الخمسين (' + ag.raw + ' سنة)، ولا يحق له التسجيل إلا بظرف خاص.'); }
         if (useC) {

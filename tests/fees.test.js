@@ -334,4 +334,17 @@ t('حالة البند تتقدم على زر الطرف، والملغى بسب
   assert.ok(R.steps.some(x => x.indexOf('لديه هوية') >= 0));
 });
 
+// ---------- العمر مُدخل مباشرة للانتساب
+t('العمر مباشرة: 34 = سطر 34 بلا تاريخ ميلاد، ومطابق لحساب التاريخ', () => {
+  const a = F.compute({ kinds: ['new'], scope: 'both', status: 'active', ageMode: 'direct', ageDirect: '٣٤', joinDate: '2026-03-01' }, TODAY);
+  assert.deepStrictEqual(a.errors, []); assert.strictEqual(a.age.row, 34); assert.ok(a.age.direct);
+  const b = F.compute({ kinds: ['new'], scope: 'both', status: 'active', birthDate: '1992-03-01', joinDate: '2026-03-01' }, TODAY);
+  assert.strictEqual(a.total, b.total);
+  const o = F.compute({ kinds: ['new'], scope: 'central', status: 'active', ageMode: 'direct', ageDirect: '47', joinDate: '2026-03-01' }, TODAY);
+  assert.ok(o.over45 && !o.items.some(i => i.label === 'معونة الوفاة')); assert.strictEqual(o.years[0].central, 4000);
+  const u = F.compute({ kinds: ['new'], scope: 'central', status: 'active', ageMode: 'direct', ageDirect: '55', joinDate: '2026-03-01' }, TODAY);
+  assert.strictEqual(u.age.row, 50); assert.ok(u.warnings.some(w => w.indexOf('الخمسين') >= 0));
+  assert.ok(F.compute({ kinds: ['new'], scope: 'central', status: 'active', ageMode: 'direct', ageDirect: '34.5', joinDate: '2026-03-01' }, TODAY).errors.length);
+  assert.ok(F.compute({ kinds: ['new'], scope: 'central', status: 'active', ageMode: 'direct', joinDate: '2026-03-01' }, TODAY).errors.length);
+});
 console.log('\n' + passed + ' اختباراً ناجحاً');

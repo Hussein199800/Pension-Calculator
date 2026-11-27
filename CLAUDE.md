@@ -74,6 +74,9 @@ Override the circulars' examples where they differ; all are covered by `tests/ca
 - Every fee item (central or branch) has a status: «مستحق» / «مدفوع» (optional date) / «مُلغى» (reason) — `inp.itemState[item.key] = {s: 'due'|'paid'|'cancel', date, reason}` (key = `kind|fund|label`). Each operation also has «المركزية مدفوعة» / «الفرع مدفوع» (`inp.opPaid[kind] = {central, branch}`) marking all of that party's items paid at once (e.g. أستذة where one party was already paid); an explicit item status wins. Paid/cancelled items leave the amount due but stay in the report struck through with the date or reason. No partial discounts (owner).
 - Report: per operation «المطلوب من …» (with «الأصل» when different) and «الخلاصة لكل طرف» (original, paid before, cancelled, exempt, due now) per party (`R.summary`).
 
+## Fees — age entered directly (owner decision, 2026-11-27)
+- New registration only: «إدخال العمر مباشرة بدل تاريخ الميلاد» (`inp.ageMode = 'direct'`, `inp.ageDirect` = whole years). The number IS the table row (no rounding); under 30 → row 30, over 50 → row 50 with the warning; over 45 → no death aid and the reduced annual fee. The birth date is then not required for registration; the report says «مُدخل مباشرة». Re-registration still uses the birth date.
+
 ## Owner principles (from the owner's CALCULATOR-CLAUDE.md, 2026-11-24)
 - Results are sacred: no change to any formula, rate, fee table or rounding rule without the owner's explicit request naming the new number and its source. Run the golden test after every change; if one number changes, stop and tell the owner.
 - Add, don't change: new things are optional or out of the way; saved data and workflows keep working.

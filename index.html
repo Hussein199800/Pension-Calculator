@@ -335,6 +335,8 @@
                         <div class="card">
                             <h3><span class="step-no">3</span>التواريخ والوضع</h3>
                             <div class="grid g3 form-g">
+                                <label class="check age-mode" data-fk="new"><input type="checkbox" name="ageDirectOn"> إدخال العمر مباشرة بدل تاريخ الميلاد</label>
+                                <label class="field" data-fk="new" data-agedirect><span>العمر بتاريخ الانتساب (بالسنوات) <b class="req">*</b></span><input name="ageDirect" inputmode="numeric" class="num-in" placeholder="مثال: 34"><small class="hint">الرقم هو سطر الجدول نفسه: دون 30 = سطر 30، وفوق 50 = سطر 50 مع تنبيه</small></label>
                                 <label class="field" data-fk="new secStruck cancelSelf omitted"><span><span data-fk="new">تاريخ الانتساب <b class="req">*</b></span><span data-fk="secStruck cancelSelf omitted">تاريخ الانتساب الأصلي</span></span><input type="date" name="joinDate"><small class="hint" data-fk="secStruck cancelSelf omitted">اختياري: مع تاريخ الميلاد يحدد إن كان انتسب فوق 45 (رسم سنوي أقل)</small></label>
                                 <label class="field" data-fk="new"><span>وضع المحامي الآن</span>
                                     <select name="status"><option value="active">قيده سارٍ (حتى السنة الحالية)</option><option value="cancelled">مرقّن القيد</option><option value="deceased">متوفى</option><option value="other">وضع آخر</option></select></label>
