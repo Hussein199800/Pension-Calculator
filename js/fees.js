@@ -330,9 +330,11 @@
     var ranges = [];
     /* الإعفاءات: لكل عملية ولكل طرف (مركزية / فرع) مع سببها. secBranchWaived القديم = إعفاء المشطوب الأمني من الفرع */
     var EX = {};
-    Object.keys(inp.exempt || {}).forEach(function (k) { var e = inp.exempt[k] || {}; if (e.central || e.branch) EX[k] = { central: !!e.central, branch: !!e.branch, reason: String(e.reason || '').trim() }; });
+    Object.keys(inp.exempt || {}).forEach(function (k) { var e = inp.exempt[k] || {}; if (e.central || e.branch) EX[k] = { central: !!e.central, branch: !!e.branch, annual: !!e.annual, reason: String(e.reason || '').trim() }; });
     /* (الإعفاء يشمل كل رسوم ذلك الطرف في العملية، ومنها رسومها السنوية) */
     function exempted(kind, fund) { return !!(EX[kind] && EX[kind][fund]); }
+    /* الإعفاء لا يشمل الرسوم السنوية إلا إذا اختير «يشمل الرسوم السنوية» (annual) — قرار المالك 2026-11-27 */
+    function exemptedYears(kind, fund) { return exempted(kind, fund) && !!EX[kind].annual; }
     /* رسم الفرع لعملية: مبلغ مكتوب لهذا الحساب (inp.brFee[kind]) أو القيمة الافتراضية من الإعدادات */
     function brFee(kind, def, legacy) {
       var raw = inp.brFee && inp.brFee[kind] !== undefined && inp.brFee[kind] !== '' ? inp.brFee[kind] : legacy;
@@ -522,7 +524,7 @@
       var funds = ['central', 'branch'].filter(function (f) { return e[f] && (f === 'central' ? useC : useB); });
       if (!funds.length) return;
       op.items.forEach(function (it) { if (e[it.fund]) { it.exempt = true; it.excluded = true; } });
-      var txt = 'أُعفي من رسوم ' + funds.map(function (f) { return f === 'central' ? 'النقابة المركزية' : 'الفرع'; }).join(' و') + ' في هذه العملية' + (e.reason ? ' (السبب: ' + e.reason + ')' : '') + '.';
+      var txt = 'أُعفي من رسوم ' + funds.map(function (f) { return f === 'central' ? 'النقابة المركزية' : 'الفرع'; }).join(' و') + ' في هذه العملية' + (e.annual ? ' مع رسومها السنوية' : ' (الرسوم السنوية تبقى مستحقة)') + (e.reason ? ' (السبب: ' + e.reason + ')' : '') + '.';
       op.steps.push(txt);
     });
 
@@ -551,7 +553,7 @@
       paid.forEach(function (y) { paidSet[+y] = true; });
       var payC = {}, payB = {};
       ranges.forEach(function (r) {
-        for (var y = r.from; y <= r.to; y++) { yset[y] = true; if (!exempted(r.kind, 'central')) payC[y] = true; if (!exempted(r.kind, 'branch')) payB[y] = true; }
+        for (var y = r.from; y <= r.to; y++) { yset[y] = true; if (!exemptedYears(r.kind, 'central')) payC[y] = true; if (!exemptedYears(r.kind, 'branch')) payB[y] = true; }
         lo = Math.min(lo, r.from); hi = Math.max(hi, r.to);
       });
       if (ranges.length > 1) R.steps.push('السنوات المشتركة بين العمليات يُحسب رسمها السنوي مرة واحدة.');
