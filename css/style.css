@@ -1076,3 +1076,35 @@ input.bad { border-color: var(--danger) !important; background: var(--danger-bg)
 
 /* الهاتف: الحقول التي تمتد عمودين (مثل العنوان) تأخذ السطر كاملاً بدل أن تفرض عموداً إضافياً */
 @media (max-width: 640px) { .form-g > [style*="span 2"] { grid-column: 1 / -1 !important; } }
+
+/* حالة كل بند (مستحق / مدفوع / مُلغى) و«الطرف مدفوع» لكل عملية */
+.op-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 16px; }
+.op-head .fee-sub { margin: 0; }
+.op-toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+.op-paid { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface-2); font-size: var(--fs-sm); font-weight: 600; cursor: pointer; }
+.op-paid.on { background: var(--success-bg); border-color: var(--success); color: var(--success); }
+.it-st { white-space: nowrap; }
+.it-state { height: 32px; padding: 2px 8px; font-size: var(--fs-xs); border-radius: var(--r-sm); min-width: 90px; }
+.it-state.st-paid { border-color: var(--success); color: var(--success); background: var(--success-bg); }
+.it-state.st-cancel { border-color: var(--wine-300); color: var(--danger); background: var(--danger-bg); }
+.it-reason { height: 32px; padding: 2px 8px; font-size: var(--fs-xs); margin-inline-start: 6px; width: 150px; }
+.it-st .yr-date { margin-inline-start: 6px; }
+@media (max-width: 640px) { .it-st { white-space: normal; } .it-st .yr-date, .it-reason { display: block; margin: 4px 0 0; width: 100%; max-width: none; } }
+.it-st { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.it-state { width: auto !important; flex: 0 0 auto; }
+.it-st .yr-date, .it-reason { width: 150px !important; flex: 0 1 150px; margin: 0 !important; }
+@media (max-width: 640px) { .it-st .yr-date, .it-reason { width: 100% !important; flex-basis: 100%; } }
+/* الهاتف: جدول بنود العملية سطران لكل بند (الجهة والبند والمبلغ، ثم الحالة) بلا تمرير أفقي */
+@media (max-width: 640px) {
+    .ops-tbl thead { display: none; }
+    .ops-tbl, .ops-tbl tbody, .ops-tbl tfoot { display: block; }
+    .ops-tbl tr { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+    .ops-tbl td { border: 0 !important; padding: 0 !important; }
+    .ops-tbl td.it-st { grid-column: 1 / -1; }
+    .ops-tbl tfoot tr { grid-template-columns: minmax(0, 1fr) auto; }
+}
+@media (max-width: 640px) {
+    .ops-tbl tbody td:last-child { grid-row: 1; grid-column: 3; }
+    .ops-tbl tbody td.it-st { grid-row: 2; }
+    .ops-tbl td { background: transparent !important; }
+}

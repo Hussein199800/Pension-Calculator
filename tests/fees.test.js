@@ -311,4 +311,27 @@ t('رسم الفرع لكل عملية قابل للتعديل في الحساب
   assert.ok(F.compute({ kinds: ['transfer'], scope: 'branch', clearance: true, brFee: { transfer: 'abc' } }, TODAY).errors.length);
 });
 
+// ---------- حالة كل بند: مستحق / مدفوع / مُلغى، و«الطرف مدفوع» لكل عملية
+t('الأستذة طرفان: «الفرع مدفوع» يُسقط رسم الفرع من المطلوب ويبقى ظاهراً', () => {
+  const b = { kinds: ['traineeToMaster'], scope: 'both', masterDate: '2026-05-01' };
+  const a = F.compute(b, TODAY);
+  const R = F.compute(Object.assign({ opPaid: { traineeToMaster: { branch: true, date: '2026-04-20' } } }, b), TODAY);
+  assert.strictEqual(R.total, a.total - 5000); assert.strictEqual(R.branchTotal, 0);
+  const it = R.items.find(x => x.fund === 'branch');
+  assert.strictEqual(it.state, 'paid'); assert.strictEqual(it.paidDate, '2026-04-20');
+  assert.deepStrictEqual(R.summary.branch, { original: 5000, paid: 5000, cancelled: 0, exempt: 0, due: 0 });
+});
+t('حالة البند تتقدم على زر الطرف، والملغى بسببه، والمجاميع للخلاصة', () => {
+  const b = { kinds: ['traineeToMaster'], scope: 'both', masterDate: '2026-05-01' };
+  const items = F.compute(b, TODAY).items, id = items.find(x => x.label === 'الهوية'), lic = items.find(x => x.label === 'ثمن إجازة المحاماة');
+  const st = {}; st[id.key] = { s: 'cancel', reason: 'لديه هوية' }; st[lic.key] = { s: 'paid', date: '2026-01-02' };
+  const R = F.compute(Object.assign({ itemState: st }, b), TODAY);
+  assert.strictEqual(R.centralTotal, 5050 - 1000 - 50);
+  assert.deepStrictEqual(R.summary.central, { original: 5050, paid: 50, cancelled: 1000, exempt: 0, due: 4000 });
+  const st2 = {}; st2[R.items.find(x => x.fund === 'branch').key] = { s: 'due' };
+  const R2 = F.compute(Object.assign({ itemState: st2, opPaid: { traineeToMaster: { branch: true } } }, b), TODAY);
+  assert.strictEqual(R2.branchTotal, 5000);
+  assert.ok(R.steps.some(x => x.indexOf('لديه هوية') >= 0));
+});
+
 console.log('\n' + passed + ' اختباراً ناجحاً');

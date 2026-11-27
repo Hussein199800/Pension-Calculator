@@ -15,6 +15,8 @@
     let fCurrentId = null, fLastInput = null, fLastResult = null;
     /* «مدفوع» لكل طرف مع تاريخ اختياري. الحسابات القديمة (paidYears) = الطرفان مدفوعان */
     let paidC = [], paidB = [], paidDates = {}, brFee = {};
+    /* حالة كل بند (مستحق / مدفوع / مُلغى) و«الطرف مدفوع» لكل عملية */
+    let itemState = {}, opPaid = {};
     /* إعدادات قسم الرسوم (pc.feeSettings.v1): الجهة والطباعة والجداول المعدّلة. الغائب = المعتمد */
     const FEES_SIGNS = [{ title: "منظم التقرير", src: "preparer" }, { title: "المدقق", src: "reviewer" }, { title: "الخازن / المحاسب", src: "fixed", name: "" }];
     function feeSettings() { return load(KEY_FSET, null) || {}; }
@@ -63,7 +65,8 @@
             branchPrints: { on: fval("bp_on"), amount: toLatin(fval("bp_amount")) },
             excludeDup: excludeDup.slice(),
             exempt: (function () { const o = {}; ks.forEach(function (k) { if (exempt[k]) o[k] = Object.assign({}, exempt[k]); }); return o; })(),
-            paidC: paidC.slice(), paidB: paidB.slice(), paidDates: Object.assign({}, paidDates), preparer: fval("preparer"), reviewer: fval("reviewer"), notes: fval("notes")
+            paidC: paidC.slice(), paidB: paidB.slice(), paidDates: Object.assign({}, paidDates),
+            itemState: JSON.parse(JSON.stringify(itemState)), opPaid: JSON.parse(JSON.stringify(opPaid)), preparer: fval("preparer"), reviewer: fval("reviewer"), notes: fval("notes")
         };
         if (legacyWaive) c.secBranchWaived = true;
         if (fCurrentId) c.id = fCurrentId;
@@ -90,6 +93,8 @@
         paidC = uniq((c.paidC || []).map(Number).concat(legacyPaid));
         paidB = uniq((c.paidB || []).map(Number).concat(legacyPaid));
         paidDates = Object.assign({}, c.paidDates || {});
+        itemState = JSON.parse(JSON.stringify(c.itemState || {}));
+        opPaid = JSON.parse(JSON.stringify(c.opPaid || {}));
         brFee = Object.assign({}, c.brFee || {});
         if (c.brMasterAmount && !brFee.traineeToMaster) brFee.traineeToMaster = c.brMasterAmount; /* حقل قديم */
         /* التقرير المعروض يخص الحساب السابق: يُفرَّغ عند فتح حساب آخر أو بدء حساب جديد */
@@ -157,14 +162,26 @@
         if (R.warnings.length) h += R.warnings.map(function (w) { return '<div class="field-warn"><i class="ti ti-alert-triangle"></i>' + esc(w) + "</div>"; }).join("");
         R.ops.forEach(function (op) {
             if (!op.items.length) return;
-            h += '<p class="fee-sub">' + esc(op.name) + "</p>" +
-                '<div class="table-wrap"><table class="fee-tbl"><thead><tr><th>الجهة</th><th>البند</th><th class="n">المبلغ</th></tr></thead><tbody>' +
+            const funds = ["central", "branch"].filter(function (f) { return op.items.some(function (i) { return i.fund === f && !i.exempt; }); });
+            const op_ = opPaid[op.kind] || {};
+            const toggles = funds.map(function (f) {
+                return '<label class="op-paid' + (op_[f] ? " on" : "") + '"><input type="checkbox" data-opp="' + op.kind + "|" + f + '"' + (op_[f] ? " checked" : "") + "> " + (f === "central" ? "المركزية مدفوعة" : "الفرع مدفوع") + "</label>";
+            }).join("");
+            h += '<div class="op-head"><p class="fee-sub">' + esc(op.name) + "</p>" + (toggles ? '<div class="op-toggles">' + toggles + "</div>" : "") + "</div>" +
+                '<div class="table-wrap"><table class="fee-tbl ops-tbl"><thead><tr><th>الجهة</th><th>البند</th><th>الحالة</th><th class="n">المبلغ</th></tr></thead><tbody>' +
                 op.items.map(function (i) {
-                    const dup = i.dup ? '<label class="dup-chk" title="بند مكرر مع «' + esc(i.dupOf) + '»"><input type="checkbox" data-dup="' + esc(i.key) + '"' + (i.excluded ? "" : " checked") + "> مكرر: يُحتسب</label>" : "";
+                    const dup = i.dup ? '<label class="dup-chk" title="بند مكرر مع «' + esc(i.dupOf) + '»"><input type="checkbox" data-dup="' + esc(i.key) + '"' + (i.excluded && !i.exempt ? "" : " checked") + "> مكرر: يُحتسب</label>" : "";
                     const exm = i.exempt ? ' <span class="ex-tag">معفى</span>' : "";
-                    return '<tr class="' + (i.excluded ? "is-excluded" : "") + '"><td>' + FUNDTAG(i.fund) + "</td><td>" + esc(i.label) + exm + (i.note ? ' <small class="muted">(' + esc(i.note) + ")</small>" : "") + dup +
-                        '</td><td class="n">' + (i.excluded ? "<s>" + fmt(i.amount) + "</s>" : fmt(i.amount)) + "</td></tr>";
-                }).join("") + '</tbody><tfoot><tr><td colspan="2">مجموع «' + esc(op.name) + '»</td><td class="n">' + fmt(op.total) + "</td></tr></tfoot></table></div>";
+                    let st = "";
+                    if (!i.excluded) {
+                        st = '<select class="it-state st-' + i.state + '" data-is="' + esc(i.key) + '"><option value="due"' + (i.state === "due" ? " selected" : "") + '>مستحق</option><option value="paid"' + (i.state === "paid" ? " selected" : "") + '>مدفوع</option><option value="cancel"' + (i.state === "cancel" ? " selected" : "") + ">مُلغى</option></select>";
+                        if (i.state === "paid") st += '<input type="date" class="yr-date" data-isd="' + esc(i.key) + '" value="' + esc(i.paidDate || "") + '" title="تاريخ الدفع (اختياري)">';
+                        if (i.state === "cancel") st += '<input class="it-reason" data-isr="' + esc(i.key) + '" placeholder="سبب الإلغاء" value="' + esc(i.cancelReason || "") + '">';
+                    } else st = '<span class="muted">' + (i.exempt ? "معفى" : "تكرار ملغى") + "</span>";
+                    const off = i.excluded || i.state !== "due";
+                    return '<tr class="' + (off ? "is-excluded" : "") + '"><td>' + FUNDTAG(i.fund) + "</td><td>" + esc(i.label) + exm + (i.note ? ' <small class="muted">(' + esc(i.note) + ")</small>" : "") + dup +
+                        '</td><td class="it-st">' + st + '</td><td class="n">' + (off ? "<s>" + fmt(i.amount) + "</s>" : fmt(i.amount)) + "</td></tr>";
+                }).join("") + '</tbody><tfoot><tr><td colspan="3">المطلوب من «' + esc(op.name) + '»' + (op.original !== op.total ? ' <small>(الأصل ' + fmt(op.original) + ")</small>" : "") + '</td><td class="n">' + fmt(op.total) + "</td></tr></tfoot></table></div>";
         });
         if (R.years.length) {
             const showB = R.scope !== "central", showC = R.scope !== "branch";
@@ -182,11 +199,26 @@
                 }).join("") + '</tbody><tfoot><tr><td colspan="' + (1 + (showC ? 1 : 0) + (showB ? 1 : 0)) + '">مجموع الرسوم السنوية المستحقة</td><td class="n">' + fmt(R.yearsTotal) + "</td></tr></tfoot></table></div>";
         }
         h += '<details class="how"' + (box.querySelector("details.how[open]") ? " open" : "") + '><summary><i class="ti ti-info-circle"></i>كيف حُسب؟</summary><ol>' + R.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol></details>";
-        const ae = document.activeElement, keep = ae && box.contains(ae) ? ["data-pf", "data-pd", "data-dup"].filter(function (a) { return ae.hasAttribute(a); }).map(function (a) { return "[" + a + '="' + ae.getAttribute(a) + '"]'; })[0] : null;
+        const ae = document.activeElement, keep = ae && box.contains(ae) ? ["data-pf", "data-pd", "data-dup", "data-is", "data-isd", "data-isr", "data-opp"].filter(function (a) { return ae.hasAttribute(a); }).map(function (a) { return "[" + a + '="' + ae.getAttribute(a) + '"]'; })[0] : null;
         box.innerHTML = h;
         if (keep) { const el = box.querySelector(keep); if (el) el.focus(); }
     }
     $("#feeLive").addEventListener("change", function (e) {
+        const is = e.target.closest("[data-is]"), isd = e.target.closest("[data-isd]"), isr = e.target.closest("[data-isr]"), opp = e.target.closest("[data-opp]");
+        if (is) {
+            const k = is.dataset.is, prev = itemState[k] || {};
+            itemState[k] = is.value === "paid" ? { s: "paid", date: prev.date || "" } : is.value === "cancel" ? { s: "cancel", reason: prev.reason || "" } : { s: "due" };
+            renderLive(); fsaveDraft(); return;
+        }
+        if (isd) { const k = isd.dataset.isd; itemState[k] = { s: "paid", date: isd.value || "" }; renderLive(); fsaveDraft(); return; }
+        if (isr) { const k = isr.dataset.isr; itemState[k] = { s: "cancel", reason: isr.value.trim() }; renderLive(); fsaveDraft(); return; }
+        if (opp) {
+            const pr = opp.dataset.opp.split("|"), o = opPaid[pr[0]] || {};
+            o[pr[1]] = opp.checked; if (!o.central && !o.branch) delete opPaid[pr[0]]; else opPaid[pr[0]] = o;
+            /* الزر يحكم بنود الطرف كلها: تُمسح الحالات الفردية لبنود ذلك الطرف في العملية */
+            Object.keys(itemState).forEach(function (k) { if (k.indexOf(pr[0] + "|" + pr[1] + "|") === 0) delete itemState[k]; });
+            renderLive(); fsaveDraft(); return;
+        }
         const cb = e.target.closest("[data-pf]"), dp = e.target.closest("[data-dup]"), pd = e.target.closest("[data-pd]");
         if (pd) { if (pd.value) paidDates[pd.dataset.pd] = pd.value; else delete paidDates[pd.dataset.pd]; fsaveDraft(); return; }
         if (cb) {
@@ -275,9 +307,11 @@
             if (o.steps.length) h.push('<div class="formula"><b>لماذا وكيف:</b><ol class="steps">' + o.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol></div>");
             if (o.items.length) h.push('<table><thead><tr><th>الجهة</th><th>البند</th><th>ملاحظة</th><th class="n">المبلغ (ل.س)</th></tr></thead><tbody>' +
                 o.items.map(function (i) {
-                    const note = [i.exempt ? "معفى" : "", i.note, i.dup ? (i.excluded ? "مكرر مع «" + i.dupOf + "» — أُلغي تكراره" : "مكرر مع «" + i.dupOf + "» — يُحتسب مرة ثانية بصفته في هذه العملية") : ""].filter(Boolean).join(" · ");
-                    return "<tr><td>" + fundTxt(i.fund) + "</td><td>" + esc(i.label) + "</td><td>" + esc(note) + '</td><td class="n">' + (i.excluded ? "<s>" + fmt(i.amount) + "</s>" : fmt(i.amount)) + "</td></tr>";
-                }).join("") + '<tr class="total"><td colspan="3">مجموع «' + esc(o.name) + '»</td><td class="n">' + fmt(o.total) + "</td></tr></tbody></table>");
+                    const stTxt = i.state === "paid" ? "مدفوع سابقاً" + (i.paidDate ? " " + F.fmtDate(i.paidDate) : "") : i.state === "cancel" ? "مُلغى" + (i.cancelReason ? ": " + i.cancelReason : "") : "";
+                    const note = [i.exempt ? "معفى" : "", stTxt, i.note, i.dup ? (i.excluded ? "مكرر مع «" + i.dupOf + "» — أُلغي تكراره" : "مكرر مع «" + i.dupOf + "» — يُحتسب مرة ثانية بصفته في هذه العملية") : ""].filter(Boolean).join(" · ");
+                    const off = i.excluded || i.state !== "due";
+                    return "<tr><td>" + fundTxt(i.fund) + "</td><td>" + esc(i.label) + "</td><td>" + (i.state === "paid" ? '<span class="yes">' + esc(note) + "</span>" : esc(note)) + '</td><td class="n">' + (off ? "<s>" + fmt(i.amount) + "</s>" : fmt(i.amount)) + "</td></tr>";
+                }).join("") + '<tr class="total"><td colspan="3">المطلوب من «' + esc(o.name) + '»' + (o.original !== o.total ? " (الأصل " + fmt(o.original) + ")" : "") + '</td><td class="n">' + fmt(o.total) + "</td></tr></tbody></table>");
         });
         if (R.years.length) {
             const C = R.scope !== "branch", B = R.scope !== "central";
@@ -291,6 +325,14 @@
                     return "<tr><td>" + y.year + (y.over45 ? "<br><small>رسم من انتسب فوق 45</small>" : "") + "</td>" + (C ? fc(y, "central") : "") + (B ? fc(y, "branch") : "") + '<td class="n">' + fmt(y.due) + "</td></tr>";
                 }).join("") + '<tr class="total"><td colspan="' + (1 + (C ? 1 : 0) + (B ? 1 : 0)) + '">مجموع الرسوم السنوية المستحقة</td><td class="n">' + fmt(R.yearsTotal) + "</td></tr></tbody></table>");
         }
+        const SM = R.summary || {}, sf = ["central", "branch"].filter(function (f) { return (f === "central" ? R.scope !== "branch" : R.scope !== "central") && SM[f]; });
+        const anyOff = sf.some(function (f) { return SM[f].paid || SM[f].cancelled || SM[f].exempt; });
+        if (anyOff) h.push('<h2>الخلاصة لكل طرف</h2><table><thead><tr><th></th>' + sf.map(function (f) { return '<th class="n">' + (f === "central" ? "النقابة المركزية" : "الفرع") + "</th>"; }).join("") + (sf.length > 1 ? '<th class="n">المجموع</th>' : "") + "</tr></thead><tbody>" +
+            [["original", "الأصل (كل الرسوم)"], ["paid", "مدفوع سابقاً"], ["cancelled", "مُلغى"], ["exempt", "معفى"], ["due", "المطلوب الآن"]].map(function (r) {
+                const vals = sf.map(function (f) { return SM[f][r[0]]; }), tot = vals.reduce(function (a, b) { return a + b; }, 0);
+                if (r[0] !== "original" && r[0] !== "due" && !tot) return "";
+                return "<tr" + (r[0] === "due" ? ' class="total"' : "") + "><td>" + r[1] + "</td>" + vals.map(function (v) { return '<td class="n">' + fmt(v) + "</td>"; }).join("") + (sf.length > 1 ? '<td class="n">' + fmt(tot) + "</td>" : "") + "</tr>";
+            }).join("") + "</tbody></table>");
         h.push('<h2>الخلاصة</h2><div class="sum">' +
             (R.scope !== "branch" ? '<div class="box"><div class="l">رسوم النقابة المركزية</div><div class="v">' + fmt(R.centralTotal) + " ل.س</div></div>" : "") +
             (R.scope !== "central" ? '<div class="box"><div class="l">رسوم الفرع</div><div class="v">' + fmt(R.branchTotal) + " ل.س</div></div>" : "") +
