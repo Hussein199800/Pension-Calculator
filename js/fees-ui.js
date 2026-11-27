@@ -29,7 +29,7 @@
     let excludeDup = [], exempt = {};
     /* الإعفاءات: لكل عملية مختارة خانتان (مركزية / فرع) وسبب */
     function renderExempt() {
-        const ks = kinds().filter(function (k) { return k !== "exempt"; }), sc = scope(), box = $("#exemptBox");
+        const ks = kinds().filter(function (k) { return k !== "exempt" && k !== "annualOnly"; }), sc = scope(), box = $("#exemptBox");
         if (!ks.length) { box.innerHTML = ""; return; }
         const X = F.dataWith(feeSettings().data).flat;
         const BR = { secStruck: X.brStruck, admStruck: X.brStruck, reCancel: X.brReCancel, omitted: X.brOmitted, transfer: X.brTransfer, traineeToMaster: X.brMaster };
@@ -62,6 +62,7 @@
             ageMode: fval("ageDirectOn") ? "direct" : "", ageDirect: toLatin(fval("ageDirect")),
             masterDate: fval("masterDate"), brFee: (function () { const o = {}; ks.forEach(function (k) { if (brFee[k]) o[k] = toLatin(brFee[k]); }); return o; })(),
             eventDate: fval("eventDate"), decisionDate: fval("decisionDate"), gapYears: toLatin(fval("gapYears")), lastPaidYear: toLatin(fval("lastPaidYear")),
+            annFrom: toLatin(fval("annFrom")), annTo: toLatin(fval("annTo")), annOver45: fval("annOver45"),
             clearance: fval("clearance"), optional: { id: fval("opt_id"), license: fval("opt_license"), badge: fval("opt_badge") },
             branchPrints: { on: fval("bp_on"), amount: toLatin(fval("bp_amount")) },
             excludeDup: excludeDup.slice(),
@@ -133,6 +134,7 @@
         /* العمر المباشر يخص الانتساب: يُخفي تاريخ الميلاد إلا إذا احتاجته عملية أخرى (إعادة القيد) */
         $("#feeForm [data-birth]").hidden = direct && !ks.some(function (k) { return k === "admStruck" || k === "reCancel"; });
         $$("#feeForm .opt-row").forEach(function (el) { if (sc === "branch") el.hidden = true; });
+        const a45 = $("#feeForm [data-annover45]"); if (a45 && !a45.hidden) a45.hidden = sc === "branch";
         $$("#feeForm .bp-amount").forEach(function (el) { if (!el.hidden) el.hidden = !fval("bp_on"); });
         $$("#feeForm .ftypes .type").forEach(function (l) { const i = l.querySelector("input"); l.classList.toggle("on", i.checked); });
         renderLive();
@@ -153,6 +155,7 @@
             cancelSelf: "رسم سنة الترقين وما سبقه غير مدفوع",
             omitted: both("نقابة " + n(X.omUnion) + " + تقاعد " + n(X.omPension) + " + الرسوم المترتبة", n(X.brOmitted)),
             transfer: both("نقابة " + n(X.trfUnion) + " + تقاعد " + n(X.trfPension), n(X.brTransfer)),
+            annualOnly: "قيده سارٍ ومسدد: رسم السنوات المختارة فقط" + (C ? " · مركزية" : "") + (B ? " · فرع" : ""),
             traineeToMaster: both("مركزية " + n(X.tmUnion + X.tmPension + X.tmLicenseFee + X.tmId + X.tmLicensePrice) + " من 1/3/2026 (" + n(X.tmOld) + " قبلها)", n(X.brMaster))
         };
         Object.keys(hints).forEach(function (k) { const el = fform.querySelector('input[name=kinds][value="' + k + '"] + span small'); if (el) el.textContent = hints[k]; });
@@ -363,6 +366,8 @@
             ["وضع المحامي", has("new") ? esc(F.STATUS[c.status] || "") + (c.status !== "active" ? " — " + esc(c.statusYear) : "") : ""],
             ["تاريخ القرار", ["secStruck", "admStruck", "reCancel", "omitted"].some(has) ? d(c.decisionDate) : ""],
             [has("admStruck") ? "تاريخ الشطب" : "تاريخ الترقين", (has("admStruck") || has("reCancel") || has("cancelSelf")) ? d(c.eventDate) : ""],
+            ["الرسوم السنوية المطلوبة", has("annualOnly") && R.annFrom ? (R.annFrom === R.annTo ? "سنة " + R.annFrom : "من " + R.annFrom + " حتى " + R.annTo) : ""],
+            ["انتسب فوق 45", has("annualOnly") && R.annOver45 && C ? "نعم (رسم مركزي مخفّض)" : ""],
             ["تاريخ النقل إلى جدول الأساتذة", has("traineeToMaster") ? (c.masterDate ? d(c.masterDate) : "اليوم") : ""],
             ["براءة الذمة", has("transfer") ? (c.clearance ? '<span class="yes">بريء الذمة</span>' : '<span class="no">لم تُؤكَّد</span>') : ""]
         ].filter(function (p) { return p[1]; });
@@ -413,13 +418,16 @@
         };
         const ords = ["أولاً", "ثانياً", "ثالثاً", "رابعاً"];
         let n = 0;
-        if (C) h.push(section("central", ords[n++]));
-        if (B) h.push(section("branch", ords[n++]));
+        /* «رسوم سنوية» وحدها: لا بنود، فيُذهب مباشرة إلى قسم الرسوم السنوية */
+        const onlyYears = !R.items.length;
+        if (C && !onlyYears) h.push(section("central", ords[n++]));
+        if (B && !onlyYears) h.push(section("branch", ords[n++]));
 
         /* الرسوم السنوية: الجهة ولماذا */
         if (R.years.length) {
             const first = R.years[0].year, last = R.years[R.years.length - 1].year;
             const why = has("new") ? "عن كل سنة من سنة الانتساب " + first + " حتى " + last + (has("new") && c.status !== "active" ? " (" + (F.STATUS[c.status] || "") + ")" : " (قيده سارٍ)") + "."
+                : has("annualOnly") && R.kinds.length === 1 ? "المحامي قيده سارٍ ومسدد لكل ما سبق، والمطلوب الرسم السنوي " + (first === last ? "لسنة " + first : "عن كل سنة من " + first + " حتى " + last) + " فقط."
                 : has("secStruck") ? "المشطوب يدفع الرسم السنوي لكل سنة من " + first + " حتى سنة القرار " + last + "."
                 : "الرسوم السنوية غير المدفوعة من " + first + " حتى " + last + ".";
             const parts = (C ? "المركزية" + (R.over45 ? " (رسم من انتسب فوق 45)" : "") : "") + (C && B ? "، و" : "") + (B ? "الفرع (من 2026 فقط)" : "");
