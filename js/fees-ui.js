@@ -59,6 +59,7 @@
             nationalId: fval("nationalId"), memberNo: fval("memberNo"), branch: fval("branch"), fileNo: fval("fileNo"), phone: fval("phone"),
             kinds: ks, kind: ks[0] || "", scope: scope(),
             joinDate: fval("joinDate"), status: fval("status") || "active", statusYear: toLatin(fval("statusYear")),
+            ageMode: fval("ageDirectOn") ? "direct" : "", ageDirect: toLatin(fval("ageDirect")),
             masterDate: fval("masterDate"), brFee: (function () { const o = {}; ks.forEach(function (k) { if (brFee[k]) o[k] = toLatin(brFee[k]); }); return o; })(),
             eventDate: fval("eventDate"), decisionDate: fval("decisionDate"), gapYears: toLatin(fval("gapYears")), lastPaidYear: toLatin(fval("lastPaidYear")),
             clearance: fval("clearance"), optional: { id: fval("opt_id"), license: fval("opt_license"), badge: fval("opt_badge") },
@@ -76,7 +77,8 @@
         fform.reset();
         const map = {
             opt_id: (c.optional || {}).id, opt_license: (c.optional || {}).license, opt_badge: (c.optional || {}).badge,
-            bp_on: (c.branchPrints || {}).on, bp_amount: (c.branchPrints || {}).amount
+            bp_on: (c.branchPrints || {}).on, bp_amount: (c.branchPrints || {}).amount,
+            ageDirectOn: c.ageMode === "direct"
         };
         Array.prototype.forEach.call(fform.elements, function (el) {
             if (!el.name || el.type === "radio" || el.name === "kinds") return;
@@ -119,6 +121,7 @@
             el.hidden = byFk || el.getAttribute("data-fstatus").split(" ").indexOf(st) < 0;
         });
         $("#branchBox").hidden = sc === "central" || ks.indexOf("new") < 0;
+        $$("#feeForm [data-agedirect]").forEach(function (el) { if (!el.hidden) el.hidden = !fval("ageDirectOn"); });
         $$("#feeForm .opt-row").forEach(function (el) { if (sc === "branch") el.hidden = true; });
         $$("#feeForm .bp-amount").forEach(function (el) { if (!el.hidden) el.hidden = !fval("bp_on"); });
         $$("#feeForm .ftypes .type").forEach(function (l) { const i = l.querySelector("input"); l.classList.toggle("on", i.checked); });
@@ -281,7 +284,7 @@
         const op = [["العمليات", R.ops.map(function (o, i) { return (i + 1) + ". " + esc(o.name); }).join("<br>")],
             ["نطاق الحساب", esc(R.scopeName) + (R.scope === "both" ? " (رسوم النقابة المركزية + رسوم الفرع)" : "")]];
         if (c.joinDate) op.push([has("new") ? "تاريخ الانتساب" : "تاريخ الانتساب الأصلي", d(c.joinDate)]);
-        if (R.age) op.push(["العمر المعتمد", R.age.raw + " سنة (" + esc(F.fmtYMD(R.age.ymd)) + ")" + (R.age.row !== R.age.raw ? " ← سطر " + R.age.row : "")]);
+        if (R.age) op.push(["العمر المعتمد", R.age.raw + " سنة " + (R.age.direct ? "(مُدخل مباشرة)" : "(" + esc(F.fmtYMD(R.age.ymd)) + ")") + (R.age.row !== R.age.raw ? " ← سطر " + R.age.row : "")]);
         if (R.table && R.scope !== "branch") op.push(["جدول الرسوم المركزي", "جدول " + R.table]);
         if (R.branchTable && R.scope !== "central") op.push(["جدول رسوم الفرع", "جدول الفروع " + R.branchTable]);
         if (has("new")) op.push(["وضع المحامي", esc(F.STATUS[c.status] || "") + (c.status !== "active" ? " — سنة " + esc(c.statusYear) : "")]);
