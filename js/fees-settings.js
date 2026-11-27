@@ -36,6 +36,7 @@
         const fs = load_();
         $("#fsOrg").value = fs.org || ""; $("#fsFont").value = fs.fontSize || ""; $("#fsFooter").value = fs.footer || "";
         signEditor($("#fsSigns"), fs.signs || window.FeesUI.signs);
+        Letterhead.editor($("#fsLh"), fs);
         renderAnnual(); renderYears(); renderGrid(); renderFixed();
     }
 
@@ -208,7 +209,7 @@
     $("#fsSave").onclick = function () {
         const bad = readAnnual().concat(readGrid(), readFixed());
         if (bad.length) { toast("قيم غير صالحة (أرقام فقط، 0 أو أكثر): " + esc(bad.slice(0, 4).join("، ")) + (bad.length > 4 ? "…" : ""), "bad", 7000); return; }
-        const fs = { org: $("#fsOrg").value.trim(), fontSize: $("#fsFont").value, footer: $("#fsFooter").value.trim(), signs: readSigns($("#fsSigns")) };
+        const fs = Object.assign({ org: $("#fsOrg").value.trim(), fontSize: $("#fsFont").value, footer: $("#fsFooter").value.trim(), signs: readSigns($("#fsSigns")) }, Letterhead.read($("#fsLh")));
         const data = diffData(); if (data) fs.data = data;
         if (store(KEY_FSET, fs)) { toast("حُفظت إعدادات الرسوم", "ok"); window.FeesUI.refresh(); }
         else toast("تعذر الحفظ في هذا المتصفح.", "bad");

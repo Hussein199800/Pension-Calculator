@@ -94,7 +94,7 @@
   /* رسم الفرع السنوي: من 2026 فقط (قرار المالك)، ولا رسم للفرع قبلها */
   var DEF_BRANCH_ANNUAL = { 2026: 3000 };
   var BRANCH_FIELDS = [
-    ['brMaster', 'الفرع: رسم الأستذة', 5000], ['brTransfer', 'الفرع: رسم النقل من فرع إلى آخر', 5000],
+    ['brMaster', 'الفرع: رسم النقل إلى جدول الأساتذة', 5000], ['brTransfer', 'الفرع: رسم النقل من فرع إلى آخر', 5000],
     ['brOmitted', 'الفرع: رسم إعادة قيد المُغفَل', 5000], ['brReCancel', 'الفرع: رسم إعادة قيد المرقّن', 10000],
     ['brStruck', 'الفرع: رسم إعادة قيد المشطوب', 20000]
   ];
@@ -164,7 +164,7 @@
     reCancel: 'إعادة القيد بعد الترقين',
     omitted: 'إعادة قيد المُغفَل',
     transfer: 'النقل من فرع إلى آخر',
-    traineeToMaster: 'الأستذة (نقل المتمرن إلى جدول الأساتذة)',
+    traineeToMaster: 'نقل المتمرن إلى جدول الأساتذة',
     exempt: 'قيد المعفى من التمرين'
   };
   var STATUS = { active: 'قيده سارٍ', cancelled: 'مرقّن القيد', deceased: 'متوفى', other: 'وضع آخر' };
@@ -485,20 +485,20 @@
       }
 
       else if (kind === 'traineeToMaster') {
-        /* الرسم المركزي حسب تاريخ الانتقال إلى جدول الأساتذة: قبل 1/3/2026 = 950 إجمالاً، ومنه = 5,050 مفصّلاً (قرار المالك).
+        /* الرسم المركزي حسب تاريخ النقل إلى جدول الأساتذة: قبل 1/3/2026 = 950 إجمالاً، ومنه = 5,050 مفصّلاً (قرار المالك).
            رسم الفرع: 5,000 افتراضياً (قبل 1/3/2026 غير محدد)، ويمكن تغييره لكل حساب أو من الإعدادات. */
         var md = parseDate(inp.masterDate), mdUsed = md || today, before = cmpD(mdUsed, TM_CUTOFF) < 0;
-        if (!md) R.warnings.push('لم يُدخل تاريخ الانتقال إلى جدول الأساتذة؛ اعتُمد تاريخ اليوم ' + fmtDate(today) + ' لاختيار الرسم.');
+        if (!md) R.warnings.push('لم يُدخل تاريخ النقل إلى جدول الأساتذة؛ اعتُمد تاريخ اليوم ' + fmtDate(today) + ' لاختيار الرسم.');
         R.masterDate = md ? inp.masterDate : '';
-        step('تاريخ الانتقال إلى جدول الأساتذة ' + fmtDate(mdUsed) + (md ? '' : ' (تاريخ اليوم)') + '، فيُطبَّق رسم ' + (before ? 'ما قبل' : 'ما بعد') + ' 1/3/2026.');
+        step('تاريخ النقل إلى جدول الأساتذة ' + fmtDate(mdUsed) + (md ? '' : ' (تاريخ اليوم)') + '، فيُطبَّق رسم ' + (before ? 'ما قبل' : 'ما بعد') + ' 1/3/2026.');
         if (useC) {
           if (before) { item('central', 'رسم نقل المتمرن إلى جدول الأساتذة', D.flat.tmOld, 'قبل 1/3/2026'); step('المركزية: الرسم قبل 1/3/2026 = ' + fmt(D.flat.tmOld) + '.'); }
           else { D.FIXED.trainee.forEach(function (t) { item('central', t[0], t[1]); }); step('المركزية: الرسم من 1/3/2026 = ' + fmt(D.FIXED.trainee.reduce(function (s, t) { return s + t[1]; }, 0)) + ' (مفصّلاً).'); }
         }
         if (useB) {
           var bmf = brFee(kind, D.flat.brMaster, inp.brMasterAmount); if (bmf === null) return;
-          item('branch', 'رسم الأستذة', bmf.v, bmf.manual ? bmf.note : (before ? 'غير محدد قبل 1/3/2026، القيمة الافتراضية' : ''));
-          step('الفرع: رسم الأستذة ' + fmt(bmf.v) + (bmf.manual ? ' (عُدّل في هذا الحساب)' : before ? ' (رسم الفرع قبل 1/3/2026 غير محدد، فاعتُمدت القيمة الافتراضية)' : '') + '.');
+          item('branch', 'رسم النقل إلى جدول الأساتذة', bmf.v, bmf.manual ? bmf.note : (before ? 'غير محدد قبل 1/3/2026، القيمة الافتراضية' : ''));
+          step('الفرع: رسم النقل إلى جدول الأساتذة ' + fmt(bmf.v) + (bmf.manual ? ' (عُدّل في هذا الحساب)' : before ? ' (رسم الفرع قبل 1/3/2026 غير محدد، فاعتُمدت القيمة الافتراضية)' : '') + '.');
         }
       }
     });
@@ -601,7 +601,7 @@
       if (it.excluded) return; /* معفى أو تكرار ملغى: كما هو */
       var st = IS[it.key], op = OPP[it.op] || {};
       if (st && st.s === 'cancel') { it.state = 'cancel'; it.cancelReason = String(st.reason || '').trim(); }
-      else if (st && st.s === 'paid') { it.state = 'paid'; it.paidDate = st.date || ''; }
+      else if (st && st.s === 'paid') { it.state = 'paid'; it.paidDate = st.date || ''; it.paidNote = String(st.note || '').trim(); }
       else if (!(st && st.s === 'due') && op[it.fund]) { it.state = 'paid'; it.paidDate = op.date || ''; it.byOp = true; }
     });
     var paidItems = R.items.filter(function (x) { return x.state === 'paid'; }), cancelItems = R.items.filter(function (x) { return x.state === 'cancel'; });

@@ -305,7 +305,7 @@ function readSigns(box) {
 }
 /* طباعة تقرير التقاعد: حجم الخط والنص الختامي والتوقيعات. الغائب = الشكل السابق تماماً */
 function pensionPrint() { return load(KEY_PPRINT, null) || {}; }
-function rptMeta() { const pp = pensionPrint(); return { org: getSettings().org, fontSize: pp.fontSize || "", footer: pp.footer || "", signs: pp.signs || null }; }
+function rptMeta() { const pp = pensionPrint(); return { org: getSettings().org, fontSize: pp.fontSize || "", footer: pp.footer || "", signs: pp.signs || null, letterhead: window.Letterhead ? Letterhead.html(pp) : "" }; }
 function effSettings() { const s = getSettings(), o = {}; for (const k in s) if (k !== "org") o[k] = s[k]; return o; }
 function addValRow(id, r) {
     const tr = $("#valRow").content.firstElementChild.cloneNode(true);
@@ -323,6 +323,7 @@ function fillSettings() {
     const pp = pensionPrint();
     $("#pFont").value = pp.fontSize || ""; $("#pFooter").value = pp.footer || "";
     signEditor($("#pSigns"), pp.signs || Rp.PENSION_SIGNS);
+    Letterhead.editor($("#pLh"), pp);
     $("#pensionTbl tbody").innerHTML = ""; s.pensionTable.forEach(function (r) { addValRow("pensionTbl", r); });
     $("#aidTbl tbody").innerHTML = ""; s.aidTable.forEach(function (r) { addValRow("aidTbl", r); });
     $("#setCutoff").value = s.cutoffDate; $("#setMax").value = s.maxYears;
@@ -340,7 +341,7 @@ $("#saveSettings").onclick = function () {
     };
     if (!s.pensionTable.length || !s.aidTable.length) { toast("يجب إدخال قيمة واحدة على الأقل للمعاش وللمعونة.", "bad"); return; }
     if (!(Number.isInteger(s.trainingMaxYears) && s.trainingMaxYears >= 0)) { toast("أقصى مدة تمرين يجب أن تكون عدداً صحيحاً من السنوات (0 أو أكثر).", "bad"); $("#setTraining").focus(); return; }
-    const pp = { fontSize: $("#pFont").value, footer: $("#pFooter").value.trim(), signs: readSigns($("#pSigns")) };
+    const pp = Object.assign({ fontSize: $("#pFont").value, footer: $("#pFooter").value.trim(), signs: readSigns($("#pSigns")) }, Letterhead.read($("#pLh")));
     if (store(KEY_SET, s) && store(KEY_PPRINT, pp)) toast("حُفظت إعدادات التقاعد", "ok"); else toast("تعذر الحفظ في هذا المتصفح.", "bad");
     /* الزيادات تُطبَّق من أول الشهر (قرار المالك): تنبيه إن كُتب تاريخ نفاذ في منتصف الشهر */
     const mid = s.pensionTable.concat(s.aidTable).filter(function (r) { return r.from && !/-01$/.test(r.from) && r.from > "1900-01-01"; });

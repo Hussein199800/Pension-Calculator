@@ -153,7 +153,7 @@ t('الأستذة حسب التاريخ: قبل 1/3/2026 مركزية 950، وم
   assert.strictEqual(k({ masterDate: '2026-03-01' }).centralTotal, 5050);
   assert.strictEqual(k({ masterDate: '2026-03-01' }).branchTotal, 5000);
   assert.strictEqual(k({ masterDate: '2025-06-01', brMasterAmount: '3000' }).branchTotal, 3000);
-  assert.ok(k({}).warnings.some(w => w.indexOf('تاريخ الانتقال') >= 0));
+  assert.ok(k({}).warnings.some(w => w.indexOf('تاريخ النقل') >= 0));
   assert.strictEqual(F.compute({ kinds: ['traineeToMaster'], scope: 'both', masterDate: '2025-06-01' }, { data: { fixed: { tmOld: 1000, brMaster: 4000 } } }).total, 5000);
 });
 t('المعفى من التمرين: قيد الدراسة', () => assert.ok(F.compute({ kind: 'exempt' }, TODAY).errors.length));
