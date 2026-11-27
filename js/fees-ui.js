@@ -40,6 +40,7 @@
                 return '<div class="ex-row" data-ek="' + k + '"><b>' + esc(F.KINDS[k]) + "</b>" + fee +
                     (sc !== "branch" ? '<label class="check"><input type="checkbox" data-ef="central"' + (e.central ? " checked" : "") + "> معفى من المركزية</label>" : "") +
                     (sc !== "central" ? '<label class="check"><input type="checkbox" data-ef="branch"' + (e.branch ? " checked" : "") + "> معفى من الفرع</label>" : "") +
+                    '<label class="check" data-efa' + (e.central || e.branch ? "" : " hidden") + '><input type="checkbox" data-ef="annual"' + (e.annual ? " checked" : "") + "> يشمل الرسوم السنوية</label>" +
                     '<input data-ef="reason" placeholder="سبب الإعفاء" value="' + esc(e.reason || "") + '"' + (e.central || e.branch ? "" : " hidden") + "></div>";
             }).join("");
     }
@@ -47,9 +48,12 @@
         $$("#exemptBox [data-ek]").forEach(function (row) {
             const k = row.dataset.ek, c = row.querySelector("[data-ef=central]"), b = row.querySelector("[data-ef=branch]"), r = row.querySelector("[data-ef=reason]"), bf = row.querySelector("[data-ef=brfee]");
             if (bf) { const v = toLatin(bf.value.trim()); if (v) brFee[k] = v; else delete brFee[k]; }
+            const an = row.querySelector("[data-ef=annual]");
             const e = { central: c ? c.checked : !!(exempt[k] || {}).central, branch: b ? b.checked : !!(exempt[k] || {}).branch, reason: r.value.trim() };
+            if (an && an.checked) e.annual = true;
             if (e.central || e.branch) exempt[k] = e; else delete exempt[k];
             r.hidden = !(e.central || e.branch);
+            row.querySelector("[data-efa]").hidden = r.hidden;
         });
     }
     function fcollect() {
@@ -387,7 +391,7 @@
                     body += "<tr" + (off ? ' class="off"' : "") + "><td>" + esc(i.label) + '</td><td class="n">' + (off ? "<s>" + fmt(i.amount) + "</s>" : fmt(i.amount)) + '</td><td class="st">' + esc(st) + "</td></tr>";
                 });
                 const e = R.exempt && R.exempt[op.kind];
-                if (e && e[f]) exNotes.push((many ? op.name + ": " : "") + "معفى من " + (f === "central" ? "رسوم النقابة المركزية" : "رسوم الفرع") + (e.reason ? " — السبب: " + e.reason : ""));
+                if (e && e[f]) exNotes.push((many ? op.name + ": " : "") + "معفى من " + (f === "central" ? "رسوم النقابة المركزية" : "رسوم الفرع") + (e.annual ? " مع الرسوم السنوية" : "") + (e.reason ? " — السبب: " + e.reason : ""));
             });
             t += '<table class="t' + cls + '"><thead><tr><th>البند</th><th class="n">المبلغ (ل.س)</th><th>ملاحظة</th></tr></thead><tbody>' + body +
                 '<tr class="total"><td>مجموع ' + (f === "central" ? "رسوم المركزية" : "رسوم الفرع") + '</td><td class="n">' + fmt(sum) + "</td><td></td></tr></tbody></table>";

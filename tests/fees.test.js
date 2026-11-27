@@ -240,7 +240,7 @@ t('عمليتان بسنوات مشتركة: كل سنة مرة واحدة', () 
   assert.strictEqual(R.total, sum(F.ANNUAL) + 10000);
 });
 
-t('الإعفاء لكل عملية ولكل طرف (مع رسومها السنوية) ويظهر سببه', () => {
+t('الإعفاء لكل عملية ولكل طرف (والسنوية فقط باختيارها) ويظهر سببه', () => {
   const base = { kinds: ['reCancel', 'traineeToMaster'], scope: 'both', birthDate: '1990-01-01', eventDate: '2023-06-01', decisionDate: '2026-06-01' };
   const a = F.compute(base, TODAY);
   const b = F.compute(Object.assign({ exempt: { reCancel: { branch: true, reason: 'قرار مجلس الفرع' } } }, base), TODAY);
@@ -248,7 +248,9 @@ t('الإعفاء لكل عملية ولكل طرف (مع رسومها السن�
   assert.ok(b.steps.some(s => s.indexOf('قرار مجلس الفرع') >= 0));
   const c = F.compute(Object.assign({ exempt: { traineeToMaster: { central: true, branch: true } } }, base), TODAY);
   assert.strictEqual(a.total - c.total, 5050 + 5000);
-  const s1 = F.compute({ kinds: ['secStruck'], scope: 'both', decisionDate: '2026-05-01', exempt: { secStruck: { central: true } } }, TODAY);
+  const s0 = F.compute({ kinds: ['secStruck'], scope: 'both', decisionDate: '2026-05-01', exempt: { secStruck: { central: true } } }, TODAY);
+  assert.ok(s0.years.every(y => y.exempt === '')); // بلا «يشمل الرسوم السنوية» تبقى السنوات مستحقة
+  const s1 = F.compute({ kinds: ['secStruck'], scope: 'both', decisionDate: '2026-05-01', exempt: { secStruck: { central: true, annual: true } } }, TODAY);
   assert.strictEqual(s1.total, 20000 + 3000); // معفى من الرسوم السنوية المركزية، ويبقى الفرع
   assert.ok(s1.years.every(y => y.central === 0 && y.exempt === 'central'));
 });
@@ -347,4 +349,18 @@ t('العمر مباشرة: 34 = سطر 34 بلا تاريخ ميلاد، ومط
   assert.ok(F.compute({ kinds: ['new'], scope: 'central', status: 'active', ageMode: 'direct', ageDirect: '34.5', joinDate: '2026-03-01' }, TODAY).errors.length);
   assert.ok(F.compute({ kinds: ['new'], scope: 'central', status: 'active', ageMode: 'direct', joinDate: '2026-03-01' }, TODAY).errors.length);
 });
+
+t('إعفاء الانتساب من الفرع لا يُسقط الرسم السنوي للفرع ما لم يُختر', () => {
+  const base = { kinds: ['new', 'traineeToMaster'], scope: 'both', birthDate: '1993-01-01', joinDate: '2023-05-28', masterDate: '2026-01-08' };
+  const ex = { new: { branch: true, reason: 'مدفوع من سابق' }, traineeToMaster: { branch: true, reason: 'مدفوع من سابق' } };
+  const R = F.compute(Object.assign({ exempt: ex }, base), TODAY);
+  const y26 = R.years.find(y => y.year === 2026);
+  assert.strictEqual(y26.branch, 3000);
+  assert.strictEqual(R.summary.branch.due, 3000);
+  const ex2 = JSON.parse(JSON.stringify(ex)); ex2.new.annual = true;
+  const R2 = F.compute(Object.assign({ exempt: ex2 }, base), TODAY);
+  assert.strictEqual(R2.years.find(y => y.year === 2026).branch, 0);
+  assert.strictEqual(R.total - R2.total, 3000);
+});
+
 console.log('\n' + passed + ' اختباراً ناجحاً');
