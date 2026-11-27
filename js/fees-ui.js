@@ -55,7 +55,7 @@
     function fcollect() {
         const ks = kinds();
         const c = {
-            name: fval("name"), fatherName: fval("fatherName"), motherName: fval("motherName"), birthDate: fval("birthDate"),
+            name: fval("name"), fatherName: fval("fatherName"), regStatus: fval("regStatus"), motherName: fval("motherName"), birthDate: fval("birthDate"),
             nationalId: fval("nationalId"), memberNo: fval("memberNo"), branch: fval("branch"), fileNo: fval("fileNo"), phone: fval("phone"),
             kinds: ks, kind: ks[0] || "", scope: scope(),
             joinDate: fval("joinDate"), status: fval("status") || "active", statusYear: toLatin(fval("statusYear")),
@@ -95,18 +95,24 @@
         paidC = uniq((c.paidC || []).map(Number).concat(legacyPaid));
         paidB = uniq((c.paidB || []).map(Number).concat(legacyPaid));
         paidDates = Object.assign({}, c.paidDates || {});
-        itemState = JSON.parse(JSON.stringify(c.itemState || {}));
+        itemState = {};
+        Object.keys(c.itemState || {}).forEach(function (k) { itemState[k.replace("|رسم الأستذة", "|رسم النقل إلى جدول الأساتذة")] = c.itemState[k]; });
+        excludeDup = (c.excludeDup || []).map(function (k) { return k.replace("|رسم الأستذة", "|رسم النقل إلى جدول الأساتذة"); });
+        /* اقتراحات «وضع القيد» من الحسابات المحفوظة */
+        const regs = {}; ["أحرار"].concat(load(KEY_FEES, []).map(function (x) { return x.regStatus; })).forEach(function (v) { if (v) regs[v] = 1; });
+        $("#regStatusList").innerHTML = Object.keys(regs).map(function (v) { return '<option value="' + esc(v) + '"></option>'; }).join("");
         opPaid = JSON.parse(JSON.stringify(c.opPaid || {}));
         brFee = Object.assign({}, c.brFee || {});
         if (c.brMasterAmount && !brFee.traineeToMaster) brFee.traineeToMaster = c.brMasterAmount; /* حقل قديم */
         /* التقرير المعروض يخص الحساب السابق: يُفرَّغ عند فتح حساب آخر أو بدء حساب جديد */
         clearReport();
-        excludeDup = (c.excludeDup || []).slice();
         exempt = JSON.parse(JSON.stringify(c.exempt || {}));
         /* الخيار القديم «إعفاء المشطوب الأمني من رسم الفرع» يبقى كما حُفظ */
         legacyWaive = !!c.secBranchWaived;
         fCurrentId = c.id || null;
         renderExempt();
+        $("#moreInfo").open = ["motherName", "nationalId", "memberNo", "branch", "fileNo", "phone"].some(function (n) { return !!c[n]; });
+        $("#rptInfo").open = !!(c.preparer || c.reviewer || c.notes);
         if (typeof checkSame === "function") setTimeout(checkSame, 0);
         $("#feeBadge").textContent = fCurrentId ? "حساب محفوظ: " + (c.name || "") : "حساب جديد";
         frefresh();
@@ -121,7 +127,10 @@
             el.hidden = byFk || el.getAttribute("data-fstatus").split(" ").indexOf(st) < 0;
         });
         $("#branchBox").hidden = sc === "central" || ks.indexOf("new") < 0;
+        const direct = fval("ageDirectOn") && ks.indexOf("new") >= 0;
         $$("#feeForm [data-agedirect]").forEach(function (el) { if (!el.hidden) el.hidden = !fval("ageDirectOn"); });
+        /* العمر المباشر يخص الانتساب: يُخفي تاريخ الميلاد إلا إذا احتاجته عملية أخرى (إعادة القيد) */
+        $("#feeForm [data-birth]").hidden = direct && !ks.some(function (k) { return k === "admStruck" || k === "reCancel"; });
         $$("#feeForm .opt-row").forEach(function (el) { if (sc === "branch") el.hidden = true; });
         $$("#feeForm .bp-amount").forEach(function (el) { if (!el.hidden) el.hidden = !fval("bp_on"); });
         $$("#feeForm .ftypes .type").forEach(function (l) { const i = l.querySelector("input"); l.classList.toggle("on", i.checked); });
@@ -156,13 +165,55 @@
     function renderLive() {
         const c = fcollect(), R = compute(c), box = $("#feeLive");
         if (R.errors.length) {
-            box.innerHTML = '<h3><i class="ti ti-calculator"></i>النتيجة</h3><p class="muted">' + R.errors.map(esc).join("<br>") + "</p>";
+            box.innerHTML = '<div class="res-head"><h3><i class="ti ti-calculator"></i>النتيجة</h3></div><p class="muted">' + R.errors.map(esc).join("<br>") + "</p>";
             return;
         }
-        let h = '<div class="card-head"><h3><i class="ti ti-calculator"></i>النتيجة <small class="muted">(' + esc(R.scopeName) + ")</small></h3>" +
-            '<span class="fee-total">' + fmt(R.total) + " <small>ل.س</small></span></div>";
-        if (R.scope === "both") h += '<div class="fund-sums"><span>' + FUNDTAG("central") + " " + fmt(R.centralTotal) + "</span><span>" + FUNDTAG("branch") + " " + fmt(R.branchTotal) + "</span></div>";
+        const wasOpen = !!box.querySelector("details.res-more[open]"), howOpen = !!box.querySelector("details.how[open]");
+        let h = '<div class="res-head"><h3><i class="ti ti-calculator"></i>النتيجة <small>(' + esc(R.scopeName) + ')</small></h3><span class="res-total">' + fmt(R.total) + " <small>ل.س</small></span></div>";
         if (R.warnings.length) h += R.warnings.map(function (w) { return '<div class="field-warn"><i class="ti ti-alert-triangle"></i>' + esc(w) + "</div>"; }).join("");
+
+        /* الخلاصة البسيطة: أولاً المركزية، ثانياً الفرع (كل الرسوم)، ثم المحسوم وسببه، ثم المتبقي */
+        const many = R.ops.length > 1, ORD = ["أولاً", "ثانياً"];
+        const parties = ["central", "branch"].filter(function (f) { return f === "central" ? R.scope !== "branch" : R.scope !== "central"; });
+        const yrRange = function (f) {
+            const ys = R.years.filter(function (y) { return y[f] > 0 || (y.exempt === f || y.exempt === "both"); });
+            return ys.length ? ys[0].year + (ys.length > 1 ? "–" + ys[ys.length - 1].year : "") : "";
+        };
+        let sum = '<div class="res-sum">';
+        parties.forEach(function (f, n) {
+            const rows = R.items.filter(function (i) { return i.fund === f && !(i.excluded && !i.exempt); });
+            const yGross = R.years.reduce(function (a, y) { return a + y[f]; }, 0), yCount = R.years.filter(function (y) { return y[f] > 0; }).length;
+            const gross = (R.summary && R.summary[f]) ? R.summary[f].original : 0;
+            sum += '<div class="res-party ' + f + '"><p class="res-title">' + ORD[n] + ": " + (f === "central" ? "النقابة المركزية" : "الفرع") + "</p><ul>" +
+                rows.map(function (i) { return "<li><span>" + esc(i.label) + (many ? ' <small class="muted">— ' + esc(F.KINDS[i.op] || "") + "</small>" : "") + '</span><b class="n">' + fmt(i.amount) + "</b></li>"; }).join("") +
+                (yCount ? "<li><span>الرسم السنوي " + yrRange(f) + ' <small class="muted">(' + yCount + " سنة)</small></span><b class=\"n\">" + fmt(yGross) + "</b></li>" : "") +
+                (!rows.length && !yCount ? '<li class="muted"><span>لا رسوم</span><b></b></li>' : "") +
+                '</ul><p class="res-sub"><span>مجموع ' + (f === "central" ? "المركزية" : "الفرع") + '</span><b class="n">' + fmt(gross) + "</b></p></div>";
+        });
+        const ded = [];
+        R.items.forEach(function (i) {
+            if (i.exempt) ded.push({ t: i.label, f: i.fund, a: i.amount, why: "معفى" + (R.exempt && R.exempt[i.op] && R.exempt[i.op].reason ? ": " + R.exempt[i.op].reason : "") });
+            else if (!i.excluded && i.state === "paid") ded.push({ t: i.label, f: i.fund, a: i.amount, why: "مدفوع سابقاً" + (i.paidNote ? " — " + i.paidNote : "") + (i.paidDate ? " (" + F.fmtDate(i.paidDate) + ")" : "") });
+            else if (!i.excluded && i.state === "cancel") ded.push({ t: i.label, f: i.fund, a: i.amount, why: "مُلغى" + (i.cancelReason ? ": " + i.cancelReason : "") });
+        });
+        R.years.forEach(function (y) {
+            [["central", "paidC", "c"], ["branch", "paidB", "b"]].forEach(function (p) {
+                if (y[p[1]] && y[p[0]]) ded.push({ t: "الرسم السنوي " + y.year, f: p[0], a: y[p[0]], why: "مدفوع سابقاً" + (paidDates[p[2] + y.year] ? " (" + F.fmtDate(paidDates[p[2] + y.year]) + ")" : "") });
+            });
+        });
+        if (ded.length) {
+            const dTot = ded.reduce(function (a, d) { return a + d.a; }, 0);
+            sum += '<div class="res-party ded"><p class="res-title">' + (parties.length > 1 ? "ثالثاً" : "ثانياً") + ": المحسوم (لا يُطلب)</p><ul>" +
+                ded.map(function (d) { return "<li><span>" + esc(d.t) + " " + FUNDTAG(d.f) + '<br><small class="muted">' + esc(d.why) + '</small></span><b class="n">− ' + fmt(d.a) + "</b></li>"; }).join("") +
+                '</ul><p class="res-sub"><span>مجموع المحسوم</span><b class="n">− ' + fmt(dTot) + "</b></p></div>";
+        }
+        sum += "</div>";
+        sum += '<div class="res-final"><span>المجموع المتبقي المطلوب دفعه</span><b>' + fmt(R.total) + " ل.س</b>" +
+            (R.scope === "both" ? '<small>المركزية ' + fmt(R.centralTotal) + " · الفرع " + fmt(R.branchTotal) + "</small>" : "") + "</div>";
+        h += sum;
+
+        /* التفاصيل: البنود بحالاتها (مستحق / مدفوع / مُلغى) والرسوم السنوية وكيف حُسب */
+        let det = "";
         R.ops.forEach(function (op) {
             if (!op.items.length) return;
             const funds = ["central", "branch"].filter(function (f) { return op.items.some(function (i) { return i.fund === f && !i.exempt; }); });
@@ -170,7 +221,7 @@
             const toggles = funds.map(function (f) {
                 return '<label class="op-paid' + (op_[f] ? " on" : "") + '"><input type="checkbox" data-opp="' + op.kind + "|" + f + '"' + (op_[f] ? " checked" : "") + "> " + (f === "central" ? "المركزية مدفوعة" : "الفرع مدفوع") + "</label>";
             }).join("");
-            h += '<div class="op-head"><p class="fee-sub">' + esc(op.name) + "</p>" + (toggles ? '<div class="op-toggles">' + toggles + "</div>" : "") + "</div>" +
+            det += '<div class="op-head"><p class="fee-sub">' + esc(op.name) + "</p>" + (toggles ? '<div class="op-toggles">' + toggles + "</div>" : "") + "</div>" +
                 '<div class="table-wrap"><table class="fee-tbl ops-tbl"><thead><tr><th>الجهة</th><th>البند</th><th>الحالة</th><th class="n">المبلغ</th></tr></thead><tbody>' +
                 op.items.map(function (i) {
                     const dup = i.dup ? '<label class="dup-chk" title="بند مكرر مع «' + esc(i.dupOf) + '»"><input type="checkbox" data-dup="' + esc(i.key) + '"' + (i.excluded && !i.exempt ? "" : " checked") + "> مكرر: يُحتسب</label>" : "";
@@ -178,7 +229,7 @@
                     let st = "";
                     if (!i.excluded) {
                         st = '<select class="it-state st-' + i.state + '" data-is="' + esc(i.key) + '"><option value="due"' + (i.state === "due" ? " selected" : "") + '>مستحق</option><option value="paid"' + (i.state === "paid" ? " selected" : "") + '>مدفوع</option><option value="cancel"' + (i.state === "cancel" ? " selected" : "") + ">مُلغى</option></select>";
-                        if (i.state === "paid") st += '<input type="date" class="yr-date" data-isd="' + esc(i.key) + '" value="' + esc(i.paidDate || "") + '" title="تاريخ الدفع (اختياري)">';
+                        if (i.state === "paid") st += '<input type="date" class="yr-date" data-isd="' + esc(i.key) + '" value="' + esc(i.paidDate || "") + '" title="تاريخ الدفع (اختياري)"><input class="it-reason" data-isn="' + esc(i.key) + '" placeholder="ملاحظة: مثلاً دُفع في الفرع" value="' + esc(i.paidNote || "") + '">';
                         if (i.state === "cancel") st += '<input class="it-reason" data-isr="' + esc(i.key) + '" placeholder="سبب الإلغاء" value="' + esc(i.cancelReason || "") + '">';
                     } else st = '<span class="muted">' + (i.exempt ? "معفى" : "تكرار ملغى") + "</span>";
                     const off = i.excluded || i.state !== "due";
@@ -195,14 +246,15 @@
                     '<label class="yr-paid"><input type="checkbox" data-pf="' + k + '"' + (paid ? " checked" : "") + "> مدفوع</label>" +
                     (paid ? '<input type="date" class="yr-date" data-pd="' + k + '" value="' + esc(paidDates[k] || "") + '" title="تاريخ الدفع (اختياري)">' : "") + "</div></td>";
             };
-            h += '<p class="fee-sub">الرسوم السنوية <small class="muted">— علّم ما دفعه المحامي لكل طرف، ويمكن كتابة تاريخ الدفع</small></p>' +
+            det += '<p class="fee-sub">الرسوم السنوية <small class="muted">— علّم ما دفعه المحامي لكل طرف، ويمكن كتابة تاريخ الدفع</small></p>' +
                 '<div class="table-wrap"><table class="fee-tbl yr-tbl"><thead><tr><th>السنة</th>' + (showC ? "<th>مركزية</th>" : "") + (showB ? "<th>فرع</th>" : "") + '<th class="n">المستحق</th></tr></thead><tbody>' +
                 R.years.map(function (y) {
                     return "<tr><td><b>" + y.year + "</b>" + (y.over45 ? ' <small class="muted">فوق 45</small>' : "") + "</td>" + (showC ? cell(y, "central") : "") + (showB ? cell(y, "branch") : "") + '<td class="n"><b>' + fmt(y.due) + "</b></td></tr>";
                 }).join("") + '</tbody><tfoot><tr><td colspan="' + (1 + (showC ? 1 : 0) + (showB ? 1 : 0)) + '">مجموع الرسوم السنوية المستحقة</td><td class="n">' + fmt(R.yearsTotal) + "</td></tr></tfoot></table></div>";
         }
-        h += '<details class="how"' + (box.querySelector("details.how[open]") ? " open" : "") + '><summary><i class="ti ti-info-circle"></i>كيف حُسب؟</summary><ol>' + R.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol></details>";
-        const ae = document.activeElement, keep = ae && box.contains(ae) ? ["data-pf", "data-pd", "data-dup", "data-is", "data-isd", "data-isr", "data-opp"].filter(function (a) { return ae.hasAttribute(a); }).map(function (a) { return "[" + a + '="' + ae.getAttribute(a) + '"]'; })[0] : null;
+        det += '<details class="how"' + (howOpen ? " open" : "") + '><summary><i class="ti ti-info-circle"></i>كيف حُسب؟</summary><ol>' + R.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol></details>";
+        h += '<details class="res-more"' + (wasOpen ? " open" : "") + '><summary><i class="ti ti-list-details"></i>التفاصيل: تعليم المدفوع والملغى لكل بند وسنة، و«الطرف مدفوع»، وكيف حُسب</summary>' + det + "</details>";
+        const ae = document.activeElement, keep = ae && box.contains(ae) ? ["data-pf", "data-pd", "data-dup", "data-is", "data-isd", "data-isr", "data-isn", "data-opp"].filter(function (a) { return ae.hasAttribute(a); }).map(function (a) { return "[" + a + '="' + ae.getAttribute(a) + '"]'; })[0] : null;
         box.innerHTML = h;
         if (keep) { const el = box.querySelector(keep); if (el) el.focus(); }
     }
@@ -210,10 +262,13 @@
         const is = e.target.closest("[data-is]"), isd = e.target.closest("[data-isd]"), isr = e.target.closest("[data-isr]"), opp = e.target.closest("[data-opp]");
         if (is) {
             const k = is.dataset.is, prev = itemState[k] || {};
-            itemState[k] = is.value === "paid" ? { s: "paid", date: prev.date || "" } : is.value === "cancel" ? { s: "cancel", reason: prev.reason || "" } : { s: "due" };
+            itemState[k] = is.value === "paid" ? { s: "paid", date: prev.date || "", note: prev.note || "" } : is.value === "cancel" ? { s: "cancel", reason: prev.reason || "" } : { s: "due" };
+            const md = $("#feeLive details.res-more"); if (md) md.open = true;
             renderLive(); fsaveDraft(); return;
         }
-        if (isd) { const k = isd.dataset.isd; itemState[k] = { s: "paid", date: isd.value || "" }; renderLive(); fsaveDraft(); return; }
+        const isn = e.target.closest("[data-isn]");
+        if (isd) { const k = isd.dataset.isd; itemState[k] = Object.assign({}, itemState[k], { s: "paid", date: isd.value || "" }); renderLive(); fsaveDraft(); return; }
+        if (isn) { const k = isn.dataset.isn; itemState[k] = Object.assign({}, itemState[k], { s: "paid", note: isn.value.trim() }); renderLive(); fsaveDraft(); return; }
         if (isr) { const k = isr.dataset.isr; itemState[k] = { s: "cancel", reason: isr.value.trim() }; renderLive(); fsaveDraft(); return; }
         if (opp) {
             const pr = opp.dataset.opp.split("|"), o = opPaid[pr[0]] || {};
@@ -262,89 +317,127 @@
         box.innerHTML = "<b>يرجى استكمال ما يلي:</b><ul style=\"margin:6px 20px 0 0\">" + list.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>";
         box.classList.remove("hidden"); box.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+    /* ---------- بيان الرسوم الرسمي (قرار المالك 2026-11-27): مختصر، صفحتان تقريباً ----------
+       الترويسة ← بيانات المحامي ووضع القيد ← أولاً المركزية ← ثانياً الفرع ← الرسوم السنوية ← الإجمالي ← التوقيع */
     function buildReport(c, R) {
         const fs = feeSettings();
-        const org = fs.org || "نقابة المحامين";
-        const kv = function (rows) {
-            return '<table class="rkv"><tbody>' + rows.filter(function (r) { return r[1] !== "" && r[1] !== undefined && r[1] !== null; })
-                .map(function (r) { return "<tr><td>" + esc(r[0]) + "</td><td>" + r[1] + "</td></tr>"; }).join("") + "</tbody></table>";
-        };
         const d = function (s) { return s ? F.fmtDate(s) : ""; };
         const has = function (k) { return R.kinds.indexOf(k) >= 0; };
-        const fundTxt = function (f) { return f === "central" ? "مركزية" : "فرع"; };
         const now = new Date();
+        const C = R.scope !== "branch", B = R.scope !== "central";
+        const many = R.ops.length > 1;
         const h = [];
-        h.push('<div class="rpt' + Rp.sizeClass(fs.fontSize) + '"><div class="rpt-head"><div><div class="org">' + esc(org) + "</div><h1>تقرير رسوم: " + esc(R.kindName) + "</h1><div>" + esc(R.scopeName) + "</div></div>" +
-            '<div class="meta">تاريخ التقرير: ' + now.getDate() + "/" + (now.getMonth() + 1) + "/" + now.getFullYear() + (c.fileNo ? "<br>رقم الإضبارة: " + esc(c.fileNo) : "") + (c.memberNo ? "<br>رقم العضوية: " + esc(c.memberNo) : "") + (c.branch ? "<br>الفرع: " + esc(c.branch) : "") + "</div></div>");
-        h.push("<h2>بيانات المحامي</h2>" + kv([
-            ["الاسم", esc(c.name)], ["اسم الأب", esc(c.fatherName)], ["اسم الأم", esc(c.motherName)], ["تاريخ الميلاد", d(c.birthDate)],
-            ["الرقم الوطني", esc(c.nationalId)], ["الفرع", esc(c.branch)], ["رقم الهاتف", esc(c.phone)]
-        ]));
-        /* الحالة: ما العمليات، وعلى أي نطاق، وبأي تواريخ */
-        const op = [["العمليات", R.ops.map(function (o, i) { return (i + 1) + ". " + esc(o.name); }).join("<br>")],
-            ["نطاق الحساب", esc(R.scopeName) + (R.scope === "both" ? " (رسوم النقابة المركزية + رسوم الفرع)" : "")]];
-        if (c.joinDate) op.push([has("new") ? "تاريخ الانتساب" : "تاريخ الانتساب الأصلي", d(c.joinDate)]);
-        if (R.age) op.push(["العمر المعتمد", R.age.raw + " سنة " + (R.age.direct ? "(مُدخل مباشرة)" : "(" + esc(F.fmtYMD(R.age.ymd)) + ")") + (R.age.row !== R.age.raw ? " ← سطر " + R.age.row : "")]);
-        if (R.table && R.scope !== "branch") op.push(["جدول الرسوم المركزي", "جدول " + R.table]);
-        if (R.branchTable && R.scope !== "central") op.push(["جدول رسوم الفرع", "جدول الفروع " + R.branchTable]);
-        if (has("new")) op.push(["وضع المحامي", esc(F.STATUS[c.status] || "") + (c.status !== "active" ? " — سنة " + esc(c.statusYear) : "")]);
-        if (c.eventDate && (has("admStruck") || has("reCancel") || has("cancelSelf"))) op.push([has("admStruck") ? "تاريخ الشطب" : "تاريخ الترقين", d(c.eventDate)]);
-        if (c.decisionDate && ["secStruck", "admStruck", "reCancel", "omitted"].some(has)) op.push(["تاريخ قرار إعادة القيد", d(c.decisionDate)]);
-        if (R.gapYears !== undefined) op.push(["سنوات الانقطاع", R.gapYears + " سنة"]);
-        if (c.lastPaidYear && (has("cancelSelf") || has("omitted"))) op.push(["آخر سنة مدفوعة", esc(c.lastPaidYear)]);
-        if (has("traineeToMaster")) op.push(["تاريخ الانتقال لجدول الأساتذة", c.masterDate ? d(c.masterDate) : "لم يُدخل (اعتُمد تاريخ اليوم)"]);
-        if (has("transfer")) op.push(["براءة الذمة", c.clearance ? '<span class="yes">بريء الذمة</span>' : '<span class="no">لم يُؤكَّد</span>']);
-        const exl = [];
-        Object.keys(R.exempt || {}).filter(has).forEach(function (k) {
-            const e = R.exempt[k], parts = [e.central && R.scope !== "branch" ? "المركزية" : "", e.branch && R.scope !== "central" ? "الفرع" : ""].filter(Boolean);
-            if (parts.length) exl.push(esc(F.KINDS[k]) + ": معفى من " + parts.join(" و") + (e.reason ? " — السبب: " + esc(e.reason) : ""));
-        });
-        if (c.secBranchWaived && has("secStruck") && R.scope !== "central") exl.push("المشطوب الأمني: معفى من رسم إعادة القيد للفرع");
-        if (exl.length) op.push(["الإعفاءات", exl.join("<br>")]);
-        h.push("<h2>الحالة</h2>" + kv(op));
-        if (R.warnings.length) h.push(R.warnings.map(function (w) { return '<div class="warn">' + esc(w) + "</div>"; }).join(""));
-        /* الرسوم لكل عملية، والجهة لكل بند، ولماذا */
-        R.ops.forEach(function (o, idx) {
-            if (!o.items.length && !o.steps.length) return;
-            h.push("<h2>" + (idx + 1) + ". " + esc(o.name) + "</h2>");
-            if (o.steps.length) h.push('<div class="formula"><b>لماذا وكيف:</b><ol class="steps">' + o.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol></div>");
-            if (o.items.length) h.push('<table><thead><tr><th>الجهة</th><th>البند</th><th>ملاحظة</th><th class="n">المبلغ (ل.س)</th></tr></thead><tbody>' +
-                o.items.map(function (i) {
-                    const stTxt = i.state === "paid" ? "مدفوع سابقاً" + (i.paidDate ? " " + F.fmtDate(i.paidDate) : "") : i.state === "cancel" ? "مُلغى" + (i.cancelReason ? ": " + i.cancelReason : "") : "";
-                    const note = [i.exempt ? "معفى" : "", stTxt, i.note, i.dup ? (i.excluded ? "مكرر مع «" + i.dupOf + "» — أُلغي تكراره" : "مكرر مع «" + i.dupOf + "» — يُحتسب مرة ثانية بصفته في هذه العملية") : ""].filter(Boolean).join(" · ");
-                    const off = i.excluded || i.state !== "due";
-                    return "<tr><td>" + fundTxt(i.fund) + "</td><td>" + esc(i.label) + "</td><td>" + (i.state === "paid" ? '<span class="yes">' + esc(note) + "</span>" : esc(note)) + '</td><td class="n">' + (off ? "<s>" + fmt(i.amount) + "</s>" : fmt(i.amount)) + "</td></tr>";
-                }).join("") + '<tr class="total"><td colspan="3">المطلوب من «' + esc(o.name) + '»' + (o.original !== o.total ? " (الأصل " + fmt(o.original) + ")" : "") + '</td><td class="n">' + fmt(o.total) + "</td></tr></tbody></table>");
-        });
-        if (R.years.length) {
-            const C = R.scope !== "branch", B = R.scope !== "central";
-            const fc = function (y, f) {
-                const amt = y[f], paid = y[f === "central" ? "paidC" : "paidB"], st = y[f === "central" ? "cStatus" : "bStatus"], dt = y[f === "central" ? "paidDateC" : "paidDateB"];
-                if (!amt) return '<td class="n">' + (st === "missing" ? "غير محدد" : (y.exempt === f || y.exempt === "both") ? "معفى" : "—") + "</td>";
-                return '<td class="n">' + (paid ? "<s>" + fmt(amt) + '</s><br><span class="yes">مدفوع' + (dt ? " " + F.fmtDate(dt) : "") + "</span>" : fmt(amt) + (st === "estimate" ? "<br>تقديري" : "")) + "</td>";
-            };
-            h.push("<h2>الرسوم السنوية</h2><table><thead><tr><th>السنة</th>" + (C ? '<th class="n">مركزية</th>' : "") + (B ? '<th class="n">فرع</th>' : "") + '<th class="n">المستحق (ل.س)</th></tr></thead><tbody>' +
-                R.years.map(function (y) {
-                    return "<tr><td>" + y.year + (y.over45 ? "<br><small>رسم من انتسب فوق 45</small>" : "") + "</td>" + (C ? fc(y, "central") : "") + (B ? fc(y, "branch") : "") + '<td class="n">' + fmt(y.due) + "</td></tr>";
-                }).join("") + '<tr class="total"><td colspan="' + (1 + (C ? 1 : 0) + (B ? 1 : 0)) + '">مجموع الرسوم السنوية المستحقة</td><td class="n">' + fmt(R.yearsTotal) + "</td></tr></tbody></table>");
+        h.push('<div class="rpt rpt-official' + Rp.sizeClass(fs.fontSize) + '">');
+        if (window.Letterhead) h.push(Letterhead.html(fs));
+        h.push('<div class="doc-title"><h1>بيان رسوم</h1><div class="sub">' + esc(R.kindName) + "</div>" +
+            '<div class="meta">التاريخ: ' + now.getDate() + "/" + (now.getMonth() + 1) + "/" + now.getFullYear() +
+            (c.fileNo ? " · رقم الإضبارة: " + esc(c.fileNo) : "") + (c.memberNo ? " · رقم العضوية: " + esc(c.memberNo) : "") + " · " + esc(R.scopeName) + "</div></div>");
+        if (fs.org) h.push('<p class="brief" style="text-align:center"><b>' + esc(fs.org) + "</b></p>");
+
+        /* بيانات المحامي: سطران بأربعة أعمدة، ووضع القيد مميز */
+        const age = R.age ? R.age.raw + " سنة" + (R.age.direct ? "" : " (" + esc(F.fmtYMD(R.age.ymd)) + ")") + (R.age.row !== R.age.raw ? " ← سطر " + R.age.row : "") : "";
+        const pairs = [
+            ["الاسم", esc(c.name)], ["اسم الأب", esc(c.fatherName)],
+            ["وضع القيد", c.regStatus ? '<span class="reg-badge">' + esc(c.regStatus) + "</span>" : ""],
+            [R.age && R.age.direct ? "العمر" : "تاريخ الميلاد", R.age && R.age.direct ? age : d(c.birthDate)],
+            ["العمر المعتمد", R.age && !R.age.direct ? age : ""],
+            ["اسم الأم", esc(c.motherName)], ["الرقم الوطني", esc(c.nationalId)], ["الفرع", esc(c.branch)],
+            [has("new") ? "تاريخ الانتساب" : "تاريخ الانتساب الأصلي", d(c.joinDate)],
+            ["وضع المحامي", has("new") ? esc(F.STATUS[c.status] || "") + (c.status !== "active" ? " — " + esc(c.statusYear) : "") : ""],
+            ["تاريخ القرار", ["secStruck", "admStruck", "reCancel", "omitted"].some(has) ? d(c.decisionDate) : ""],
+            [has("admStruck") ? "تاريخ الشطب" : "تاريخ الترقين", (has("admStruck") || has("reCancel") || has("cancelSelf")) ? d(c.eventDate) : ""],
+            ["تاريخ النقل إلى جدول الأساتذة", has("traineeToMaster") ? (c.masterDate ? d(c.masterDate) : "اليوم") : ""],
+            ["براءة الذمة", has("transfer") ? (c.clearance ? '<span class="yes">بريء الذمة</span>' : '<span class="no">لم تُؤكَّد</span>') : ""]
+        ].filter(function (p) { return p[1]; });
+        let rows = "";
+        for (let i = 0; i < pairs.length; i += 2) {
+            const a = pairs[i], b = pairs[i + 1];
+            rows += '<tr><td class="k">' + a[0] + "</td><td>" + a[1] + "</td>" + (b ? '<td class="k">' + b[0] + "</td><td>" + b[1] + "</td>" : '<td class="k"></td><td></td>') + "</tr>";
         }
-        const SM = R.summary || {}, sf = ["central", "branch"].filter(function (f) { return (f === "central" ? R.scope !== "branch" : R.scope !== "central") && SM[f]; });
-        const anyOff = sf.some(function (f) { return SM[f].paid || SM[f].cancelled || SM[f].exempt; });
-        if (anyOff) h.push('<h2>الخلاصة لكل طرف</h2><table><thead><tr><th></th>' + sf.map(function (f) { return '<th class="n">' + (f === "central" ? "النقابة المركزية" : "الفرع") + "</th>"; }).join("") + (sf.length > 1 ? '<th class="n">المجموع</th>' : "") + "</tr></thead><tbody>" +
-            [["original", "الأصل (كل الرسوم)"], ["paid", "مدفوع سابقاً"], ["cancelled", "مُلغى"], ["exempt", "معفى"], ["due", "المطلوب الآن"]].map(function (r) {
-                const vals = sf.map(function (f) { return SM[f][r[0]]; }), tot = vals.reduce(function (a, b) { return a + b; }, 0);
-                if (r[0] !== "original" && r[0] !== "due" && !tot) return "";
-                return "<tr" + (r[0] === "due" ? ' class="total"' : "") + "><td>" + r[1] + "</td>" + vals.map(function (v) { return '<td class="n">' + fmt(v) + "</td>"; }).join("") + (sf.length > 1 ? '<td class="n">' + fmt(tot) + "</td>" : "") + "</tr>";
-            }).join("") + "</tbody></table>");
-        h.push('<h2>الخلاصة</h2><div class="sum">' +
-            (R.scope !== "branch" ? '<div class="box"><div class="l">رسوم النقابة المركزية</div><div class="v">' + fmt(R.centralTotal) + " ل.س</div></div>" : "") +
-            (R.scope !== "central" ? '<div class="box"><div class="l">رسوم الفرع</div><div class="v">' + fmt(R.branchTotal) + " ل.س</div></div>" : "") +
-            '<div class="box gold"><div class="l">المجموع المطلوب دفعه</div><div class="v">' + fmt(R.total) + ' ل.س</div><div class="w">' +
-            (R.items.length ? "البنود " + fmt(R.itemsTotal) : "") + (R.items.length && R.years.length ? " + " : "") + (R.years.length ? "الرسوم السنوية " + fmt(R.yearsTotal) : "") + "</div></div></div>");
-        h.push('<h2>كيف حُسب؟ (كامل)</h2><ol class="steps">' + R.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol>");
-        if (c.notes) h.push('<h2>ملاحظات</h2><div class="note">' + esc(c.notes).replace(/\n/g, "<br>") + "</div>");
+        h.push('<table class="info"><tbody>' + rows + "</tbody></table>");
+
+        /* شرح خفيف لكل قسم: سطر لكل عملية */
+        const brief = function (op, f) {
+            const k = op.kind;
+            if (k === "new") return f === "central" ? "جدول رسوم الانتساب لعام " + R.table + "، سطر العمر " + (R.age ? R.age.row : "") + " (البنود ما عدا الرسم السنوي)."
+                : "جدول رسوم الانتساب للفروع لعام " + R.branchTable + "، سطر العمر " + (R.age ? R.age.row : "") + ".";
+            if (k === "traineeToMaster") return f === "central" ? "رسم النقل إلى جدول الأساتذة " + (op.items.some(function (i) { return i.note === "قبل 1/3/2026"; }) ? "قبل 1/3/2026." : "من 1/3/2026.") : "رسم الفرع للنقل إلى جدول الأساتذة.";
+            if (k === "admStruck" || k === "reCancel") return f === "central" ? "رسوم إعادة القيد" + (R.gapYears ? " مع " + R.gapYears + " سنة انقطاع" : "") + "." : "رسم الفرع لإعادة القيد.";
+            if (k === "omitted") return f === "central" ? "رسم استعادة القيد، والرسوم السنوية غير المدفوعة في قسمها." : "رسم الفرع لإعادة قيد المُغفَل.";
+            if (k === "transfer") return f === "central" ? "رسم النقل من فرع إلى آخر." : "رسم الفرع للنقل.";
+            if (k === "secStruck") return f === "central" ? "رسومه السنوية فقط (في قسمها)." : "رسم الفرع لإعادة قيد المشطوب.";
+            return "";
+        };
+        const section = function (f, ord) {
+            const ops = R.ops.filter(function (op) { return op.items.some(function (i) { return i.fund === f; }); });
+            const title = ord + ": " + (f === "central" ? "رسوم النقابة المركزية" : "رسوم الفرع");
+            const cls = f === "central" ? "c" : "b";
+            if (!ops.length) return '<h2 class="sec-' + cls + '">' + title + '</h2><p class="brief">لا رسوم ' + (f === "central" ? "مركزية" : "للفرع") + " في هذه العمليات" + (R.years.some(function (y) { return y[f]; }) ? " عدا الرسوم السنوية." : ".") + "</p>";
+            let t = '<h2 class="sec-' + cls + '">' + title + "</h2>";
+            const br = ops.map(function (op) { const x = brief(op, f); return x ? (many ? "<b>" + esc(op.name) + ":</b> " : "") + esc(x) : ""; }).filter(Boolean);
+            if (br.length) t += '<p class="brief">' + br.join("<br>") + "</p>";
+            let sum = 0, body = "";
+            const exNotes = [];
+            ops.forEach(function (op) {
+                if (many) body += '<tr class="grp"><td colspan="3">' + esc(op.name) + "</td></tr>";
+                op.items.filter(function (i) { return i.fund === f && !(i.excluded && !i.exempt); }).forEach(function (i) {
+                    const off = i.exempt || i.state !== "due";
+                    const st = i.exempt ? "معفى" : i.state === "paid" ? "مدفوع سابقاً" + (i.paidNote ? " — " + i.paidNote : "") + (i.paidDate ? " " + F.fmtDate(i.paidDate) : "") : i.state === "cancel" ? "مُلغى" + (i.cancelReason ? ": " + i.cancelReason : "") : (i.dup ? "مكرر مع «" + i.dupOf + "»" : "");
+                    sum += i.amount;
+                    body += "<tr" + (off ? ' class="off"' : "") + "><td>" + esc(i.label) + '</td><td class="n">' + (off ? "<s>" + fmt(i.amount) + "</s>" : fmt(i.amount)) + '</td><td class="st">' + esc(st) + "</td></tr>";
+                });
+                const e = R.exempt && R.exempt[op.kind];
+                if (e && e[f]) exNotes.push((many ? op.name + ": " : "") + "معفى من " + (f === "central" ? "رسوم النقابة المركزية" : "رسوم الفرع") + (e.reason ? " — السبب: " + e.reason : ""));
+            });
+            t += '<table class="t' + cls + '"><thead><tr><th>البند</th><th class="n">المبلغ (ل.س)</th><th>ملاحظة</th></tr></thead><tbody>' + body +
+                '<tr class="total"><td>مجموع ' + (f === "central" ? "رسوم المركزية" : "رسوم الفرع") + '</td><td class="n">' + fmt(sum) + "</td><td></td></tr></tbody></table>";
+            if (exNotes.length) t += exNotes.map(function (x) { return '<div class="ex-note">' + esc(x) + "</div>"; }).join("");
+            return t;
+        };
+        const ords = ["أولاً", "ثانياً", "ثالثاً", "رابعاً"];
+        let n = 0;
+        if (C) h.push(section("central", ords[n++]));
+        if (B) h.push(section("branch", ords[n++]));
+
+        /* الرسوم السنوية: الجهة ولماذا */
+        if (R.years.length) {
+            const first = R.years[0].year, last = R.years[R.years.length - 1].year;
+            const why = has("new") ? "عن كل سنة من سنة الانتساب " + first + " حتى " + last + (has("new") && c.status !== "active" ? " (" + (F.STATUS[c.status] || "") + ")" : " (قيده سارٍ)") + "."
+                : has("secStruck") ? "المشطوب يدفع الرسم السنوي لكل سنة من " + first + " حتى سنة القرار " + last + "."
+                : "الرسوم السنوية غير المدفوعة من " + first + " حتى " + last + ".";
+            const parts = (C ? "المركزية" + (R.over45 ? " (رسم من انتسب فوق 45)" : "") : "") + (C && B ? "، و" : "") + (B ? "الفرع (من 2026 فقط)" : "");
+            let yb = "";
+            R.years.forEach(function (y) {
+                const notes = [];
+                if (y.paidC) notes.push("المركزية مدفوعة" + (y.paidDateC ? " " + F.fmtDate(y.paidDateC) : ""));
+                if (y.paidB) notes.push("الفرع مدفوع" + (y.paidDateB ? " " + F.fmtDate(y.paidDateB) : ""));
+                if (y.exempt) notes.push("معفى" + (y.exempt === "both" ? "" : y.exempt === "central" ? " من المركزية" : " من الفرع"));
+                if (y.cStatus === "estimate" || y.bStatus === "estimate") notes.push("تقديري");
+                if (y.cStatus === "missing" || y.bStatus === "missing") notes.push("غير محدد");
+                const v = function (a, p) { return a ? (p ? "<s>" + fmt(a) + "</s>" : fmt(a)) : "—"; };
+                yb += "<tr" + (y.paid ? ' class="off"' : "") + "><td>" + y.year + "</td>" + (C ? '<td class="n">' + v(y.central, y.paidC) + "</td>" : "") + (B ? '<td class="n">' + v(y.branch, y.paidB) + "</td>" : "") + '<td class="st">' + esc(notes.join(" · ")) + "</td></tr>";
+            });
+            h.push('<h2 class="sec-y">' + ords[n++] + ": الرسوم السنوية</h2>" + '<p class="brief">' + esc(why) + " الجهة: " + esc(parts) + ".</p>" +
+                '<table class="ty"><thead><tr><th>السنة</th>' + (C ? '<th class="n">المركزية</th>' : "") + (B ? '<th class="n">الفرع</th>' : "") + "<th>ملاحظة</th></tr></thead><tbody>" + yb +
+                '<tr class="total"><td>المستحق من الرسوم السنوية</td>' + (C ? '<td class="n">' + fmt(R.years.reduce(function (a, y) { return a + (y.paidC ? 0 : y.central); }, 0)) + "</td>" : "") +
+                (B ? '<td class="n">' + fmt(R.years.reduce(function (a, y) { return a + (y.paidB ? 0 : y.branch); }, 0)) + "</td>" : "") + "<td></td></tr></tbody></table>");
+        }
+
+        /* الإجمالي: الرسوم، المحسوم بأنواعه، المطلوب */
+        const SM = R.summary || {}, sf = ["central", "branch"].filter(function (f) { return (f === "central" ? C : B) && SM[f]; });
+        const line = function (key, label, neg, cls) {
+            const vals = sf.map(function (f) { return SM[f][key]; }), tot = vals.reduce(function (a, b) { return a + b; }, 0);
+            if (neg && !tot) return "";
+            return "<tr" + (cls ? ' class="' + cls + '"' : "") + "><td>" + label + "</td>" + vals.map(function (v) { return '<td class="n">' + (neg && v ? "− " : "") + fmt(v) + "</td>"; }).join("") + (sf.length > 1 ? '<td class="n">' + (neg && tot ? "− " : "") + fmt(tot) + "</td>" : "") + "</tr>";
+        };
+        h.push('<h2 class="sec-t">الإجمالي</h2><table class="tt"><thead><tr><th>البيان</th>' + sf.map(function (f) { return '<th class="n">' + (f === "central" ? "النقابة المركزية" : "الفرع") + "</th>"; }).join("") + (sf.length > 1 ? '<th class="n">المجموع</th>' : "") + "</tr></thead><tbody>" +
+            line("original", "مجموع الرسوم") + line("paid", "المدفوع سابقاً", true) + line("cancelled", "المُلغى", true) + line("exempt", "المعفى منه", true) + line("due", "المطلوب دفعه", false, "total") + "</tbody></table>");
+        h.push('<div class="final"><div class="l">المبلغ المطلوب دفعه</div><div class="v">' + fmt(R.total) + ' ل.س</div>' +
+            (sf.length > 1 ? '<div class="w">النقابة المركزية ' + fmt(R.centralTotal) + " · الفرع " + fmt(R.branchTotal) + "</div>" : "") + "</div>");
+        if (R.warnings.length) h.push('<div class="note"><b>تنبيه:</b> ' + R.warnings.map(esc).join("<br>") + "</div>");
+        if (c.notes) h.push('<div class="note"><b>ملاحظات:</b> ' + esc(c.notes).replace(/\n/g, "<br>") + "</div>");
         h.push(Rp.signBlock(fs.signs || FEES_SIGNS, c));
-        h.push('<div class="foot">' + (fs.footer ? esc(fs.footer).replace(/\n/g, "<br>") : "أُعدّ هذا التقرير بواسطة حاسبة المحامي وفق جداول رسوم الانتساب والرسوم السنوية المعتمدة في النقابة المركزية والفروع (المبالغ بالعملة الجديدة)، ويُعتمد بعد تدقيق الإيصالات والوثائق في إضبارة المحامي.") + "</div></div>");
+        h.push('<div class="foot">' + (fs.footer ? esc(fs.footer).replace(/\n/g, "<br>") : "أُعدّ هذا البيان وفق جداول الرسوم المعتمدة في النقابة المركزية والفروع (المبالغ بالعملة الجديدة)، ويُعتمد بعد تدقيق الإيصالات في إضبارة المحامي.") + "</div></div>");
         return h.join("");
     }
     function showReport(c, R) {

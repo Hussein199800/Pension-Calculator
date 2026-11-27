@@ -36,8 +36,33 @@
     '.rpt .foot{margin-top:20px;font-size:12px;color:#555;border-top:1px solid #ccc;padding-top:8px}',
     '.rpt dl.gl{margin:0}.rpt dl.gl dt{font-weight:700;color:#1f2318}.rpt dl.gl dd{margin:0 0 6px 0;padding-right:14px}',
     '.rpt.fs-s{font-size:13px}.rpt.fs-l{font-size:16.5px}',
+    /* الترويسة الرسمية */
+    '.rpt .lh{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:3px double #1f2318;padding-bottom:10px;margin-bottom:14px}',
+    '.rpt .lh-text{display:grid;gap:2px;text-align:center;min-width:200px}',
+    '.rpt .lh-text b{font-size:16px;font-weight:800;color:#1f2318;line-height:1.6}',
+    '.rpt .lh-text b:first-child{font-size:17px}',
+    '.rpt .lh-logo{width:92px;height:auto;max-height:100px;object-fit:contain}',
+    /* بيان الرسوم الرسمي */
+    '.rpt .doc-title{text-align:center;margin:4px 0 12px}',
+    '.rpt .doc-title h1{margin:0;font-size:21px;color:#1f2318;letter-spacing:0}',
+    '.rpt .doc-title .sub{font-weight:700;color:#4b5438}',
+    '.rpt .doc-title .meta{font-size:12.5px;color:#444;text-align:center;white-space:normal}',
+    '.rpt .info td{width:25%}.rpt .info td.k{background:#f5f3e9;font-weight:700;color:#1f2318}',
+    '.rpt .reg-badge{display:inline-block;padding:1px 12px;border:2px solid #865409;border-radius:4px;font-weight:800;color:#865409;background:#fdf6e3}',
+    '.rpt h2.sec-c{background:#2f3524}.rpt h2.sec-b{background:#865409}.rpt h2.sec-y{background:#4b5438}.rpt h2.sec-t{background:#82311f}',
+    '.rpt .tc th{background:#eef1df}.rpt .tb th{background:#fbf0d9;color:#5a3a05}.rpt .ty th{background:#ecefe4}.rpt .tt th{background:#f7e4de;color:#5e2214}',
+    '.rpt .brief{margin:2px 0 6px;color:#333;font-size:13px}',
+    '.rpt .ex-note{margin:4px 0;padding:6px 10px;border-right:4px solid #1d7a46;background:#eef7f0;font-size:13px}',
+    '.rpt td.st{font-size:12.5px;color:#444}.rpt tr.off td{color:#777}.rpt tr.grp td{background:#f5f3e9;font-weight:700}',
+    '.rpt .final{margin:10px 0;padding:12px;border:3px double #82311f;text-align:center;break-inside:avoid}',
+    '.rpt .final .l{font-weight:800;color:#5e2214}.rpt .final .v{font-size:26px;font-weight:900;color:#82311f}',
+    '.rpt .final .w{font-size:12.5px;color:#444}',
+    '.rpt.lh-only{border:0;padding:8px;max-width:none}',
+    /* بيان الرسوم مضغوط ليقع في صفحتين تقريباً */
+    '.rpt.rpt-official th,.rpt.rpt-official td{padding:3px 8px}.rpt.rpt-official h2{margin:14px 0 6px;padding:4px 12px;font-size:15.5px}.rpt.rpt-official table{margin:4px 0 6px}',
+    '@media print{.rpt.rpt-official{font-size:12px}.rpt.rpt-official th,.rpt.rpt-official td{padding:2px 6px}.rpt.rpt-official .lh-logo{width:80px}.rpt.rpt-official .sign div{min-height:46px}}',
     '@media (max-width:640px){.rpt{padding:16px 12px}.rpt-head{flex-direction:column}.rpt-head .meta{text-align:right}.rpt .sign{grid-template-columns:1fr}}',
-    '@media print{@page{size:A4;margin:14mm 12mm}.rpt{border:0;padding:0;max-width:none;font-size:13px}.rpt.fs-s{font-size:11.5px}.rpt.fs-l{font-size:15px}.rpt h2{-webkit-print-color-adjust:exact;print-color-adjust:exact}.rpt th,.rpt .box,.rpt .formula,.rpt .note,.rpt .warn,.rpt .rkv td:first-child,.rpt .total td{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+    '@media print{@page{size:A4;margin:12mm 11mm}.rpt{border:0;padding:0;max-width:none;font-size:13px}.rpt h2{break-after:avoid}.rpt table{break-inside:auto}.rpt .lh,.rpt .final,.rpt .sign{break-inside:avoid}.rpt h2.sec-c,.rpt h2.sec-b,.rpt h2.sec-y,.rpt h2.sec-t,.rpt .tb th,.rpt .tt th,.rpt .ty th,.rpt .reg-badge{-webkit-print-color-adjust:exact;print-color-adjust:exact}.rpt.fs-s{font-size:11.5px}.rpt.fs-l{font-size:15px}.rpt h2{-webkit-print-color-adjust:exact;print-color-adjust:exact}.rpt th,.rpt .box,.rpt .formula,.rpt .note,.rpt .warn,.rpt .rkv td:first-child,.rpt .total td{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
   ].join('\n');
 
   function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -60,6 +85,7 @@
     var eligible = R.shares ? R.shares.list.filter(function (x) { return x.eligible; }) : [];
 
     h.push('<article class="rpt' + sizeClass(meta.fontSize) + '">');
+    if (meta.letterhead) h.push(meta.letterhead);
     // ---------- الرأس
     h.push('<header class="rpt-head"><div><div class="org">' + esc(meta.org || 'خزانة تقاعد المحامين') + '</div>' +
       '<h1>تقرير حساب الراتب التقاعدي</h1><div>' + esc(R.label) + '</div></div>' +

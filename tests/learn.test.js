@@ -44,7 +44,7 @@ const TODAY = { today: '2027-05-01' };
     assert.deepStrictEqual(P.branch[2028].rows[40], { reg: 10000, ambulance: 2000, annual: 3000, coop: 2000, training: 5000, file: 3000, takaful: 1000 });
   });
   await t('الرسوم الثابتة تُعرف بالمفتاح أو باسم البند', async () => {
-    const P = L.learn(await X.read(bufOf([{ name: 'ثابتة', rows: [['البند', 'المبلغ'], ['الفرع: رسم الأستذة', 6000], ['شيء غريب', 1]] }])));
+    const P = L.learn(await X.read(bufOf([{ name: 'ثابتة', rows: [['البند', 'المبلغ'], ['الفرع: رسم النقل إلى جدول الأساتذة', 6000], ['شيء غريب', 1]] }])));
     assert.strictEqual(P.fixed.brMaster, 6000);
     assert.ok(P.problems.some((p) => p.indexOf('شيء غريب') >= 0));
   });

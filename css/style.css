@@ -1108,3 +1108,58 @@ input.bad { border-color: var(--danger) !important; background: var(--danger-bg)
     .ops-tbl tbody td.it-st { grid-row: 2; }
     .ops-tbl td { background: transparent !important; }
 }
+
+/* ---------- حاسبة الرسوم: الأساسي ظاهر والتفاصيل مخفية، والنتيجة واضحة آخر الصفحة ---------- */
+.birth-or-age { display: grid; gap: 6px; align-content: start; }
+.birth-or-age > .field { margin: 0; }
+.age-mode { font-size: var(--fs-sm); }
+details.more-info { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; }
+details.more-info > summary { cursor: pointer; font-weight: 600; color: var(--accent-text); display: flex; gap: 6px; align-items: center; font-size: var(--fs-sm); list-style: none; }
+details.more-info > summary::-webkit-details-marker { display: none; }
+details.more-info[open] > summary .ti-plus::before { content: "\eaf2"; }
+details.more-info > .grid { margin-top: 12px; }
+details.card.rpt-info { margin-top: 0; padding-top: 16px; border-top: 0; }
+.fee-live { border: 2px solid var(--accent); padding: 0; overflow: hidden; }
+.fee-live > *:not(.res-head):not(.res-final) { margin-inline: 18px; }
+.res-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 14px 18px; background: var(--grad-primary); color: #fff; }
+.res-head h3 { margin: 0; color: #fff; display: flex; gap: 8px; align-items: center; border: 0 !important; padding: 0 !important; }
+.res-head h3 .ti { color: #fff !important; }
+.res-head small { color: #e9eecf; font-weight: 500; }
+.res-total { font-size: var(--fs-2xl); font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
+.res-total small { color: #e9eecf; font-size: var(--fs-sm); }
+.fee-live .field-warn { margin-top: 10px; }
+.res-sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 14px; }
+.res-party { border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 12px; background: var(--surface-2); }
+.res-party.central { border-top: 4px solid var(--accent); }
+.res-party.branch { border-top: 4px solid var(--gold-500); }
+.res-party.ded { border-top: 4px solid var(--success); background: var(--success-bg); }
+.res-title { margin: 0 0 6px; font-weight: 800; color: var(--heading); }
+.res-party ul { list-style: none; margin: 0; padding: 0; }
+.res-party li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dotted var(--line); font-size: var(--fs-sm); }
+.res-party li b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.res-sub { display: flex; justify-content: space-between; margin: 8px 0 0; font-weight: 800; color: var(--heading); }
+.res-final { display: grid; justify-items: center; gap: 2px; margin-top: 14px; padding: 16px; background: var(--gold-300); color: #3d2a05; text-align: center; }
+.res-final span { font-weight: 700; }
+.res-final b { font-size: 30px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.res-final small { font-weight: 600; }
+[data-theme="dark"] .res-final { background: #5a4410; color: #fff3d6; }
+details.res-more { margin: 14px 18px 16px; border: 1px solid var(--line); border-radius: var(--r-md); padding: 0 12px; }
+details.res-more > summary { cursor: pointer; padding: 10px 0; font-weight: 700; color: var(--accent-text); display: flex; gap: 6px; align-items: center; }
+details.res-more[open] { padding-bottom: 12px; }
+@media (max-width: 640px) { .res-final b { font-size: 24px; } .fee-live > *:not(.res-head):not(.res-final) { margin-inline: 12px; } }
+
+/* ---------- بيان الرسوم الرسمي: ألوان الأقسام تتقدم على «الطبقة الثانية» ---------- */
+.rpt h2.sec-c { background: #2f3524 !important; }
+.rpt h2.sec-b { background: #865409 !important; border-inline-start-color: #f1d596 !important; }
+.rpt h2.sec-y { background: #4b5438 !important; }
+.rpt h2.sec-t { background: #82311f !important; border-inline-start-color: #f1d596 !important; }
+.rpt .tb th { background: #fbf0d9 !important; color: #5a3a05 !important; }
+.rpt .ty th { background: #ecefe4 !important; }
+.rpt .tt th { background: #f7e4de !important; color: #5e2214 !important; }
+.rpt .info td.k { background: #f5f3e9 !important; }
+.lh-edit { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; margin-top: 10px; }
+.lh-logo-edit { display: grid; gap: 8px; justify-items: center; }
+.lh-logo-edit img { width: 90px; height: auto; border: 1px solid var(--line); border-radius: var(--r-sm); background: #fff; }
+.lh-preview-box .rpt { background: #fff; border: 1px solid var(--line); border-radius: var(--r-md); }
+.reg-row input { font-weight: 700; }
+@media (max-width: 640px) { .lh-edit { grid-template-columns: minmax(0, 1fr); } }
