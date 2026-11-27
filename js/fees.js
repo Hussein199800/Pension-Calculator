@@ -330,11 +330,9 @@
     var ranges = [];
     /* الإعفاءات: لكل عملية ولكل طرف (مركزية / فرع) مع سببها. secBranchWaived القديم = إعفاء المشطوب الأمني من الفرع */
     var EX = {};
-    Object.keys(inp.exempt || {}).forEach(function (k) { var e = inp.exempt[k] || {}; if (e.central || e.branch) EX[k] = { central: !!e.central, branch: !!e.branch, annual: !!e.annual, reason: String(e.reason || '').trim() }; });
+    Object.keys(inp.exempt || {}).forEach(function (k) { var e = inp.exempt[k] || {}; if (e.central || e.branch) EX[k] = { central: !!e.central, branch: !!e.branch, reason: String(e.reason || '').trim() }; });
     /* (الإعفاء يشمل كل رسوم ذلك الطرف في العملية، ومنها رسومها السنوية) */
     function exempted(kind, fund) { return !!(EX[kind] && EX[kind][fund]); }
-    /* الإعفاء لا يشمل الرسوم السنوية إلا إذا اختير «يشمل الرسوم السنوية» (annual) — قرار المالك 2026-11-27 */
-    function exemptedYears(kind, fund) { return exempted(kind, fund) && !!EX[kind].annual; }
     /* رسم الفرع لعملية: مبلغ مكتوب لهذا الحساب (inp.brFee[kind]) أو القيمة الافتراضية من الإعدادات */
     function brFee(kind, def, legacy) {
       var raw = inp.brFee && inp.brFee[kind] !== undefined && inp.brFee[kind] !== '' ? inp.brFee[kind] : legacy;
@@ -524,7 +522,7 @@
       var funds = ['central', 'branch'].filter(function (f) { return e[f] && (f === 'central' ? useC : useB); });
       if (!funds.length) return;
       op.items.forEach(function (it) { if (e[it.fund]) { it.exempt = true; it.excluded = true; } });
-      var txt = 'أُعفي من رسوم ' + funds.map(function (f) { return f === 'central' ? 'النقابة المركزية' : 'الفرع'; }).join(' و') + ' في هذه العملية' + (e.annual ? ' مع رسومها السنوية' : ' (الرسوم السنوية تبقى مستحقة)') + (e.reason ? ' (السبب: ' + e.reason + ')' : '') + '.';
+      var txt = 'أُعفي من رسوم ' + funds.map(function (f) { return f === 'central' ? 'النقابة المركزية' : 'الفرع'; }).join(' و') + ' في هذه العملية (الرسوم السنوية تُعلَّم لكل سنة وحدها)' + (e.reason ? ' (السبب: ' + e.reason + ')' : '') + '.';
       op.steps.push(txt);
     });
 
@@ -551,9 +549,10 @@
     if (ranges.length) {
       var yset = {}, paidSet = {}, lo = Infinity, hi = -Infinity;
       paid.forEach(function (y) { paidSet[+y] = true; });
-      var payC = {}, payB = {};
+      /* إعفاء العملية لا يشمل الرسوم السنوية؛ كل سنة ولكل طرف حالتها وحدها (inp.yearState) — قرار المالك 2026-11-27 */
+      var payC = {}, payB = {}, ys = inp.yearState || {};
       ranges.forEach(function (r) {
-        for (var y = r.from; y <= r.to; y++) { yset[y] = true; if (!exemptedYears(r.kind, 'central')) payC[y] = true; if (!exemptedYears(r.kind, 'branch')) payB[y] = true; }
+        for (var y = r.from; y <= r.to; y++) { yset[y] = true; payC[y] = true; payB[y] = true; }
         lo = Math.min(lo, r.from); hi = Math.max(hi, r.to);
       });
       if (ranges.length > 1) R.steps.push('السنوات المشتركة بين العمليات يُحسب رسمها السنوي مرة واحدة.');
@@ -567,19 +566,23 @@
         var by = useB ? branchYear(y) : { amount: 0, status: 'none' };
         if (useC && y < D.FIRST) { if (!est.before) { R.warnings.push('لا يوجد رسم سنوي مركزي قبل ' + D.FIRST + '؛ لم تُحسب السنوات التي قبلها.'); est.before = true; } cy = { amount: 0, status: 'none' }; }
         var c = useC && payC[y] ? cy.amount : 0, b = useB && payB[y] ? by.amount : 0;
-        var exC = useC && !payC[y] && cy.status !== 'none', exB = useB && !payB[y] && by.status !== 'none';
-        if (!c && !b && !exC && !exB && cy.status !== 'missing' && by.status !== 'missing') return;
+        var xc = ys['c' + y] || {}, xb = ys['b' + y] || {};
+        var exC = c > 0 && xc.s === 'exempt', exB = b > 0 && xb.s === 'exempt';
+        if (!c && !b && cy.status !== 'missing' && by.status !== 'missing') return;
         if (cy.status === 'estimate' && payC[y]) est.central = cy.base;
         if (by.status === 'estimate' && payB[y]) est.branch = by.base;
         if (cy.status === 'missing' && payC[y] && useC) missing.central.push(y);
         if (by.status === 'missing' && payB[y] && useB) missing.branch.push(y);
         var legacy = !!paidSet[y];
-        var pc = legacy || !!paidC[y] || !c, pb = legacy || !!paidB[y] || !b;
+        var isPC = !exC && !!(legacy || paidC[y]) && c > 0, isPB = !exB && !!(legacy || paidB[y]) && b > 0;
+        var pc = isPC || !c, pb = isPB || !b;
         R.years.push({
           year: y, central: c, branch: b, amount: c + b,
-          paidC: !!(legacy || paidC[y]) && c > 0, paidB: !!(legacy || paidB[y]) && b > 0,
+          paidC: isPC, paidB: isPB, exemptC: exC, exemptB: exB,
+          exReasonC: exC ? String(xc.reason || '').trim() : '', exReasonB: exB ? String(xb.reason || '').trim() : '',
           paidDateC: dates['c' + y] || '', paidDateB: dates['b' + y] || '',
-          paid: pc && pb && (c + b) > 0, due: (pc ? 0 : c) + (pb ? 0 : b),
+          paid: pc && pb && (c + b) > 0 && (isPC || isPB), settled: (pc || exC) && (pb || exB) && (c + b) > 0,
+          due: (pc || exC ? 0 : c) + (pb || exB ? 0 : b),
           cStatus: useC && payC[y] ? cy.status : '', bStatus: useB && payB[y] ? by.status : '',
           over45: !!(useC && over45 && ((y > D.LAST ? D.LAST : y) in D.ANNUAL_OVER45)),
           exempt: exC && exB ? 'both' : exC ? 'central' : exB ? 'branch' : ''
@@ -612,7 +615,7 @@
 
     /* المجاميع */
     function sumItems(f) { return R.items.reduce(function (s, x) { return s + (x.excluded || x.state !== 'due' || (f && x.fund !== f) ? 0 : x.amount); }, 0); }
-    function sumYears(f) { return R.years.reduce(function (s, x) { return s + (f === 'central' ? (x.paidC ? 0 : x.central) : f === 'branch' ? (x.paidB ? 0 : x.branch) : x.due); }, 0); }
+    function sumYears(f) { return R.years.reduce(function (s, x) { return s + (f === 'central' ? (x.paidC || x.exemptC ? 0 : x.central) : f === 'branch' ? (x.paidB || x.exemptB ? 0 : x.branch) : x.due); }, 0); }
     R.itemsTotal = sumItems();
     R.yearsTotal = sumYears();
     R.paidCount = R.years.filter(function (x) { return x.paid; }).length;
@@ -634,8 +637,8 @@
         if (x.exempt) o.exempt += x.amount; else if (x.state === 'paid') o.paid += x.amount; else if (x.state === 'cancel') o.cancelled += x.amount; else o.due += x.amount;
       });
       R.years.forEach(function (y) {
-        var a = y[f], p = f === 'central' ? y.paidC : y.paidB;
-        o.original += a; if (p) o.paid += a; else o.due += a;
+        var a = y[f], p = f === 'central' ? y.paidC : y.paidB, x = f === 'central' ? y.exemptC : y.exemptB;
+        o.original += a; if (p) o.paid += a; else if (x) o.exempt += a; else o.due += a;
       });
       R.summary[f] = o;
     });
