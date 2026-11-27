@@ -368,4 +368,18 @@ t('إعفاء الانتساب من الفرع لا يُسقط الرسم الس
   assert.strictEqual(R2.summary.central.paid, 750);
 });
 
+t('رسوم سنوية فقط: من سنة إلى سنة، لكل طرف، وفوق 45 بالمربع', () => {
+  const T = { today: '2026-11-24' };
+  const a = F.compute({ kinds: ['annualOnly'], scope: 'both' }, T); // فارغ = السنة الحالية
+  assert.deepStrictEqual(a.years.map(y => [y.year, y.central, y.branch]), [[2026, 5000, 3000]]);
+  assert.strictEqual(a.items.length, 0); assert.strictEqual(a.total, 8000);
+  const b = F.compute({ kinds: ['annualOnly'], scope: 'both', annFrom: '٢٠٢٤', annTo: '2026', paidB: [2026] }, T);
+  assert.strictEqual(b.total, 750 + 750 + 5000);
+  assert.strictEqual(F.compute({ kinds: ['annualOnly'], scope: 'central', annFrom: '2026', annTo: '2026', annOver45: true }, T).total, 4000);
+  assert.strictEqual(F.compute({ kinds: ['annualOnly'], scope: 'branch', annFrom: '2026', annTo: '2026' }, T).total, 3000);
+  assert.ok(F.compute({ kinds: ['annualOnly'], annFrom: '2026', annTo: '2025' }, T).errors.length);
+  assert.ok(F.compute({ kinds: ['annualOnly'], annFrom: '26' }, T).errors.length);
+  const e = F.compute({ kinds: ['annualOnly'], scope: 'both', yearState: { c2026: { s: 'exempt', reason: 'قرار' } } }, T);
+  assert.strictEqual(e.total, 3000); assert.strictEqual(e.summary.central.exempt, 5000);
+});
 console.log('\n' + passed + ' اختباراً ناجحاً');

@@ -165,6 +165,7 @@
     omitted: 'إعادة قيد المُغفَل',
     transfer: 'النقل من فرع إلى آخر',
     traineeToMaster: 'نقل المتمرن إلى جدول الأساتذة',
+    annualOnly: 'رسوم سنوية',
     exempt: 'قيد المعفى من التمرين'
   };
   var STATUS = { active: 'قيده سارٍ', cancelled: 'مرقّن القيد', deceased: 'متوفى', other: 'وضع آخر' };
@@ -280,7 +281,7 @@
   var FUND = { central: 'مركزية', branch: 'فرع' };
   var TM_CUTOFF = { y: 2026, m: 3, d: 1 }; /* بداية رسم الأستذة المركزي الجديد */
   var SCOPE = { both: 'مركزية + فرع', central: 'مركزية فقط', branch: 'فرع فقط' };
-  var KIND_ORDER = ['new', 'secStruck', 'admStruck', 'cancelSelf', 'reCancel', 'omitted', 'transfer', 'traineeToMaster', 'exempt'];
+  var KIND_ORDER = ['new', 'secStruck', 'admStruck', 'cancelSelf', 'reCancel', 'omitted', 'transfer', 'traineeToMaster', 'annualOnly', 'exempt'];
 
   function kindsOf(inp) {
     var k = Array.isArray(inp.kinds) && inp.kinds.length ? inp.kinds : (inp.kind ? [inp.kind] : []);
@@ -327,6 +328,8 @@
     }
     var joinAge = directAge || (inp.joinDate && inp.birthDate ? ageRow(inp.birthDate, inp.joinDate) : null);
     var over45 = !!(joinAge && joinAge.raw > 45);
+    /* «رسوم سنوية» وحدها لا تطلب تاريخ الميلاد: مربع «انتسب فوق 45» يحدد الرسم المركزي المخفّض (قرار المالك 2026-11-27) */
+    if (!joinAge && inp.annOver45 && kinds.indexOf('annualOnly') >= 0) over45 = true;
     var ranges = [];
     /* الإعفاءات: لكل عملية ولكل طرف (مركزية / فرع) مع سببها. secBranchWaived القديم = إعفاء المشطوب الأمني من الفرع */
     var EX = {};
@@ -482,6 +485,19 @@
         if (useB) item('branch', 'رسم النقل من فرع إلى آخر', bt2.v, bt2.note);
         step('رسم النقل من فرع إلى آخر ثابت' + (useC ? ': مركزية (نقابة ' + fmt(D.FIXED.transfer.union) + ' + تقاعد ' + fmt(D.FIXED.transfer.pension) + ')' : '') + (useB ? (useC ? ' + ' : ': ') + 'فرع ' + fmt(bt2.v) : '') + '.');
         if (!inp.clearance) R.warnings.push('النقل مشروط بأن يكون المحامي بريء الذمة. تأكد من ذلك قبل القبض.');
+      }
+
+      else if (kind === 'annualOnly') {
+        /* رسوم سنوية فقط: قيده سارٍ ومسدد لكل ما قبل؛ يُطلب الرسم السنوي للسنوات المختارة (من سنة إلى سنة، وقد تكونان سنة واحدة) */
+        var af = yearOf(inp.annFrom), at = yearOf(inp.annTo);
+        if (af === null) af = today.y;
+        if (at === null) at = af > today.y ? af : today.y;
+        if (isNaN(af) || isNaN(at)) { R.errors.push('سنوات «رسوم سنوية» غير صالحة: اكتب سنة من 4 أرقام بين ' + YEAR_MIN + ' و' + YEAR_MAX + '.'); return; }
+        if (at < af) { R.errors.push('«إلى سنة» (' + at + ') قبل «من سنة» (' + af + ').'); return; }
+        R.annFrom = af; R.annTo = at; R.annOver45 = !joinAge && !!inp.annOver45;
+        step('المحامي قيده سارٍ ومسدد لكل الرسوم السابقة، فيُطلب الرسم السنوي ' + (af === at ? 'لسنة ' + af : 'من ' + af + ' حتى ' + at) + ' فقط' +
+          (useC ? '؛ المركزية' + (over45 ? ' برسم من انتسب فوق 45' : '') : '') + (useB ? (useC ? ' و' : '؛ ') + 'الفرع (من ' + (D.BRANCH_FIRST || '—') + ')' : '') + '.');
+        ranges.push({ from: af, to: at, kind: kind });
       }
 
       else if (kind === 'traineeToMaster') {

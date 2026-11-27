@@ -339,6 +339,7 @@
                                 <label class="type"><input type="checkbox" name="kinds" value="omitted"><span><b>مُغفَل</b><small>نقابة 3,000 + تقاعد 7,000 + الرسوم المترتبة</small></span></label>
                                 <label class="type"><input type="checkbox" name="kinds" value="transfer"><span><b>نقل من فرع لآخر</b><small>نقابة 5,000 + تقاعد 5,000</small></span></label>
                                 <label class="type"><input type="checkbox" name="kinds" value="traineeToMaster"><span><b>نقل المتمرن إلى جدول الأساتذة</b><small>5,050 ثابتة</small></span></label>
+                                <label class="type"><input type="checkbox" name="kinds" value="annualOnly"><span><b>رسوم سنوية</b><small>قيده سارٍ ومسدد: رسم السنوات المختارة فقط</small></span></label>
                                 <label class="type is-off" title="قيد الدراسة"><input type="checkbox" name="kinds" value="exempt" disabled><span><b>المعفى من التمرين</b><small><i class="ti ti-clock"></i> قيد الدراسة</small></span></label>
                             </div>
                         </div>
@@ -356,6 +357,9 @@
                                 <label class="field" data-fk="traineeToMaster"><span>تاريخ النقل إلى جدول الأساتذة</span><input type="date" name="masterDate"><small class="hint">يحدد الرسم المركزي: قبل 1/3/2026 = 950، ومنه = 5,050</small></label>
                                 <label class="field" data-fk="cancelSelf omitted"><span>آخر سنة دفع رسمها</span><input name="lastPaidYear" inputmode="numeric" class="num-in" placeholder="مثال: 2023"><small class="hint">فارغ = يُحسب من سنة الانتساب</small></label>
                                 <label class="check" data-fk="transfer"><input type="checkbox" name="clearance"> المحامي بريء الذمة</label>
+                                <label class="field" data-fk="annualOnly"><span>الرسوم السنوية: من سنة</span><input name="annFrom" inputmode="numeric" class="num-in" placeholder="السنة الحالية"></label>
+                                <label class="field" data-fk="annualOnly"><span>إلى سنة</span><input name="annTo" inputmode="numeric" class="num-in" placeholder="السنة الحالية"><small class="hint">يمكن أن تكون نفس سنة البداية</small></label>
+                                <label class="check" data-fk="annualOnly" data-annover45><input type="checkbox" name="annOver45"> انتسب بعمر فوق 45 (رسم سنوي مركزي أقل)</label>
                             </div>
                             <div data-fk="secStruck admStruck reCancel" class="opt-row">
                                 <p class="hint-line" style="margin:12px 0 8px">اختياري: يُسأل المحامي إن كان يريدها</p>
